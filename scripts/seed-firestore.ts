@@ -6,26 +6,30 @@ import { getFirestore, Timestamp } from 'firebase-admin/firestore';
 import { users, inventory, orders } from '../src/lib/data';
 import type { Order, OrderItem, User } from '../src/lib/types';
 
-// Check for required environment variables
-if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-  console.error('Error: Firebase credentials are not set.');
-  console.log('Please ensure GOOGLE_APPLICATION_CREDENTIALS (for local) or NEXT_PUBLIC_FIREBASE_PROJECT_ID (for Vercel/CI) are set.');
+// Check for required environment variables for the script
+if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+  console.error('Error: Firebase Admin credentials are not set.');
+  console.log('Please ensure the GOOGLE_APPLICATION_CREDENTIALS environment variable is set. For Vercel, this should be the raw JSON content. For local dev, a path to the file.');
   process.exit(1);
 }
 
 // Initialize Firebase Admin SDK
 try {
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    admin.initializeApp({
-      credential: admin.credential.applicationDefault(),
-      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    });
+  let credentials;
+  // Vercel and other environments might pass the credentials as a raw JSON string
+  // Check if the credential string starts with '{' to determine if it's JSON
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS.trim().startsWith('{')) {
+    credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
   } else {
-    // Fallback for environments like Vercel where service account JSON is not available
-    admin.initializeApp({
-        projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-    });
+    // For local development, it's a path to the file
+    credentials = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
   }
+
+  admin.initializeApp({
+    credential: admin.credential.cert(credentials),
+    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  });
+
 } catch (error: any) {
      if (error.code !== 'app/duplicate-app') {
         console.error('Firebase Admin initialization error:', error);

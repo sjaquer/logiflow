@@ -1,31 +1,5 @@
-// This file constructs the Firebase configuration object.
-
-// Check if all required environment variables are defined
-const requiredEnvVars = [
-  'NEXT_PUBLIC_FIREBASE_API_KEY',
-  'NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN',
-  'NEXT_PUBLIC_FIREBASE_PROJECT_ID',
-  'NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET',
-  'NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-  'NEXT_PUBLIC_FIREBASE_APP_ID',
-];
-
-const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
-
-// In a Vercel deployment, these variables must be set in the project settings.
-// In local development, they must be in .env.local
-if (missingVars.length > 0) {
-  const errorMessage = `[Firebase] Missing required environment variables: ${missingVars.join(
-    ', '
-  )}. Please set them in your Vercel project settings or in your local .env.local file.`;
-  
-  // Throw an error during the build process if variables are missing
-  if (process.env.NODE_ENV === 'production') {
-      console.warn(errorMessage);
-  } else {
-      console.warn(errorMessage);
-  }
-}
+// This file constructs the Firebase configuration object for the client-side app.
+// It relies on NEXT_PUBLIC_ environment variables, which are exposed to the browser.
 
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -36,7 +10,9 @@ export const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Final check to ensure the config object is valid before export
-if (!firebaseConfig.projectId && process.env.NODE_ENV === 'production') {
-  console.warn("Firebase projectId is missing. The app might not work as expected in production. Check your environment variables.");
+// A simple check to give a warning during development if the project ID is missing.
+if (process.env.NODE_ENV !== 'production' && !firebaseConfig.projectId) {
+  console.warn(
+    `[Firebase] NEXT_PUBLIC_FIREBASE_PROJECT_ID is not set. Please set it in your .env.local file for local development.`
+  );
 }
