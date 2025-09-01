@@ -10,6 +10,7 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
@@ -18,9 +19,12 @@ import {
   Users,
   Warehouse,
   Settings,
+  LogOut,
 } from 'lucide-react';
 import type { User } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
+import { useAuth } from '@/context/auth-context';
+import { useRouter } from 'next/navigation';
 
 interface AppSidebarProps {
   currentUser: User | null;
@@ -35,6 +39,13 @@ const menuItems = [
 
 export function AppSidebar({ currentUser }: AppSidebarProps) {
   const pathname = usePathname();
+  const { logout } = useAuth();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   const filteredMenuItems = menuItems.filter(item => {
     if (!item.requiredRole) return true;
@@ -62,7 +73,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
               <SidebarMenuButton
                 asChild
                 size="lg"
-                isActive={pathname === item.href}
+                isActive={pathname.startsWith(item.href)}
                 tooltip={{ children: item.label, side: 'right' }}
               >
                 <Link href={item.href}>
@@ -85,6 +96,14 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
                 </SidebarMenuItem>
             </SidebarMenu>
          </SettingsPanel>
+         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" tooltip={{ children: 'Cerrar Sesión', side: 'right' }} onClick={handleLogout}>
+                <LogOut className="h-5 w-5" />
+                <span>Cerrar Sesión</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
   );

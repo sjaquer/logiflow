@@ -17,7 +17,7 @@ import {
 import type { User } from "@/lib/types"
 import { useAuth } from "@/context/auth-context"
 import { useRouter } from "next/navigation"
-import { CreditCard, LifeBuoy, LogOut, Settings, User as UserIcon } from "lucide-react"
+import { CreditCard, LifeBuoy, Settings, User as UserIcon } from "lucide-react"
 
 interface UserNavProps {
     user: User
@@ -30,11 +30,6 @@ export function UserNav({ user }: UserNavProps) {
     const getInitials = (name: string) => {
         return name.split(' ').map(n => n[0]).join('').toUpperCase();
     }
-
-    const handleLogout = async () => {
-        await logout();
-        router.push('/login');
-    };
 
   return (
     <DropdownMenu>
@@ -74,11 +69,6 @@ export function UserNav({ user }: UserNavProps) {
          <DropdownMenuItem>
           <LifeBuoy className="mr-2 h-4 w-4" />
           <span>Soporte</span>
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout}>
-          <LogOut className="mr-2 h-4 w-4" />
-          <span>Cerrar sesión</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

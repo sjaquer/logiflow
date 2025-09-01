@@ -28,6 +28,7 @@ export default function UsersPage({ currentUser }: UsersPageProps) {
   
   if (currentUser?.rol !== 'ADMIN') {
     return (
+      <div className="p-4 md:p-6 lg:p-8">
         <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Acceso Denegado</AlertTitle>
@@ -35,25 +36,28 @@ export default function UsersPage({ currentUser }: UsersPageProps) {
                 No tienes los permisos necesarios para acceder a esta sección.
             </AlertDescription>
         </Alert>
+      </div>
     )
   }
 
   if (loading) {
     return (
-       <Card>
-        <CardHeader>
-          <Skeleton className="h-8 w-1/3" />
-          <Skeleton className="h-4 w-2/3" />
-        </CardHeader>
-        <CardContent>
-          <Skeleton className="h-64 w-full" />
-        </CardContent>
-      </Card>
+       <div className="p-4 md:p-6 lg:p-8">
+         <Card>
+            <CardHeader>
+              <Skeleton className="h-8 w-1/3" />
+              <Skeleton className="h-4 w-2/3" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-64 w-full" />
+            </CardContent>
+          </Card>
+       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
       <Card>
         <CardHeader>
           <CardTitle>Gestión de Usuarios</CardTitle>
