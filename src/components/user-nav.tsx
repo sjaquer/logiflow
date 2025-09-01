@@ -1,3 +1,4 @@
+'use client';
 import {
   Avatar,
   AvatarFallback,
@@ -14,6 +15,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import type { User } from "@/lib/types"
+import { useAuth } from "@/context/auth-context"
+import { useRouter } from "next/navigation"
 import { CreditCard, LifeBuoy, LogOut, Settings, User as UserIcon } from "lucide-react"
 
 interface UserNavProps {
@@ -21,9 +24,17 @@ interface UserNavProps {
 }
 
 export function UserNav({ user }: UserNavProps) {
+    const { logout } = useAuth();
+    const router = useRouter();
+
     const getInitials = (name: string) => {
-        return name.split(' ').map(n => n[0]).join('');
+        return name.split(' ').map(n => n[0]).join('').toUpperCase();
     }
+
+    const handleLogout = async () => {
+        await logout();
+        router.push('/login');
+    };
 
   return (
     <DropdownMenu>
@@ -47,27 +58,27 @@ export function UserNav({ user }: UserNavProps) {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem>
-            <UserIcon />
-            Perfil
+            <UserIcon className="mr-2 h-4 w-4" />
+            <span>Perfil</span>
           </DropdownMenuItem>
           <DropdownMenuItem>
-            <CreditCard />
-            Facturación
+            <CreditCard className="mr-2 h-4 w-4" />
+            <span>Facturación</span>
           </DropdownMenuItem>
           <DropdownMenuItem>
-            <Settings />
-            Ajustes
+            <Settings className="mr-2 h-4 w-4" />
+            <span>Ajustes</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
          <DropdownMenuItem>
-          <LifeBuoy />
-          Soporte
+          <LifeBuoy className="mr-2 h-4 w-4" />
+          <span>Soporte</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
-        <DropdownMenuItem>
-          <LogOut />
-          Cerrar sesión
+        <DropdownMenuItem onClick={handleLogout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Cerrar sesión</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

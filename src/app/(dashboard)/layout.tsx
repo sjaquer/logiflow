@@ -3,19 +3,16 @@
 import * as React from 'react';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
-import { SidebarProvider } from '@/components/ui/sidebar';
+import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { User, InventoryItem, Order } from '@/lib/types';
 import { getCollectionData } from '@/lib/firebase/firestore-client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { ThemeProvider } from '@/context/theme-provider';
 
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+function DashboardContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
   
@@ -50,7 +47,6 @@ export default function DashboardLayout({
   
   const currentUser = users.find(u => u.email === user?.email) || null;
   
-  // Pass currentUser to children via React.cloneElement
   const childrenWithProps = React.Children.map(children, child => {
     if (React.isValidElement(child)) {
       return React.cloneElement(child, { currentUser } as { currentUser: User | null });
@@ -61,14 +57,12 @@ export default function DashboardLayout({
   if (loading || !user || dataLoading) {
     return (
         <div className="flex min-h-screen">
-            <div className="hidden md:block border-r">
-                <div className="flex flex-col space-y-4 p-4">
-                    <Skeleton className="h-10 w-40" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                    <Skeleton className="h-8 w-full" />
-                </div>
+            <div className="hidden md:flex flex-col w-64 border-r p-4 space-y-4">
+                <Skeleton className="h-10 w-40" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
             </div>
             <div className="flex-1 p-8">
                 <Skeleton className="h-12 w-1/4 mb-8" />
@@ -79,7 +73,6 @@ export default function DashboardLayout({
   }
 
   return (
-    <SidebarProvider>
       <div className="flex min-h-screen">
         <AppSidebar currentUser={currentUser} />
         <div className="flex flex-col flex-1">
@@ -89,6 +82,20 @@ export default function DashboardLayout({
           </main>
         </div>
       </div>
-    </SidebarProvider>
+  );
+}
+
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <ThemeProvider>
+      <SidebarProvider>
+          <DashboardContent>{children}</DashboardContent>
+      </SidebarProvider>
+    </ThemeProvider>
   );
 }

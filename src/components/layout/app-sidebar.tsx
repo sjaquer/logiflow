@@ -20,7 +20,7 @@ import {
   Settings,
 } from 'lucide-react';
 import type { User } from '@/lib/types';
-import { useAuth } from '@/context/auth-context';
+import { SettingsPanel } from '@/components/layout/settings-panel';
 
 interface AppSidebarProps {
   currentUser: User | null;
@@ -61,6 +61,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
+                size="lg"
                 isActive={pathname === item.href}
                 tooltip={{ children: item.label, side: 'right' }}
               >
@@ -74,14 +75,16 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
         </SidebarMenu>
       </SidebarContent>
       <SidebarFooter className="p-2">
-         <SidebarMenu>
-            <SidebarMenuItem>
-                <SidebarMenuButton tooltip={{ children: 'Ajustes', side: 'right' }}>
-                    <Settings className="h-5 w-5" />
-                    <span>Ajustes</span>
-                </SidebarMenuButton>
-            </SidebarMenuItem>
-        </SidebarMenu>
+         <SettingsPanel>
+            <SidebarMenu>
+                <SidebarMenuItem>
+                    <SidebarMenuButton size="lg" tooltip={{ children: 'Ajustes', side: 'right' }}>
+                        <Settings className="h-5 w-5" />
+                        <span>Ajustes</span>
+                    </SidebarMenuButton>
+                </SidebarMenuItem>
+            </SidebarMenu>
+         </SettingsPanel>
       </SidebarFooter>
     </Sidebar>
   );
