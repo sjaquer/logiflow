@@ -113,6 +113,8 @@ export interface InventoryItem {
 
 export type UserRole = 'OPERADOR_LOGISTICO' | 'ADMIN' | 'VENTAS' | 'ADMINISTRADOR' | 'GERENTE';
 
+export const USER_ROLES: UserRole[] = ['OPERADOR_LOGISTICO', 'ADMIN', 'VENTAS', 'ADMINISTRADOR', 'GERENTE'];
+
 export interface User {
   id_usuario: string;
   nombre: string;

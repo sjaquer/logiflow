@@ -46,6 +46,16 @@ export default function DashboardLayout({
       fetchData();
     }
   }, [user]);
+  
+  const currentUser = users.find(u => u.email === user?.email) || null;
+  
+  // Pass currentUser to children via React.cloneElement
+  const childrenWithProps = React.Children.map(children, child => {
+    if (React.isValidElement(child)) {
+      return React.cloneElement(child, { currentUser } as { currentUser: User | null });
+    }
+    return child;
+  });
 
   if (loading || !user || dataLoading) {
     return (
@@ -66,17 +76,15 @@ export default function DashboardLayout({
         </div>
     );
   }
-  
-  const currentUser = users.find(u => u.email === user.email) || null;
 
   return (
     <SidebarProvider>
       <div className="flex min-h-screen">
-        <AppSidebar />
+        <AppSidebar currentUser={currentUser} />
         <div className="flex flex-col flex-1">
           <AppHeader user={currentUser} inventory={inventory} orders={orders} />
           <main className="flex-1 overflow-y-auto p-4 md:p-6 lg:p-8 bg-background">
-            {children}
+            {childrenWithProps}
           </main>
         </div>
       </div>

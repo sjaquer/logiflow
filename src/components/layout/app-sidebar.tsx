@@ -19,17 +19,27 @@ import {
   Warehouse,
   Settings,
 } from 'lucide-react';
-import { Button } from '../ui/button';
+import type { User } from '@/lib/types';
+import { useAuth } from '@/context/auth-context';
+
+interface AppSidebarProps {
+  currentUser: User | null;
+}
 
 const menuItems = [
-  { href: '/orders', label: 'Pedidos', icon: LayoutDashboard },
-  { href: '/inventory', label: 'Inventario', icon: Box },
-  { href: '/reports', label: 'Reportes', icon: BarChart3 },
-  { href: '/users', label: 'Usuarios', icon: Users },
+  { href: '/orders', label: 'Pedidos', icon: LayoutDashboard, requiredRole: null },
+  { href: '/inventory', label: 'Inventario', icon: Box, requiredRole: null },
+  { href: '/reports', label: 'Reportes', icon: BarChart3, requiredRole: null },
+  { href: '/users', label: 'Usuarios', icon: Users, requiredRole: 'ADMIN' },
 ];
 
-export function AppSidebar() {
+export function AppSidebar({ currentUser }: AppSidebarProps) {
   const pathname = usePathname();
+
+  const filteredMenuItems = menuItems.filter(item => {
+    if (!item.requiredRole) return true;
+    return currentUser?.rol === item.requiredRole;
+  });
 
   return (
     <Sidebar
@@ -47,7 +57,7 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent className="flex-1 p-2">
         <SidebarMenu>
-          {menuItems.map((item) => (
+          {filteredMenuItems.map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
