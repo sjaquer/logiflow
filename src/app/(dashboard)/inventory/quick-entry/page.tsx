@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { BarcodeScanner } from 'react-zxing';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -9,14 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, where, getDocs, doc, writeBatch } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, writeBatch, documentId } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import type { InventoryItem } from '@/lib/types';
-import { AlertCircle, CheckCircle, Loader2, Minus, Plus, Search, Video, VideoOff } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader2, Minus, Plus, Search, Video, VideoOff, ScanLine, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
 
 const quickEntryFormSchema = z.object({
   items: z.array(z.object({
@@ -24,6 +24,9 @@ const quickEntryFormSchema = z.object({
     nombre: z.string().min(1, "Nombre es requerido"),
     stock_actual: z.number(),
     ajuste: z.number().int("Debe ser un número entero"),
+    precio_venta: z.number().min(0, "El precio no puede ser negativo"),
+    ubicacion_almacen: z.string().optional(),
+    isNew: z.boolean().optional(),
   }))
 });
 
@@ -32,9 +35,10 @@ type QuickEntryFormValues = z.infer<typeof quickEntryFormSchema>;
 export default function QuickEntryPage() {
   const [hasCameraPermission, setHasCameraPermission] = useState(true);
   const [isCameraActive, setIsCameraActive] = useState(true);
-  const [scannedSku, setScannedSku] = useState<string | null>(null);
+  const [scannedSku, setScannedSku] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const form = useForm<QuickEntryFormValues>({
     resolver: zodResolver(quickEntryFormSchema),
@@ -51,8 +55,8 @@ export default function QuickEntryPage() {
   const findProductBySku = async (sku: string) => {
     if (!sku) return;
     setIsSearching(true);
-    setScannedSku(sku);
-
+    form.setValue('skuToSearch', sku);
+    
     const existingItemIndex = fields.findIndex(item => item.sku === sku);
     if (existingItemIndex > -1) {
        toast({ title: "Producto ya en la lista", description: "El producto ya está en la lista de abajo para ser ajustado." });
@@ -67,18 +71,29 @@ export default function QuickEntryPage() {
 
       if (querySnapshot.empty) {
         toast({
-          variant: "destructive",
+          variant: "default",
           title: "Producto no encontrado",
-          description: `No se encontró ningún producto con el SKU: ${sku}. Puede agregarlo como nuevo.`,
+          description: `SKU: ${sku} no existe. Se agregará como un nuevo producto.`,
         });
-         append({ sku, nombre: "Nuevo Producto", stock_actual: 0, ajuste: 1 });
+         append({ 
+            sku, 
+            nombre: "Nuevo Producto", 
+            stock_actual: 0, 
+            ajuste: 1, 
+            precio_venta: 0, 
+            ubicacion_almacen: '',
+            isNew: true 
+        });
       } else {
         const docData = querySnapshot.docs[0].data() as InventoryItem;
         append({
           sku: docData.sku,
           nombre: docData.nombre,
           stock_actual: docData.stock_actual,
-          ajuste: 1
+          ajuste: 1,
+          precio_venta: docData.precios.venta,
+          ubicacion_almacen: docData.ubicacion_almacen,
+          isNew: false
         });
          toast({ title: "Producto Encontrado", description: `${docData.nombre} añadido a la lista.` });
       }
@@ -87,6 +102,7 @@ export default function QuickEntryPage() {
       toast({ variant: "destructive", title: "Error de Búsqueda", description: "No se pudo buscar el producto." });
     } finally {
       setIsSearching(false);
+      setScannedSku('');
     }
   };
 
@@ -97,27 +113,37 @@ export default function QuickEntryPage() {
     }
 
     const batch = writeBatch(db);
-    let successfulUpdates = 0;
+    let updatedCount = 0;
 
     for (const item of data.items) {
-        if (item.ajuste !== 0) {
+        const itemRef = doc(db, 'inventory', item.sku);
+        if (item.isNew) {
+            batch.set(itemRef, {
+                sku: item.sku,
+                nombre: item.nombre,
+                stock_actual: item.ajuste,
+                precios: { venta: item.precio_venta, compra: 0 },
+                ubicacion_almacen: item.ubicacion_almacen || '',
+                estado: 'ACTIVO',
+                stock_minimo: 0,
+            });
+        } else {
             const newStock = item.stock_actual + item.ajuste;
-            const itemRef = doc(db, 'inventory', item.sku);
-            batch.update(itemRef, { stock_actual: newStock });
-            successfulUpdates++;
+            batch.update(itemRef, { 
+                stock_actual: newStock,
+                nombre: item.nombre,
+                'precios.venta': item.precio_venta,
+                ubicacion_almacen: item.ubicacion_almacen
+            });
         }
+        updatedCount++;
     }
     
-    if(successfulUpdates === 0) {
-        toast({ title: "No hay cambios", description: "Ningún producto tenía un ajuste para aplicar.", variant: "default" });
-        return;
-    }
-
     try {
         await batch.commit();
         toast({
             title: "¡Inventario Actualizado!",
-            description: `${successfulUpdates} producto(s) han sido actualizados correctamente.`,
+            description: `${updatedCount} producto(s) han sido actualizados/creados correctamente.`,
         });
         form.reset({ items: [] });
     } catch (error) {
@@ -157,9 +183,10 @@ export default function QuickEntryPage() {
             {isCameraActive && (
                  <div className="relative aspect-video bg-muted rounded-md overflow-hidden border">
                     <BarcodeScanner
+                        videoRef={videoRef}
                         onResult={(result) => findProductBySku(result.getText())}
                         onError={(error) => {
-                            if(error.name === "NotAllowedError") {
+                            if(error?.name === "NotAllowedError") {
                                 setHasCameraPermission(false);
                             }
                         }}
@@ -175,21 +202,18 @@ export default function QuickEntryPage() {
             )}
            
             <div className="flex w-full items-center space-x-2">
-              <Input
-                type="text"
-                placeholder="O ingrese SKU manualmente..."
-                value={scannedSku || ''}
-                onChange={(e) => setScannedSku(e.target.value)}
-                onKeyDown={(e) => {
-                    if(e.key === 'Enter') {
-                        findProductBySku(scannedSku!);
-                    }
-                }}
-              />
-              <Button type="button" onClick={() => findProductBySku(scannedSku!)} disabled={isSearching}>
-                {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                Buscar
-              </Button>
+               <form onSubmit={(e) => { e.preventDefault(); findProductBySku(scannedSku);}} className="flex-grow flex items-center space-x-2">
+                  <Input
+                    type="text"
+                    placeholder="O ingrese SKU manualmente..."
+                    value={scannedSku}
+                    onChange={(e) => setScannedSku(e.target.value)}
+                  />
+                  <Button type="submit" disabled={isSearching || !scannedSku}>
+                    {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    Buscar
+                  </Button>
+               </form>
             </div>
           </div>
         </CardContent>
@@ -197,8 +221,8 @@ export default function QuickEntryPage() {
       
       <Card className="flex flex-col">
         <CardHeader>
-          <CardTitle>Ajuste de Stock</CardTitle>
-          <CardDescription>Productos escaneados listos para ajustar. El ajuste se suma al stock actual.</CardDescription>
+          <CardTitle>Editor Rápido de Inventario</CardTitle>
+          <CardDescription>Productos escaneados listos para editar. Los cambios se guardarán en lote.</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(processBatchUpdate)} className="flex flex-col flex-grow">
@@ -209,41 +233,96 @@ export default function QuickEntryPage() {
                     <p>Escanee o busque un producto para comenzar.</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-4">
                   {fields.map((field, index) => (
-                    <div key={field.id} className="flex items-center gap-2 p-2 rounded-md border bg-muted/50">
-                        <div className="flex-1">
-                            <p className="font-semibold">{field.nombre}</p>
-                            <p className="text-sm text-muted-foreground">SKU: {field.sku} &bull; Stock Actual: {field.stock_actual}</p>
-                        </div>
-                        <div className="flex items-center gap-1">
-                             <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => adjustStock(index, -1)}>
-                                <Minus className="h-4 w-4" />
-                            </Button>
-                            <FormField
+                    <div key={field.id} className="p-4 rounded-md border bg-muted/50 space-y-4">
+                       <div className="flex justify-between items-start">
+                           <div>
+                                <p className="font-semibold text-lg">{field.sku}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Stock Actual: {field.stock_actual}
+                                    {field.isNew && <span className="text-primary font-medium ml-2">(Nuevo)</span>}
+                                </p>
+                           </div>
+                           <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                               <Trash2 className="w-4 h-4 text-destructive" />
+                           </Button>
+                       </div>
+                       
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <FormField
                                 control={form.control}
-                                name={`items.${index}.ajuste`}
+                                name={`items.${index}.nombre`}
                                 render={({ field }) => (
-                                    <FormItem>
-                                        <FormControl>
-                                             <Input {...field} type="number" className="w-16 h-8 text-center" onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
-                                        </FormControl>
+                                    <FormItem className="md:col-span-2">
+                                        <FormLabel>Nombre del Producto</FormLabel>
+                                        <FormControl><Input {...field} /></FormControl>
+                                        <FormMessage />
                                     </FormItem>
                                 )}
-                            />
-                            <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => adjustStock(index, 1)}>
-                                <Plus className="h-4 w-4" />
-                            </Button>
+                           />
+                           <FormField
+                                control={form.control}
+                                name={`items.${index}.precio_venta`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Precio Venta (S/)</FormLabel>
+                                        <FormControl><Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                           />
+                           <FormField
+                                control={form.control}
+                                name={`items.${index}.ubicacion_almacen`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Ubicación</FormLabel>
+                                        <FormControl><Input {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                           />
+                        </div>
+                        
+                        <Separator />
+
+                        <div className="flex items-end justify-between gap-4">
+                            <div>
+                                <FormLabel>Ajuste de Stock</FormLabel>
+                                <div className="flex items-center gap-1 mt-2">
+                                     <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => adjustStock(index, -1)}>
+                                        <Minus className="h-4 w-4" />
+                                    </Button>
+                                    <FormField
+                                        control={form.control}
+                                        name={`items.${index}.ajuste`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormControl>
+                                                     <Input {...field} type="number" className="w-20 h-8 text-center" onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => adjustStock(index, 1)}>
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
+                            </div>
+                             <p className="text-sm">
+                                Stock Final: <span className="font-bold">{ form.watch(`items.${index}.stock_actual`) + form.watch(`items.${index}.ajuste`) }</span>
+                            </p>
                         </div>
                     </div>
                   ))}
                 </div>
               )}
             </CardContent>
-            <CardFooter>
+            <CardFooter className="pt-6">
               <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || fields.length === 0}>
                 {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Aplicar Ajustes
+                Guardar Cambios en Lote
               </Button>
             </CardFooter>
           </form>
@@ -251,4 +330,11 @@ export default function QuickEntryPage() {
       </Card>
     </div>
   );
+}
+
+// Add a new form state for skuToSearch
+declare module 'react-hook-form' {
+  interface UseFormProps<TData, TContext> {
+    skuToSearch?: string;
+  }
 }

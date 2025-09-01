@@ -17,6 +17,8 @@ export default function InventoryPage() {
     const fetchInventory = async () => {
       setLoading(true);
       const inventoryData = await getCollectionData<InventoryItem>('inventory');
+      // Sort inventory alphabetically by name
+      inventoryData.sort((a, b) => a.nombre.localeCompare(b.nombre));
       setInventory(inventoryData);
       setLoading(false);
     };
@@ -32,7 +34,7 @@ export default function InventoryPage() {
             <Skeleton className="h-4 w-2/3" />
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-96 w-full" />
           </CardContent>
         </Card>
       </div>
@@ -48,15 +50,11 @@ export default function InventoryPage() {
             <CardDescription>Ver y gestionar stock, ubicación, precios e información de proveedores.</CardDescription>
           </div>
           <div className="flex gap-2">
-            <Button asChild variant="outline">
+            <Button asChild>
               <Link href="/inventory/quick-entry">
                 <ScanLine className="mr-2 h-4 w-4" />
-                Entrada Rápida / Escáner
+                Editor Rápido / Escáner
               </Link>
-            </Button>
-            <Button>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Añadir Producto
             </Button>
           </div>
         </CardHeader>
