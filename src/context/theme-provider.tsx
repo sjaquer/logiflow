@@ -148,33 +148,37 @@ export function ThemeProvider({
   paletteStorageKey = 'vite-ui-color-palette',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (localStorage.getItem(storageKey) as Theme) || defaultTheme
-  );
-  const [colorPalette, _setColorPalette] = useState<ColorPalette>(
-    () => {
-      const storedPaletteName = localStorage.getItem(paletteStorageKey);
-      return palettes.find(p => p.name === storedPaletteName) || palettes.find(p => p.name === defaultPalette) || palettes[0];
+  const [theme, setTheme] = useState<Theme>(() => {
+      if (typeof window === 'undefined') {
+        return defaultTheme;
+      }
+      return (localStorage.getItem(storageKey) as Theme) || defaultTheme
+  });
+  
+  const [colorPalette, _setColorPalette] = useState<ColorPalette>(() => {
+    if (typeof window === 'undefined') {
+      return palettes.find(p => p.name === defaultPalette) || palettes[0];
     }
-  );
+    const storedPaletteName = localStorage.getItem(paletteStorageKey);
+    return palettes.find(p => p.name === storedPaletteName) || palettes.find(p => p.name === defaultPalette) || palettes[0];
+  });
 
   useEffect(() => {
     const root = window.document.documentElement;
     root.classList.remove('light', 'dark');
     root.classList.add(theme);
-  }, [theme]);
+    localStorage.setItem(storageKey, theme);
+  }, [theme, storageKey]);
   
   useEffect(() => {
     const root = window.document.documentElement;
     const colors = colorPalette.colors;
 
     Object.entries(colors).forEach(([name, value]) => {
-      // Convert camelCase to kebab-case
       const cssVarName = name.replace(/[A-Z]/g, letter => `-${letter.toLowerCase()}`);
       root.style.setProperty(`--${cssVarName}`, value);
     });
     
-    // Specific overrides for charts and sidebar if needed
     root.style.setProperty('--sidebar-primary', colors.primary);
     root.style.setProperty('--chart-1', colors.primary);
     root.style.setProperty('--chart-2', colors.accent);
@@ -192,10 +196,7 @@ export function ThemeProvider({
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
+    setTheme,
     colorPalette,
     setColorPalette,
     palettes,

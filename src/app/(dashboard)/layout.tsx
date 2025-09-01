@@ -10,7 +10,6 @@ import { useEffect, useState } from 'react';
 import type { User, InventoryItem, Order } from '@/lib/types';
 import { getCollectionData } from '@/lib/firebase/firestore-client';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ThemeProvider } from '@/context/theme-provider';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
@@ -92,10 +91,8 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <ThemeProvider>
-      <SidebarProvider>
-          <DashboardContent>{children}</DashboardContent>
-      </SidebarProvider>
-    </ThemeProvider>
+    <SidebarProvider>
+        <DashboardContent>{children}</DashboardContent>
+    </SidebarProvider>
   );
 }
