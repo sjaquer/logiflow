@@ -12,6 +12,8 @@ interface KanbanBoardProps {
   initialOrders: Order[];
   users: User[];
   inventory: InventoryItem[];
+  filters: Filters;
+  onFilterChange: (filters: Filters) => void;
 }
 
 export interface Filters {
@@ -23,16 +25,8 @@ export interface Filters {
   dateRange: { from?: Date; to?: Date };
 }
 
-export function KanbanBoard({ initialOrders, users, inventory }: KanbanBoardProps) {
+export function KanbanBoard({ initialOrders, users, inventory, filters, onFilterChange }: KanbanBoardProps) {
   const [orders, setOrders] = useState<Order[]>(initialOrders);
-  const [filters, setFilters] = useState<Filters>({
-    shops: [],
-    assignedUserIds: [],
-    statuses: [],
-    paymentMethods: [],
-    couriers: [],
-    dateRange: {},
-  });
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'orders'), (snapshot) => {
@@ -78,11 +72,11 @@ export function KanbanBoard({ initialOrders, users, inventory }: KanbanBoardProp
       <OrderFilters
         users={users}
         filters={filters}
-        onFilterChange={setFilters}
+        onFilterChange={onFilterChange}
         orderCount={filteredOrders.length}
       />
-      <ScrollArea className="flex-1">
-        <div className="flex gap-6 p-1 pb-4">
+      <ScrollArea className="flex-1 -mx-6 px-6">
+        <div className="flex gap-6 py-4">
           {KANBAN_COLUMNS.map(column => (
             <KanbanColumn
               key={column.id}

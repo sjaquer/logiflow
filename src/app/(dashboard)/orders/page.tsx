@@ -4,12 +4,24 @@ import { KanbanBoard } from './components/kanban-board';
 import { getCollectionData } from '@/lib/firebase/firestore-client';
 import type { Order, User, InventoryItem } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import { OrderFilters } from './components/order-filters';
+import type { Filters } from './components/kanban-board';
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<Filters>({
+    shops: [],
+    assignedUserIds: [],
+    statuses: [],
+    paymentMethods: [],
+    couriers: [],
+    dateRange: {},
+  });
 
   useEffect(() => {
     const fetchData = async () => {
@@ -44,10 +56,12 @@ export default function OrdersPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <KanbanBoard
+       <KanbanBoard
         initialOrders={orders}
         users={users}
         inventory={inventory}
+        filters={filters}
+        onFilterChange={setFilters}
       />
     </div>
   );

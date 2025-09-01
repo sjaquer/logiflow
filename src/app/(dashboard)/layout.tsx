@@ -78,9 +78,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   return (
       <div className="flex min-h-screen">
         <AppSidebar currentUser={currentUser} />
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 min-w-0">
           <AppHeader user={currentUser} inventory={inventory} orders={orders} />
-          <main className="flex-1 overflow-y-auto bg-background">
+          <main className="flex-1 flex flex-col overflow-y-auto bg-background px-4 md:px-6 lg:px-8">
             {childrenWithProps}
           </main>
         </div>
