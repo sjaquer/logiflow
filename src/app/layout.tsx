@@ -6,8 +6,8 @@ import { Toaster } from "@/components/ui/toaster";
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 export const metadata: Metadata = {
-  title: "Logistics Flow",
-  description: "Efficiently manage your logistics operations.",
+  title: "Flujo Logístico",
+  description: "Gestiona eficientemente tus operaciones logísticas.",
 };
 
 export default function RootLayout({
@@ -16,7 +16,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable}`}>
+    <html lang="es" className={`${inter.variable}`}>
       <body className="font-body antialiased">
         {children}
         <Toaster />

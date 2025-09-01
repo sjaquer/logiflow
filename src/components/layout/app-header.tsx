@@ -16,13 +16,13 @@ export function AppHeader({ users, inventory, orders }: AppHeaderProps) {
   const getTitle = () => {
     switch (pathname) {
       case '/orders':
-        return 'Orders';
+        return 'Pedidos';
       case '/inventory':
-        return 'Inventory';
+        return 'Inventario';
       case '/reports':
-        return 'Reports';
+        return 'Reportes';
       case '/users':
-        return 'User Management';
+        return 'Usuarios';
       default:
         return 'Dashboard';
     }

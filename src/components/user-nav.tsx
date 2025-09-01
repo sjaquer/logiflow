@@ -48,26 +48,26 @@ export function UserNav({ user }: UserNavProps) {
         <DropdownMenuGroup>
           <DropdownMenuItem>
             <UserIcon />
-            Profile
+            Perfil
           </DropdownMenuItem>
           <DropdownMenuItem>
             <CreditCard />
-            Billing
+            Facturación
           </DropdownMenuItem>
           <DropdownMenuItem>
             <Settings />
-            Settings
+            Ajustes
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
          <DropdownMenuItem>
           <LifeBuoy />
-          Support
+          Soporte
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem>
           <LogOut />
-          Log out
+          Cerrar sesión
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

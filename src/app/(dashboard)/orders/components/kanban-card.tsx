@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { OrderDetailsModal } from './order-details-modal';
 import type { Order, User, InventoryItem, OrderStatus } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { Users, ShoppingBag } from 'lucide-react';
 
 interface KanbanCardProps {
@@ -62,7 +63,7 @@ export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrd
                   </Avatar>
               )}
               <div className="text-xs text-muted-foreground pl-3">
-                {formatDistanceToNow(new Date(order.fecha_creacion), { addSuffix: true })}
+                {formatDistanceToNow(new Date(order.fecha_creacion), { addSuffix: true, locale: es })}
               </div>
             </div>
           </CardFooter>

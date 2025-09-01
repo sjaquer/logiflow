@@ -7,7 +7,7 @@ import type { Order } from '@/lib/types';
 
 const chartConfig = {
   count: {
-    label: 'Orders',
+    label: 'Pedidos',
     color: 'hsl(var(--chart-1))',
   },
 } satisfies ChartConfig;

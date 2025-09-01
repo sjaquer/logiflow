@@ -22,10 +22,10 @@ import {
 import { Button } from '../ui/button';
 
 const menuItems = [
-  { href: '/orders', label: 'Orders', icon: LayoutDashboard },
-  { href: '/inventory', label: 'Inventory', icon: Box },
-  { href: '/reports', label: 'Reports', icon: BarChart3 },
-  { href: '/users', label: 'Users', icon: Users },
+  { href: '/orders', label: 'Pedidos', icon: LayoutDashboard },
+  { href: '/inventory', label: 'Inventario', icon: Box },
+  { href: '/reports', label: 'Reportes', icon: BarChart3 },
+  { href: '/users', label: 'Usuarios', icon: Users },
 ];
 
 export function AppSidebar() {
@@ -66,9 +66,9 @@ export function AppSidebar() {
       <SidebarFooter className="p-2">
          <SidebarMenu>
             <SidebarMenuItem>
-                <SidebarMenuButton tooltip={{ children: 'Settings', side: 'right' }}>
+                <SidebarMenuButton tooltip={{ children: 'Ajustes', side: 'right' }}>
                     <Settings className="h-5 w-5" />
-                    <span>Settings</span>
+                    <span>Ajustes</span>
                 </SidebarMenuButton>
             </SidebarMenuItem>
         </SidebarMenu>

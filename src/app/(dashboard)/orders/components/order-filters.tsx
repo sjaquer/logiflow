@@ -7,6 +7,7 @@ import { Calendar as CalendarIcon, ChevronDown, Filter } from 'lucide-react';
 import type { User, OrderStatus } from '@/lib/types';
 import type { Filters } from './kanban-board';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { KANBAN_COLUMNS, SHOPS, COURIERS, PAYMENT_METHODS } from '@/lib/constants';
 
@@ -38,11 +39,11 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
   return (
     <div className="flex flex-wrap items-center gap-2 p-4 border-b">
       <Filter className="w-5 h-5 text-muted-foreground" />
-      <span className="font-semibold">Filters:</span>
+      <span className="font-semibold">Filtros:</span>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="ml-2">Shop <ChevronDown className="ml-2 h-4 w-4" /></Button>
+          <Button variant="outline" className="ml-2">Tienda <ChevronDown className="ml-2 h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {SHOPS.map(shop => (
@@ -55,7 +56,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline">Responsible <ChevronDown className="ml-2 h-4 w-4" /></Button>
+          <Button variant="outline">Responsable <ChevronDown className="ml-2 h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {users.map(user => (
@@ -68,7 +69,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline">Status <ChevronDown className="ml-2 h-4 w-4" /></Button>
+          <Button variant="outline">Estado <ChevronDown className="ml-2 h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {KANBAN_COLUMNS.map(col => (
@@ -94,7 +95,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline">Payment <ChevronDown className="ml-2 h-4 w-4" /></Button>
+          <Button variant="outline">Pago <ChevronDown className="ml-2 h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {PAYMENT_METHODS.map(method => (
@@ -110,7 +111,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
           <Button
             variant={"outline"}
             className={cn(
-              "w-[240px] justify-start text-left font-normal",
+              "w-[280px] justify-start text-left font-normal",
               !filters.dateRange.from && "text-muted-foreground"
             )}
           >
@@ -118,19 +119,20 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
             {filters.dateRange.from ? (
               filters.dateRange.to ? (
                 <>
-                  {format(filters.dateRange.from, "LLL dd, y")} -{" "}
-                  {format(filters.dateRange.to, "LLL dd, y")}
+                  {format(filters.dateRange.from, "LLL dd, y", { locale: es })} -{" "}
+                  {format(filters.dateRange.to, "LLL dd, y", { locale: es })}
                 </>
               ) : (
-                format(filters.dateRange.from, "LLL dd, y")
+                format(filters.dateRange.from, "LLL dd, y", { locale: es })
               )
             ) : (
-              <span>Pick a date</span>
+              <span>Elige una fecha</span>
             )}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
           <Calendar
+            locale={es}
             mode="range"
             selected={{from: filters.dateRange.from!, to: filters.dateRange.to}}
             onSelect={(range) => onFilterChange({...filters, dateRange: {from: range?.from, to: range?.to}})}
@@ -139,10 +141,10 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
         </PopoverContent>
       </Popover>
 
-      {hasActiveFilters && <Button variant="ghost" onClick={clearFilters}>Clear</Button>}
+      {hasActiveFilters && <Button variant="ghost" onClick={clearFilters}>Limpiar</Button>}
 
       <div className="ml-auto text-sm text-muted-foreground">
-        Showing <span className="font-semibold text-foreground">{orderCount}</span> orders
+        Mostrando <span className="font-semibold text-foreground">{orderCount}</span> pedidos
       </div>
     </div>
   );

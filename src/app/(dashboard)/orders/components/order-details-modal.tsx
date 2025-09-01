@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Order, User, InventoryItem, OrderStatus, OrderItem, OrderItemStatus } from '@/lib/types';
 import { KANBAN_COLUMNS, ITEM_STATUS_BADGE_MAP } from '@/lib/constants';
 import { format } from 'date-fns';
+import { es } from 'date-fns/locale';
 import { CheckCircle2, Package, User as UserIcon, Calendar, MapPin, Truck, CreditCard, ShoppingBag, Hash, CircleHelp, AlertCircle, XCircle } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
@@ -61,8 +62,8 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
       setIsCheckingStock(false);
       
       toast({
-        title: allConfirmed ? "Stock Confirmed" : "Stock Issues Found",
-        description: allConfirmed ? "All items are available in stock." : "Some items have stock issues. See details below.",
+        title: allConfirmed ? "Stock Confirmado" : "Problemas de Stock Encontrados",
+        description: allConfirmed ? "Todos los artículos están disponibles en stock." : "Algunos artículos tienen problemas de stock. Ver detalles abajo.",
         variant: allConfirmed ? "default" : "destructive",
       });
     }, 1000);
@@ -83,21 +84,21 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-4">
-            Order Details <Badge variant="outline">{order.id}</Badge>
+            Detalles del Pedido <Badge variant="outline">{order.id}</Badge>
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 max-h-[70vh] overflow-y-auto">
           <div className="md:col-span-2 space-y-6">
             <div>
-              <h4 className="font-medium mb-2 text-primary">Items</h4>
+              <h4 className="font-medium mb-2 text-primary">Artículos</h4>
               <div className="space-y-2">
                 {order.items.map(item => {
                   const inventoryItem = inventory.find(i => i.id === item.itemId);
                   return (
                     <div key={item.itemId} className="flex justify-between items-center p-2 rounded-md bg-muted/50">
                       <div>
-                        <p className="font-medium">{inventoryItem?.name || 'Unknown Item'}</p>
-                        <p className="text-sm text-muted-foreground">SKU: {inventoryItem?.sku} &bull; Qty: {item.quantity}</p>
+                        <p className="font-medium">{inventoryItem?.name || 'Artículo Desconocido'}</p>
+                        <p className="text-sm text-muted-foreground">SKU: {inventoryItem?.sku} &bull; Cant: {item.quantity}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatusIcon(item.estado_item)}
@@ -112,14 +113,14 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
             </div>
             <Separator />
             <div>
-               <h4 className="font-medium mb-3 text-primary">Actions</h4>
+               <h4 className="font-medium mb-3 text-primary">Acciones</h4>
                <div className="flex items-center gap-4">
                 <Button onClick={checkStock} disabled={isCheckingStock}>
-                  {isCheckingStock ? 'Checking...' : 'Check Stock Availability'}
+                  {isCheckingStock ? 'Verificando...' : 'Verificar Disponibilidad de Stock'}
                 </Button>
                  <Select onValueChange={(value: OrderStatus) => handleStatusChange(value)} value={order.estado_actual}>
                     <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Change Status" />
+                        <SelectValue placeholder="Cambiar Estado" />
                     </SelectTrigger>
                     <SelectContent>
                         {KANBAN_COLUMNS.map(col => (
@@ -131,13 +132,13 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
             </div>
           </div>
           <div className="space-y-4 bg-muted/50 p-4 rounded-lg">
-            <h4 className="font-medium text-primary border-b pb-2">Summary</h4>
+            <h4 className="font-medium text-primary border-b pb-2">Resumen</h4>
             <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-3"><UserIcon className="w-4 h-4 text-muted-foreground" /> <span>{order.client.name}</span></div>
                 <div className="flex items-start gap-3"><MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" /> <span>{order.client.address}</span></div>
                 <div className="flex items-center gap-3"><ShoppingBag className="w-4 h-4 text-muted-foreground" /> <span>{order.shop}</span></div>
                 <Separator />
-                <div className="flex items-center gap-3"><Calendar className="w-4 h-4 text-muted-foreground" /> <span>{format(new Date(order.fecha_creacion), 'MMM d, yyyy HH:mm')}</span></div>
+                <div className="flex items-center gap-3"><Calendar className="w-4 h-4 text-muted-foreground" /> <span>{format(new Date(order.fecha_creacion), 'd MMM, yyyy HH:mm', { locale: es })}</span></div>
                 <div className="flex items-center gap-3"><Truck className="w-4 h-4 text-muted-foreground" /> <span>{order.courier}</span></div>
                 <div className="flex items-center gap-3"><CreditCard className="w-4 h-4 text-muted-foreground" /> <span>{order.paymentMethod}</span></div>
                 {order.trackingNumber && <div className="flex items-center gap-3"><Hash className="w-4 h-4 text-muted-foreground" /> <span>{order.trackingNumber}</span></div>}
@@ -149,7 +150,7 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
                         <AvatarFallback>{getInitials(assignedUser.name)}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
-                        <span className="text-muted-foreground text-xs">Assigned to</span>
+                        <span className="text-muted-foreground text-xs">Asignado a</span>
                         <span className="font-medium">{assignedUser.name}</span>
                     </div>
                   </div>
@@ -163,7 +164,7 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
           </div>
         </div>
         <DialogFooter>
-          <Button variant="outline">Print Invoice</Button>
+          <Button variant="outline">Imprimir Factura</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

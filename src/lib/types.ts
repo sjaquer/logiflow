@@ -30,9 +30,9 @@ export interface OrderItem {
 }
 
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
-export type PaymentMethod = 'Credit Card' | 'Bank Transfer' | 'Cash';
+export type PaymentMethod = 'Tarjeta de Crédito' | 'Transferencia Bancaria' | 'Efectivo';
 export type Courier = 'URBANO' | 'SHALOM' | 'OLVA' | 'INTERNO';
-export type Shop = 'Tienda Online' | 'Tienda Fisica' | 'Marketplace';
+export type Shop = 'Tienda Online' | 'Tienda Física' | 'Marketplace';
 
 export interface Order {
   id: string;

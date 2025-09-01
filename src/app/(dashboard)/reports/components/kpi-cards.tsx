@@ -10,10 +10,10 @@ export function KpiCards({ orders }: { orders: Order[] }) {
   const inTransitOrders = orders.filter(o => o.estado_actual.startsWith('EN_TRANSITO')).length;
 
   const kpiData = [
-    { title: 'Total Revenue', value: `S/ ${totalRevenue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: DollarSign },
-    { title: 'Total Orders', value: totalOrders.toString(), icon: ShoppingCart },
-    { title: 'Delivered', value: deliveredOrders.toString(), icon: Package },
-    { title: 'In Transit', value: inTransitOrders.toString(), icon: Truck },
+    { title: 'Ingresos Totales', value: `S/ ${totalRevenue.toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: DollarSign },
+    { title: 'Pedidos Totales', value: totalOrders.toString(), icon: ShoppingCart },
+    { title: 'Entregados', value: deliveredOrders.toString(), icon: Package },
+    { title: 'En Tránsito', value: inTransitOrders.toString(), icon: Truck },
   ];
 
   return (

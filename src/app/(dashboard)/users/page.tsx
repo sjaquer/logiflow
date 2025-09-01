@@ -7,8 +7,8 @@ export default function UsersPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>User Management</CardTitle>
-          <CardDescription>View and manage user roles and permissions.</CardDescription>
+          <CardTitle>Gestión de Usuarios</CardTitle>
+          <CardDescription>Ver y gestionar roles y permisos de usuarios.</CardDescription>
         </CardHeader>
         <CardContent>
           <UsersTable users={users} />

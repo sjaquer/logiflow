@@ -7,8 +7,8 @@ export default function InventoryPage() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Inventory Management</CardTitle>
-          <CardDescription>View and manage stock, location, prices, and supplier information.</CardDescription>
+          <CardTitle>Gestión de Inventario</CardTitle>
+          <CardDescription>Ver y gestionar stock, ubicación, precios e información de proveedores.</CardDescription>
         </CardHeader>
         <CardContent>
           <InventoryTable inventory={inventory} />

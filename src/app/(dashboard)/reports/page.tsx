@@ -12,8 +12,8 @@ export default function ReportsPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle>Order Status Summary</CardTitle>
-            <CardDescription>A summary of orders by their current status.</CardDescription>
+            <CardTitle>Resumen de Estado de Pedidos</CardTitle>
+            <CardDescription>Un resumen de los pedidos por su estado actual.</CardDescription>
           </CardHeader>
           <CardContent>
             <OrderSummaryChart orders={orders} />
@@ -21,8 +21,8 @@ export default function ReportsPage() {
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Inventory Levels</CardTitle>
-            <CardDescription>Current stock levels for all products.</CardDescription>
+            <CardTitle>Niveles de Inventario</CardTitle>
+            <CardDescription>Niveles de stock actuales para todos los productos.</CardDescription>
           </CardHeader>
           <CardContent>
             <InventoryLevelsChart inventory={inventory} />
@@ -31,8 +31,8 @@ export default function ReportsPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Sales Analysis</CardTitle>
-          <CardDescription>Breakdown of total sales amount by different entities.</CardDescription>
+          <CardTitle>Análisis de Ventas</CardTitle>
+          <CardDescription>Desglose del monto total de ventas por diferentes entidades.</CardDescription>
         </CardHeader>
         <CardContent>
           <SalesByEntityChart orders={orders} users={users} />

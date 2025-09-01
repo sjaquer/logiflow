@@ -10,15 +10,15 @@ interface InventoryTableProps {
 export function InventoryTable({ inventory }: InventoryTableProps) {
   const getStockStatus = (item: InventoryItem): { text: string; variant: 'success' | 'destructive' | 'secondary' | 'outline' } => {
     if (item.isDiscontinued) {
-      return { text: 'Discontinued', variant: 'outline' };
+      return { text: 'Descontinuado', variant: 'outline' };
     }
     if (item.stock === 0) {
-      return { text: 'Out of Stock', variant: 'destructive' };
+      return { text: 'Sin Stock', variant: 'destructive' };
     }
     if (item.stock <= item.lowStockThreshold) {
-      return { text: 'Low Stock', variant: 'secondary' };
+      return { text: 'Stock Bajo', variant: 'secondary' };
     }
-    return { text: 'In Stock', variant: 'success' };
+    return { text: 'En Stock', variant: 'success' };
   };
   
   return (
@@ -26,12 +26,12 @@ export function InventoryTable({ inventory }: InventoryTableProps) {
       <TableHeader>
         <TableRow>
           <TableHead>SKU</TableHead>
-          <TableHead>Name</TableHead>
+          <TableHead>Nombre</TableHead>
           <TableHead className="text-right">Stock</TableHead>
-          <TableHead>Status</TableHead>
-          <TableHead>Location</TableHead>
-          <TableHead className="text-right">Price</TableHead>
-          <TableHead>Supplier</TableHead>
+          <TableHead>Estado</TableHead>
+          <TableHead>Ubicación</TableHead>
+          <TableHead className="text-right">Precio</TableHead>
+          <TableHead>Proveedor</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>

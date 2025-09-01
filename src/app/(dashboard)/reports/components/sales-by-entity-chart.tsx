@@ -7,7 +7,7 @@ import type { Order, User, Shop, Courier } from '@/lib/types';
 
 const chartConfig = {
   sales: {
-    label: 'Sales',
+    label: 'Ventas',
     color: 'hsl(var(--chart-1))',
   },
 } satisfies ChartConfig;
@@ -29,7 +29,7 @@ function SalesChart({ data }: { data: { name: string; sales: number }[] }) {
                 <ChartTooltip
                     cursor={false}
                     content={<ChartTooltipContent
-                        formatter={(value) => `S/ ${Number(value).toLocaleString()}`}
+                        formatter={(value) => `S/ ${Number(value).toLocaleString('es-PE')}`}
                     />}
                 />
                 <Bar dataKey="sales" fill="var(--color-sales)" radius={4} />
@@ -50,7 +50,7 @@ export function SalesByEntityChart({ orders, users }: { orders: Order[]; users: 
   const salesByUser = useMemo(() => {
     const sales = orders.reduce((acc, order) => {
       const user = users.find(u => u.id === order.assignedUserId);
-      const userName = user ? user.name : 'Unassigned';
+      const userName = user ? user.name : 'No asignado';
       acc[userName] = (acc[userName] || 0) + order.totalAmount;
       return acc;
     }, {} as Record<string, number>);
@@ -69,9 +69,9 @@ export function SalesByEntityChart({ orders, users }: { orders: Order[]; users: 
   return (
     <Tabs defaultValue="shop">
       <TabsList>
-        <TabsTrigger value="shop">By Shop</TabsTrigger>
-        <TabsTrigger value="user">By User</TabsTrigger>
-        <TabsTrigger value="courier">By Courier</TabsTrigger>
+        <TabsTrigger value="shop">Por Tienda</TabsTrigger>
+        <TabsTrigger value="user">Por Usuario</TabsTrigger>
+        <TabsTrigger value="courier">Por Courier</TabsTrigger>
       </TabsList>
       <TabsContent value="shop">
         <SalesChart data={salesByShop} />
