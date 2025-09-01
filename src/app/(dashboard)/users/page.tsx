@@ -1,8 +1,10 @@
-import { users } from '@/lib/data';
+import { getUsers } from '@/lib/firebase/firestore';
+import type { LegacyUser as User } from '@/lib/types';
 import { UsersTable } from './components/users-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function UsersPage() {
+export default async function UsersPage() {
+  const users: User[] = await getUsers();
   return (
     <div className="space-y-6">
       <Card>

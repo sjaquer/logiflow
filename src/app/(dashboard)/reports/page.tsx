@@ -1,11 +1,16 @@
-import { orders, users, inventory } from '@/lib/data';
+import { getOrders, getUsers, getInventory } from '@/lib/firebase/firestore';
+import type { Order, LegacyUser as User, LegacyInventoryItem as InventoryItem } from '@/lib/types';
 import { KpiCards } from './components/kpi-cards';
 import { OrderSummaryChart } from './components/order-summary-chart';
 import { SalesByEntityChart } from './components/sales-by-entity-chart';
 import { InventoryLevelsChart } from './components/inventory-levels-chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function ReportsPage() {
+export default async function ReportsPage() {
+  const orders: Order[] = await getOrders();
+  const users: User[] = await getUsers();
+  const inventory: InventoryItem[] = await getInventory();
+
   return (
     <div className="grid gap-6">
       <KpiCards orders={orders} />

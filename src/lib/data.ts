@@ -1,13 +1,16 @@
-import type { User, InventoryItem, Order } from './types';
+// This file now contains the legacy data structures, which are used to seed the database.
+// The application will fetch data from Firestore directly.
 
-export const users: User[] = [
+import type { LegacyOrder, LegacyUser, LegacyInventoryItem } from './types';
+
+export const users: LegacyUser[] = [
   { id: 'user-1', name: 'Ana Garcia', email: 'ana.garcia@example.com', avatar: '/avatars/01.png', role: 'OPERADOR_LOGISTICO' },
   { id: 'user-2', name: 'Carlos Rodriguez', email: 'carlos.rodriguez@example.com', avatar: '/avatars/02.png', role: 'OPERADOR_LOGISTICO' },
   { id: 'user-3', name: 'Sofia Martinez', email: 'sofia.martinez@example.com', avatar: '/avatars/03.png', role: 'ADMINISTRADOR' },
   { id: 'user-4', name: 'Luis Hernandez', email: 'luis.h@example.com', avatar: '/avatars/04.png', role: 'GERENTE' },
 ];
 
-export const inventory: InventoryItem[] = [
+export const inventory: LegacyInventoryItem[] = [
   { id: 'item-1', sku: 'LAP-001', name: 'Laptop Pro 15"', description: 'Laptop potente para profesionales', stock: 25, lowStockThreshold: 10, location: 'Almacén A-1', price: 1200, supplier: 'TechSupplier Inc.', isDiscontinued: false },
   { id: 'item-2', sku: 'MON-002', name: 'Monitor 4K 27"', description: 'Monitor Ultra HD para visuales nítidos', stock: 8, lowStockThreshold: 5, location: 'Almacén B-2', price: 450, supplier: 'Vision Electronics', isDiscontinued: false },
   { id: 'item-3', sku: 'KBD-003', name: 'Teclado Mecánico', description: 'Teclado mecánico gamer RGB', stock: 50, lowStockThreshold: 15, location: 'Almacén A-1', price: 150, supplier: 'Gadget World', isDiscontinued: false },
@@ -16,7 +19,7 @@ export const inventory: InventoryItem[] = [
   { id: 'item-6', sku: 'DOCK-006', name: 'Estación de Acoplamiento USB-C', description: 'Conecta todos tus periféricos', stock: 12, lowStockThreshold: 5, location: 'Almacén A-1', price: 250, supplier: 'TechSupplier Inc.', isDiscontinued: true },
 ];
 
-export const orders: Order[] = [
+export const orders: LegacyOrder[] = [
   {
     id: '#38201',
     client: { name: 'Lucia Fernandez', address: 'Av. Siempre Viva 123, Lima' },

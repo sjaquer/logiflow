@@ -1,10 +1,12 @@
 'use client';
-import { useState, useMemo } from 'react';
-import type { Order, User, InventoryItem, OrderStatus, Shop, Courier, PaymentMethod } from '@/lib/types';
+import { useState, useMemo, useEffect } from 'react';
+import type { Order, LegacyUser as User, LegacyInventoryItem as InventoryItem, OrderStatus, Shop, Courier, PaymentMethod } from '@/lib/types';
 import { KANBAN_COLUMNS } from '@/lib/constants';
 import { KanbanColumn } from './kanban-column';
 import { OrderFilters } from './order-filters';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { collection, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/firebase';
 
 interface KanbanBoardProps {
   initialOrders: Order[];
@@ -32,6 +34,15 @@ export function KanbanBoard({ initialOrders, users, inventory }: KanbanBoardProp
     dateRange: {},
   });
 
+  useEffect(() => {
+    const unsubscribe = onSnapshot(collection(db, 'orders'), (snapshot) => {
+      const newOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
+      setOrders(newOrders);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       const { shops, assignedUserIds, statuses, paymentMethods, couriers, dateRange } = filters;
@@ -52,20 +63,14 @@ export function KanbanBoard({ initialOrders, users, inventory }: KanbanBoardProp
     });
   }, [orders, filters]);
 
-  const updateOrderStatus = (orderId: string, newStatus: OrderStatus) => {
-    setOrders(currentOrders =>
-      currentOrders.map(order =>
-        order.id === orderId ? { ...order, estado_actual: newStatus } : order
-      )
-    );
+  const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
+    const orderRef = doc(db, 'orders', orderId.replace('#',''));
+    await updateDoc(orderRef, { estado_actual: newStatus });
   };
   
-  const updateOrderItems = (orderId: string, updatedItems: Order['items']) => {
-    setOrders(currentOrders =>
-      currentOrders.map(order =>
-        order.id === orderId ? { ...order, items: updatedItems } : order
-      )
-    );
+  const updateOrderItems = async (orderId: string, updatedItems: Order['items']) => {
+    const orderRef = doc(db, 'orders', orderId.replace('#',''));
+    await updateDoc(orderRef, { items: updatedItems });
   };
 
   return (

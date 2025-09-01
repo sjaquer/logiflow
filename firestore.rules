@@ -1,0 +1,54 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+  
+    // Helper function to check if a user has a specific role
+    function isRole(role) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.rol == role;
+    }
+
+    // Helper function to check if a user has a specific permission
+    function hasPermission(permission) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permisos[permission] == true;
+    }
+
+    // Users can read their own data. Admins can read and write all user data.
+    match /users/{userId} {
+      allow read: if request.auth.uid == userId || isRole('ADMIN');
+      allow write: if isRole('ADMIN'); // Only Admins can modify user roles and permissions
+    }
+
+    // Authenticated users can read inventory. Only users with permission can write.
+    match /inventory/{itemId} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null && hasPermission('puede_gestionar_inventario');
+    }
+
+    // Rules for Orders
+    match /orders/{orderId} {
+      allow read: if request.auth != null;
+      
+      // Create: User must have 'puede_crear_pedido' permission.
+      allow create: if request.auth != null && hasPermission('puede_crear_pedido');
+      
+      // Update: Complex logic based on status changes and permissions
+      allow update: if request.auth != null && (
+        // Allow updating if user has general 'puede_preparar' permission (can be refined)
+        hasPermission('puede_preparar') ||
+        hasPermission('puede_despachar') ||
+        hasPermission('puede_confirmar_entrega') ||
+        hasPermission('puede_anular') ||
+        isRole('ADMIN')
+      );
+      
+      // Delete: Restricted to Admins only for data integrity.
+      allow delete: if isRole('ADMIN');
+    }
+
+    // Default deny all other access
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

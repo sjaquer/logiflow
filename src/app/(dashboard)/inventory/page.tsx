@@ -1,8 +1,10 @@
-import { inventory } from '@/lib/data';
+import { getInventory } from '@/lib/firebase/firestore';
+import type { LegacyInventoryItem as InventoryItem } from '@/lib/types';
 import { InventoryTable } from './components/inventory-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function InventoryPage() {
+export default async function InventoryPage() {
+  const inventory: InventoryItem[] = await getInventory();
   return (
     <div className="space-y-6">
       <Card>
