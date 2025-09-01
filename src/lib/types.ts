@@ -1,6 +1,6 @@
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'PREPARADO' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
-export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo';
+export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo' | 'Transferencia Bancaria';
 export type ShippingType = 'LIMA' | 'PROVINCIA';
 export type Courier = 'MOTORIZADO INTERNO' | 'SHALOM' | 'OLVA' | 'INTERNO';
 export type Shop = 'Novi Perú' | 'Cumbre' | 'Tienda Online' | 'Tienda Física' | 'Marketplace';

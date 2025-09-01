@@ -29,4 +29,4 @@ export const ITEM_STATUS_BADGE_MAP: Record<OrderItemStatus, 'default' | 'success
 
 export const SHOPS: Shop[] = ['Tienda Online', 'Tienda Física', 'Marketplace'];
 export const COURIERS: Courier[] = ['URBANO', 'SHALOM', 'OLVA', 'INTERNO'];
-export const PAYMENT_METHODS: PaymentMethod[] = ['Tarjeta de Crédito', 'Transferencia Bancaria', 'Efectivo'];
+export const PAYMENT_METHODS: PaymentMethod[] = ['Tarjeta de Crédito', 'Transferencia Bancaria', 'Efectivo', 'YAPE', 'PLIN'];
