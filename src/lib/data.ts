@@ -3,8 +3,8 @@ import type { User, InventoryItem, Order } from './types';
 // --- USERS ---
 export const users: Omit<User, 'id_usuario'>[] = [
   {
-    nombre: 'Ana García (Admin)',
-    email: 'admin@example.com',
+    nombre: 'Admin User',
+    email: 'sjaquer@outlook.es',
     rol: 'ADMIN',
     activo: true,
     permisos: {
@@ -16,7 +16,7 @@ export const users: Omit<User, 'id_usuario'>[] = [
         puede_gestionar_inventario: true,
         puede_ver_reportes: true,
     },
-    avatar: 'https://i.pravatar.cc/150?u=admin@example.com',
+    avatar: 'https://i.pravatar.cc/150?u=sjaquer@outlook.es',
   },
   {
     nombre: 'Luis Torres (Logística)',

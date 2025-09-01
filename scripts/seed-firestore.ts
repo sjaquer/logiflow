@@ -77,22 +77,40 @@ async function seedUsers() {
     console.log(`\nSeeding Users and creating auth entries...`);
     const userIds: string[] = [];
 
-    // Delete all existing users from Firebase Auth
-    try {
-        const listUsersResult = await auth.listUsers(1000);
-        const uidsToDelete = listUsersResult.users.map((userRecord) => userRecord.uid);
-        if (uidsToDelete.length > 0) {
-            console.log(`Deleting ${uidsToDelete.length} existing auth users...`);
-            await auth.deleteUsers(uidsToDelete);
-            console.log('Deletion complete.');
+    // Separate admin user from others
+    const adminData = users.find(u => u.email === 'sjaquer@outlook.es');
+    const otherUsersData = users.filter(u => u.email !== 'sjaquer@outlook.es');
+
+    if (adminData) {
+        try {
+            console.log(`Looking for existing admin user: ${adminData.email}...`);
+            const adminUserRecord = await auth.getUserByEmail(adminData.email);
+            console.log(`Found existing admin user: ${adminUserRecord.uid}`);
+            const adminDoc: User = { ...adminData, id_usuario: adminUserRecord.uid };
+            await db.collection('users').doc(adminDoc.email).set(adminDoc);
+            userIds.push(adminUserRecord.uid);
+            console.log(`Updated admin user ${adminData.email} in Firestore.`);
+        } catch (error: any) {
+             if (error.code === 'auth/user-not-found') {
+                 console.error(`Error: Admin user ${adminData.email} not found in Firebase Auth.`);
+                 console.error('Please make sure this user exists before running the seed script.');
+             } else {
+                console.error(`Error processing admin user ${adminData.email}:`, error);
+             }
         }
-    } catch(error) {
-        console.error('Error deleting auth users:', error);
     }
 
 
-    for (const userData of users) {
-        try {
+    // Delete and recreate other example users
+    for (const userData of otherUsersData) {
+         try {
+            // Delete if exists
+            const existingUser = await auth.getUserByEmail(userData.email).catch(() => null);
+            if (existingUser) {
+                await auth.deleteUser(existingUser.uid);
+                console.log(`Deleted existing example user: ${userData.email}`);
+            }
+
             console.log(`Creating auth user for ${userData.email}...`);
             const userRecord = await auth.createUser({
                 email: userData.email,
@@ -210,7 +228,7 @@ async function main() {
     await seedOrders(userIds, seededInventory);
     console.log('\n--- Firestore Seeding Complete! ---');
     console.log('You can now run `npm run dev` to start the application.');
-    console.log('Log in with user: admin@example.com, password: password123');
+    console.log('Log in with your admin account: sjaquer@outlook.es');
   } catch (error) {
     console.error('\n❌ An error occurred during seeding:', error);
   }
