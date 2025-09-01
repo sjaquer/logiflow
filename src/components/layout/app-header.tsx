@@ -6,12 +6,12 @@ import { NotificationsDropdown } from '@/components/notifications-dropdown';
 import type { User, InventoryItem, Order } from '@/lib/types';
 
 interface AppHeaderProps {
-  users: User[];
+  user: User | null;
   inventory: InventoryItem[];
   orders: Order[];
 }
 
-export function AppHeader({ users, inventory, orders }: AppHeaderProps) {
+export function AppHeader({ user, inventory, orders }: AppHeaderProps) {
   const pathname = usePathname();
   const getTitle = () => {
     switch (pathname) {
@@ -27,9 +27,6 @@ export function AppHeader({ users, inventory, orders }: AppHeaderProps) {
         return 'Dashboard';
     }
   };
-  
-  // Find the admin user to display in the UserNav, default to first user if not found.
-  const adminUser = users.find(u => u.email === 'sjaquer@outlook.es') || users[0];
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
@@ -39,7 +36,7 @@ export function AppHeader({ users, inventory, orders }: AppHeaderProps) {
       <h1 className="text-xl font-semibold tracking-tight">{getTitle()}</h1>
       <div className="ml-auto flex items-center gap-4">
         <NotificationsDropdown inventory={inventory} orders={orders} />
-        {adminUser && <UserNav user={adminUser} />}
+        {user && <UserNav user={user} />}
       </div>
     </header>
   );

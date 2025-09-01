@@ -1,18 +1,53 @@
+'use client';
+import { useState, useEffect } from 'react';
 import { KanbanBoard } from './components/kanban-board';
-import { getUsers, getInventory, getOrders } from '@/lib/firebase/firestore';
+import { getCollectionData } from '@/lib/firebase/firestore-client';
 import type { Order, User, InventoryItem } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-export default async function OrdersPage() {
-  const allOrders: Order[] = await getOrders();
-  const allUsers: User[] = await getUsers();
-  const allInventory: InventoryItem[] = await getInventory();
+export default function OrdersPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      const [ordersData, usersData, inventoryData] = await Promise.all([
+        getCollectionData<Order>('orders'),
+        getCollectionData<User>('users'),
+        getCollectionData<InventoryItem>('inventory'),
+      ]);
+      setOrders(ordersData);
+      setUsers(usersData);
+      setInventory(inventoryData);
+      setLoading(false);
+    };
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex flex-col h-[calc(100vh-4rem)] space-y-4">
+        <Skeleton className="h-12 w-full" />
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
+          <Skeleton className="w-full h-full" />
+          <Skeleton className="w-full h-full" />
+          <Skeleton className="w-full h-full" />
+          <Skeleton className="w-full h-full" />
+          <Skeleton className="w-full h-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)]">
       <KanbanBoard
-        initialOrders={allOrders}
-        users={allUsers}
-        inventory={allInventory}
+        initialOrders={orders}
+        users={users}
+        inventory={inventory}
       />
     </div>
   );
