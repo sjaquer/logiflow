@@ -2,56 +2,29 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Helper function to check if a user is authenticated
-    function isAuthenticated() {
-      return request.auth != null;
-    }
-
-    // Helper function to get the user's custom claims (like their role)
-    function getUserData(userId) {
-      return get(/databases/$(database)/documents/users/$(userId)).data;
-    }
     
-    function isAdmin(userId) {
-      return getUserData(userId).rol == 'ADMIN';
-    }
-
-    // Users Collection
+    // Permite la lectura de usuarios, inventario y pedidos a cualquier usuario que haya iniciado sesión.
     match /users/{userId} {
-      // Any authenticated user can read their own data
-      // An admin can read any user's data
-      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin(request.auth.uid));
-      
-      // An admin can create, update, or delete user documents
-      allow write: if isAuthenticated() && isAdmin(request.auth.uid);
+      allow read: if request.auth != null;
+      // Solo los administradores pueden modificar usuarios (ejemplo a futuro)
+      allow write: if false; 
     }
 
-    // Orders Collection
-    match /orders/{orderId} {
-      // Any authenticated user can read orders (assuming operators need to see all)
-      // You could restrict this further, e.g., only see orders assigned to them
-      allow read: if isAuthenticated();
-      
-      // Any authenticated user can create an order
-      allow create: if isAuthenticated();
-      
-      // Any authenticated user can update an order (e.g., change status)
-      // You could add more granular checks here based on user permissions
-      allow update: if isAuthenticated();
-      
-      // Only an admin can delete an order
-      allow delete: if isAuthenticated() && isAdmin(request.auth.uid);
+    match /inventory/{itemId} {
+      allow read: if request.auth != null;
+       // Solo los administradores o roles con permiso pueden modificar el inventario (ejemplo a futuro)
+      allow write: if false;
     }
     
-    // Inventory Collection
-    match /inventory/{itemId} {
-      // Any authenticated user can read inventory data
-      allow read: if isAuthenticated();
-      
-      // Only admins can write to inventory (create, update, delete)
-      // You might want to give specific "OPERADOR_LOGISTICO" permissions here
-      allow write: if isAuthenticated() && isAdmin(request.auth.uid);
+    match /orders/{orderId} {
+      allow read: if request.auth != null;
+      // La lógica de escritura de pedidos será más compleja (ej. solo el asignado puede cambiar estado)
+      allow write: if request.auth != null; // Permitimos la escritura para que los operadores puedan arrastrar tarjetas
+    }
+    
+    // Regla general para cualquier otro documento: denegar por defecto
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
