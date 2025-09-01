@@ -60,8 +60,8 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {users.map(user => (
-                <DropdownMenuCheckboxItem key={user.id} checked={filters.assignedUserIds.includes(user.id)} onCheckedChange={() => handleMultiSelectChange('assignedUserIds', user.id)}>
-                    {user.name}
+                <DropdownMenuCheckboxItem key={user.id_usuario} checked={filters.assignedUserIds.includes(user.id_usuario)} onCheckedChange={() => handleMultiSelectChange('assignedUserIds', user.id_usuario)}>
+                    {user.nombre}
                 </DropdownMenuCheckboxItem>
             ))}
         </DropdownMenuContent>

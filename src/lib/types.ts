@@ -1,17 +1,28 @@
-// --- Nuevos Tipos de Datos (Modelo Objetivo) ---
-
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'PREPARADO' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
-export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA';
+export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo';
 export type ShippingType = 'LIMA' | 'PROVINCIA';
-export type Courier = 'MOTORIZADO INTERNO' | 'SHALOM' | 'OLVA';
+export type Courier = 'MOTORIZADO INTERNO' | 'SHALOM' | 'OLVA' | 'INTERNO';
+export type Shop = 'Novi Perú' | 'Cumbre' | 'Tienda Online' | 'Tienda Física' | 'Marketplace';
+export type OrderItemStatus = 'CONFIRMADO' | 'SIN_STOCK' | 'BACKORDER' | 'PENDIENTE';
+
+
+export interface OrderItem {
+  sku: string;
+  nombre: string;
+  variante: string;
+  cantidad: number;
+  precio_unitario: number;
+  subtotal: number;
+  estado_item: OrderItemStatus;
+}
 
 export interface Order {
   id_pedido: string;
   id_interno: string;
   tienda: {
     id_tienda: string;
-    nombre: string;
+    nombre: Shop;
   };
   estado_actual: OrderStatus;
   cliente: {
@@ -20,14 +31,7 @@ export interface Order {
     dni: string | null;
     celular: string;
   };
-  items: {
-    sku: string;
-    nombre: string;
-    variante: string;
-    cantidad: number;
-    precio_unitario: number;
-    subtotal: number;
-  }[];
+  items: OrderItem[];
   pago: {
     monto_total: number;
     monto_pendiente: number;
@@ -107,7 +111,7 @@ export interface InventoryItem {
   }[];
 }
 
-export type UserRole = 'OPERADOR_LOGISTICO' | 'ADMIN' | 'VENTAS';
+export type UserRole = 'OPERADOR_LOGISTICO' | 'ADMIN' | 'VENTAS' | 'ADMINISTRADOR' | 'GERENTE';
 
 export interface User {
   id_usuario: string;
@@ -125,65 +129,4 @@ export interface User {
     puede_ver_reportes: boolean;
   };
   avatar?: string;
-}
-
-
-// --- Tipos antiguos para mantener compatibilidad temporal ---
-// --- Serán eliminados una vez la migración se complete ---
-
-export type OrderItemStatus = 'CONFIRMADO' | 'SIN_STOCK' | 'BACKORDER' | 'PENDIENTE';
-
-export interface LegacyOrderItem {
-  itemId: string;
-  quantity: number;
-  estado_item: OrderItemStatus;
-}
-
-export type LegacyShop = 'Tienda Online' | 'Tienda Física' | 'Marketplace' | 'Novi Perú' | 'Cumbre';
-export type LegacyPaymentMethod = 'Tarjeta de Crédito' | 'Transferencia Bancaria' | 'Efectivo' | 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA';
-export type LegacyCourier = 'URBANO' | 'SHALOM' | 'OLVA' | 'INTERNO' | 'MOTORIZADO INTERNO';
-
-export interface LegacyOrder {
-  id: string;
-  client: {
-    name: string;
-    address: string;
-  };
-  shop: LegacyShop;
-  items: LegacyOrderItem[];
-  totalAmount: number;
-  paymentMethod: LegacyPaymentMethod;
-  estado_pago: 'PAGADO' | 'PENDIENTE';
-  assignedUserId: string;
-  courier: LegacyCourier;
-  fecha_creacion: string;
-  fecha_preparacion?: string;
-  fecha_transito?: string;
-  fecha_estimada_entrega: string;
-  fecha_entrega_real?: string;
-  estado_actual: OrderStatus;
-  trackingNumber?: string;
-}
-
-export interface LegacyInventoryItem {
-  id: string;
-  sku: string;
-  name: string;
-  description: string;
-  stock: number;
-  lowStockThreshold: number;
-  location: string;
-  price: number;
-  supplier: string;
-  isDiscontinued: boolean;
-}
-
-export type LegacyUserRole = 'OPERADOR_LOGISTICO' | 'ADMINISTRADOR' | 'GERENTE' | 'ADMIN' | 'VENTAS';
-
-export interface LegacyUser {
-  id: string;
-  name: string;
-  email: string;
-  avatar: string;
-  role: LegacyUserRole;
 }

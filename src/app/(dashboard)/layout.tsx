@@ -2,7 +2,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { getUsers, getInventory, getOrders } from '@/lib/firebase/firestore';
-import type { Order, LegacyUser as User, LegacyInventoryItem as InventoryItem } from '@/lib/types';
+import type { Order, User, InventoryItem } from '@/lib/types';
 
 
 export default async function DashboardLayout({

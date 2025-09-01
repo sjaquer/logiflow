@@ -1,5 +1,5 @@
 import { getOrders, getUsers, getInventory } from '@/lib/firebase/firestore';
-import type { Order, LegacyUser as User, LegacyInventoryItem as InventoryItem } from '@/lib/types';
+import type { Order, User, InventoryItem } from '@/lib/types';
 import { KpiCards } from './components/kpi-cards';
 import { OrderSummaryChart } from './components/order-summary-chart';
 import { SalesByEntityChart } from './components/sales-by-entity-chart';

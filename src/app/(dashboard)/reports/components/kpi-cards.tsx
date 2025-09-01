@@ -5,7 +5,7 @@ import { DollarSign, Package, ShoppingCart, Truck } from 'lucide-react';
 
 export function KpiCards({ orders }: { orders: Order[] }) {
   const totalOrders = orders.length;
-  const totalRevenue = orders.reduce((sum, order) => sum + order.totalAmount, 0);
+  const totalRevenue = orders.reduce((sum, order) => sum + order.pago.monto_total, 0);
   const deliveredOrders = orders.filter(o => o.estado_actual === 'ENTREGADO').length;
   const inTransitOrders = orders.filter(o => o.estado_actual.startsWith('EN_TRANSITO')).length;
 

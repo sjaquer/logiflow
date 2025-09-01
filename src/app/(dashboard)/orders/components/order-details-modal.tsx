@@ -27,11 +27,11 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
   const [isCheckingStock, setIsCheckingStock] = useState(false);
   const { toast } = useToast();
 
-  const assignedUser = users.find(u => u.id === order.assignedUserId);
+  const assignedUser = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
   const handleStatusChange = (newStatus: OrderStatus) => {
-    onOrderStatusChange(order.id, newStatus);
+    onOrderStatusChange(order.id_pedido, newStatus);
     setOrder(prev => ({...prev, estado_actual: newStatus}));
   };
 
@@ -40,14 +40,14 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
     setTimeout(() => { // Simulate API call
       let allConfirmed = true;
       const updatedItems = order.items.map(item => {
-        const stockItem = inventory.find(inv => inv.id === item.itemId);
+        const stockItem = inventory.find(inv => inv.sku === item.sku);
         let newStatus: OrderItemStatus;
-        if (!stockItem || stockItem.isDiscontinued) {
+        if (!stockItem || stockItem.estado === 'DESCONTINUADO') {
           newStatus = 'SIN_STOCK';
           allConfirmed = false;
-        } else if (stockItem.stock >= item.quantity) {
+        } else if (stockItem.stock_actual >= item.cantidad) {
           newStatus = 'CONFIRMADO';
-        } else if (stockItem.stock > 0) {
+        } else if (stockItem.stock_actual > 0) {
           newStatus = 'BACKORDER'; // Partial stock could be a backorder
           allConfirmed = false;
         } else {
@@ -57,7 +57,7 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
         return { ...item, estado_item: newStatus };
       });
 
-      onOrderItemsChange(order.id, updatedItems);
+      onOrderItemsChange(order.id_pedido, updatedItems);
       setOrder(prev => ({...prev, items: updatedItems}));
       setIsCheckingStock(false);
       
@@ -84,7 +84,7 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
       <DialogContent className="sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-4">
-            Detalles del Pedido <Badge variant="outline">{order.id}</Badge>
+            Detalles del Pedido <Badge variant="outline">{order.id_pedido}</Badge>
           </DialogTitle>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 max-h-[70vh] overflow-y-auto">
@@ -93,12 +93,12 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
               <h4 className="font-medium mb-2 text-primary">Artículos</h4>
               <div className="space-y-2">
                 {order.items.map(item => {
-                  const inventoryItem = inventory.find(i => i.id === item.itemId);
+                  const inventoryItem = inventory.find(i => i.sku === item.sku);
                   return (
-                    <div key={item.itemId} className="flex justify-between items-center p-2 rounded-md bg-muted/50">
+                    <div key={item.sku} className="flex justify-between items-center p-2 rounded-md bg-muted/50">
                       <div>
-                        <p className="font-medium">{inventoryItem?.name || 'Artículo Desconocido'}</p>
-                        <p className="text-sm text-muted-foreground">SKU: {inventoryItem?.sku} &bull; Cant: {item.quantity}</p>
+                        <p className="font-medium">{inventoryItem?.nombre || 'Artículo Desconocido'}</p>
+                        <p className="text-sm text-muted-foreground">SKU: {inventoryItem?.sku} &bull; Cant: {item.cantidad}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         {getStatusIcon(item.estado_item)}
@@ -134,31 +134,31 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
           <div className="space-y-4 bg-muted/50 p-4 rounded-lg">
             <h4 className="font-medium text-primary border-b pb-2">Resumen</h4>
             <div className="space-y-3 text-sm">
-                <div className="flex items-center gap-3"><UserIcon className="w-4 h-4 text-muted-foreground" /> <span>{order.client.name}</span></div>
-                <div className="flex items-start gap-3"><MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" /> <span>{order.client.address}</span></div>
-                <div className="flex items-center gap-3"><ShoppingBag className="w-4 h-4 text-muted-foreground" /> <span>{order.shop}</span></div>
+                <div className="flex items-center gap-3"><UserIcon className="w-4 h-4 text-muted-foreground" /> <span>{order.cliente.nombres}</span></div>
+                <div className="flex items-start gap-3"><MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" /> <span>{order.envio.direccion}</span></div>
+                <div className="flex items-center gap-3"><ShoppingBag className="w-4 h-4 text-muted-foreground" /> <span>{order.tienda.nombre}</span></div>
                 <Separator />
-                <div className="flex items-center gap-3"><Calendar className="w-4 h-4 text-muted-foreground" /> <span>{format(new Date(order.fecha_creacion), 'd MMM, yyyy HH:mm', { locale: es })}</span></div>
-                <div className="flex items-center gap-3"><Truck className="w-4 h-4 text-muted-foreground" /> <span>{order.courier}</span></div>
-                <div className="flex items-center gap-3"><CreditCard className="w-4 h-4 text-muted-foreground" /> <span>{order.paymentMethod}</span></div>
-                {order.trackingNumber && <div className="flex items-center gap-3"><Hash className="w-4 h-4 text-muted-foreground" /> <span>{order.trackingNumber}</span></div>}
+                <div className="flex items-center gap-3"><Calendar className="w-4 h-4 text-muted-foreground" /> <span>{format(new Date(order.fechas_clave.creacion), 'd MMM, yyyy HH:mm', { locale: es })}</span></div>
+                <div className="flex items-center gap-3"><Truck className="w-4 h-4 text-muted-foreground" /> <span>{order.envio.courier}</span></div>
+                <div className="flex items-center gap-3"><CreditCard className="w-4 h-4 text-muted-foreground" /> <span>{order.pago.metodo_pago_previsto}</span></div>
+                {order.envio.nro_guia && <div className="flex items-center gap-3"><Hash className="w-4 h-4 text-muted-foreground" /> <span>{order.envio.nro_guia}</span></div>}
                 <Separator />
                 {assignedUser && (
                   <div className="flex items-center gap-3">
                     <Avatar className="h-7 w-7">
                         <AvatarImage src={assignedUser.avatar} />
-                        <AvatarFallback>{getInitials(assignedUser.name)}</AvatarFallback>
+                        <AvatarFallback>{getInitials(assignedUser.nombre)}</AvatarFallback>
                     </Avatar>
                     <div className="flex flex-col">
                         <span className="text-muted-foreground text-xs">Asignado a</span>
-                        <span className="font-medium">{assignedUser.name}</span>
+                        <span className="font-medium">{assignedUser.nombre}</span>
                     </div>
                   </div>
                 )}
                 <Separator />
                 <div className="flex justify-between items-center text-base font-bold">
                     <span>Total</span>
-                    <span>S/ {order.totalAmount.toFixed(2)}</span>
+                    <span>S/ {order.pago.monto_total.toFixed(2)}</span>
                 </div>
             </div>
           </div>

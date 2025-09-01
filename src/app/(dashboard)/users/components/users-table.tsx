@@ -27,21 +27,21 @@ export function UsersTable({ users }: UsersTableProps) {
       </TableHeader>
       <TableBody>
         {users.map((user) => (
-          <TableRow key={user.id}>
+          <TableRow key={user.id_usuario}>
             <TableCell>
               <div className="flex items-center gap-4">
                 <Avatar>
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback>{getInitials(user.name)}</AvatarFallback>
+                  <AvatarImage src={user.avatar} alt={user.nombre} />
+                  <AvatarFallback>{getInitials(user.nombre)}</AvatarFallback>
                 </Avatar>
                 <div>
-                  <p className="font-medium">{user.name}</p>
+                  <p className="font-medium">{user.nombre}</p>
                   <p className="text-sm text-muted-foreground">{user.email}</p>
                 </div>
               </div>
             </TableCell>
             <TableCell>
-              <Badge variant="outline" className="capitalize">{user.role.replace('_', ' ').toLowerCase()}</Badge>
+              <Badge variant="outline" className="capitalize">{user.rol.replace('_', ' ').toLowerCase()}</Badge>
             </TableCell>
             <TableCell>
                 <DropdownMenu>

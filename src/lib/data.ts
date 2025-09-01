@@ -1,72 +1,78 @@
-import type { Order, InventoryItem, User, LegacyUser } from './types';
+import type { Order, InventoryItem, User } from './types';
 
-export const users: LegacyUser[] = [
-  { id: 'USR-ANAG', name: 'Ana Garcia', email: 'ana.garcia@example.com', avatar: '/avatars/01.png', role: 'OPERADOR_LOGISTICO' },
-  { id: 'USR-CARLOSR', name: 'Carlos Rodriguez', email: 'carlos.rodriguez@example.com', avatar: '/avatars/02.png', role: 'OPERADOR_LOGISTICO' },
-  { id: 'USR-SOFIAM', name: 'Sofia Martinez', email: 'sofia.martinez@example.com', avatar: '/avatars/03.png', role: 'ADMINISTRADOR' },
-  { id: 'USR-LUISH', name: 'Luis Hernandez', email: 'luis.h@example.com', avatar: '/avatars/04.png', role: 'GERENTE' },
-  { id: 'USR-MARISOL', name: 'MARISOL', email: 'marisol@example.com', avatar: '/avatars/05.png', role: 'OPERADOR_LOGISTICO' },
-  { id: 'USR-FIORELLA', name: 'FIORELLA', email: 'fiorella@example.com', avatar: '/avatars/06.png', role: 'OPERADOR_LOGISTICO' },
+// Datos de ejemplo con la NUEVA estructura.
+// Se usarán para poblar la base de datos con el script.
+
+export const users: User[] = [
+  {
+    id_usuario: 'USR-MARISOL',
+    nombre: 'Marisol',
+    email: 'marisol@example.com',
+    rol: 'OPERADOR_LOGISTICO',
+    activo: true,
+    permisos: {
+      puede_crear_pedido: true,
+      puede_preparar: true,
+      puede_despachar: true,
+      puede_confirmar_entrega: true,
+      puede_anular: true,
+      puede_gestionar_inventario: true,
+      puede_ver_reportes: true,
+    },
+    avatar: '/avatars/05.png'
+  },
+  {
+    id_usuario: 'USR-FIORELLA',
+    nombre: 'Fiorella',
+    email: 'fiorella@example.com',
+    rol: 'OPERADOR_LOGISTICO',
+    activo: true,
+    permisos: {
+      puede_crear_pedido: true,
+      puede_preparar: true,
+      puede_despachar: true,
+      puede_confirmar_entrega: true,
+      puede_anular: false,
+      puede_gestionar_inventario: false,
+      puede_ver_reportes: false,
+    },
+    avatar: '/avatars/06.png'
+  },
 ];
 
 export const inventory: InventoryItem[] = [
   {
-    sku: "LAP-001",
-    id_producto_base: "LAP-PRO",
-    nombre: "Laptop Pro 15\"",
+    sku: "5100-GR-34",
+    id_producto_base: "5100",
+    nombre: "Pantalón para Hombre Nylon + Strech | K2",
+    tienda: "Cumbre",
+    descripcion: "Pantalón táctico de secado rápido ideal para outdoor.",
+    stock_actual: 45,
+    stock_minimo: 5,
+    ubicacion_almacen: "A2-F3",
+    precios: { compra: 80.00, venta: 149.00 },
+    proveedor: { id_proveedor: "PROV-CUMBRE-01", nombre: "Cumbre Textiles" },
+    estado: "ACTIVO",
+    variantes: [
+      { sku: "5100-GR-32", talla: "32", color: "Gris", stock: 20 },
+      { sku: "5100-GR-34", talla: "34", color: "Gris", stock: 45 },
+      { sku: "5100-AZ-32", talla: "32", color: "Azul Noche", stock: 15 }
+    ],
+    historial_stock: []
+  },
+  {
+    sku: "5201",
+    id_producto_base: "5201",
+    nombre: "SOPORTE MAGNÉTICO PARA CELULAR",
     tienda: "Novi Perú",
-    descripcion: "Laptop potente para profesionales",
-    stock_actual: 25,
-    stock_minimo: 10,
-    ubicacion_almacen: "A1-F2",
-    precios: { compra: 900.00, venta: 1200.00 },
+    descripcion: "Soporte magnético universal para celular, ideal para auto.",
+    stock_actual: 150,
+    stock_minimo: 20,
+    ubicacion_almacen: "C1-F1",
+    precios: { compra: 25.00, venta: 59.00 },
     proveedor: { id_proveedor: "PROV-TECH-01", nombre: "TechSupplier Inc." },
     estado: "ACTIVO",
-    variantes: [{ sku: "LAP-001", talla: "15-inch", color: "Gris Espacial", stock: 25 }],
-    historial_stock: []
-  },
-  {
-    sku: "MON-002",
-    id_producto_base: "MON-4K",
-    nombre: "Monitor 4K 27\"",
-    tienda: "Novi Perú",
-    descripcion: "Monitor Ultra HD para visuales nítidos",
-    stock_actual: 8,
-    stock_minimo: 5,
-    ubicacion_almacen: "B2-F1",
-    precios: { compra: 300.00, venta: 450.00 },
-    proveedor: { id_proveedor: "PROV-VISION-02", nombre: "Vision Electronics" },
-    estado: "ACTIVO",
     variantes: [],
-    historial_stock: []
-  },
-  {
-    sku: "KBD-003",
-    id_producto_base: "KBD-MECH",
-    nombre: "Teclado Mecánico RGB",
-    tienda: "Novi Perú",
-    descripcion: "Teclado mecánico para gaming y productividad",
-    stock_actual: 50,
-    stock_minimo: 15,
-    ubicacion_almacen: "A1-F3",
-    precios: { compra: 100.00, venta: 150.00 },
-    proveedor: { id_proveedor: "PROV-GADGET-03", nombre: "Gadget World" },
-    estado: "ACTIVO",
-    variantes: [],
-    historial_stock: []
-  },
-   {
-    sku: "MSE-004",
-    id_producto_base: "MSE-WL",
-    nombre: "Mouse Inalámbrico Ergo",
-    tienda: "Novi Perú",
-    descripcion: "Mouse inalámbrico ergonómico para largas horas de uso",
-    stock_actual: 3,
-    stock_minimo: 5,
-    ubicacion_almacen: "C3-F1",
-    precios: { compra: 50.00, venta: 80.00 },
-    proveedor: { id_proveedor: "PROV-GADGET-03", nombre: "Gadget World" },
-    estado: "ACTIVO",
     historial_stock: []
   }
 ];
@@ -76,31 +82,37 @@ export const orders: Order[] = [
     id_pedido: "N-15032",
     id_interno: "51081369",
     tienda: { id_tienda: "T02", nombre: "Novi Perú" },
-    estado_actual: "PENDIENTE",
-    cliente: { id_cliente: "CLI-LIMA-51936239203", nombres: "Lucia Fernandez", dni: "12345678", celular: "51936239203" },
-    items: [{ sku: "LAP-001", nombre: "Laptop Pro 15\"", variante: "Gris Espacial", cantidad: 1, precio_unitario: 1200.00, subtotal: 1200.00 }],
-    pago: { monto_total: 1210.00, monto_pendiente: 0.00, metodo_pago_previsto: "TRANSFERENCIA", estado_pago: "PAGADO", comprobante_url: null, fecha_pago: "2025-08-27T14:15:00Z" },
-    envio: { tipo: "LIMA", provincia: "Lima", direccion: "Av. Siempre Viva 123, San Isidro", courier: "MOTORIZADO INTERNO", agencia_shalom: null, nro_guia: null, link_seguimiento: null, costo_envio: 10.00 },
-    asignacion: { id_usuario_actual: "USR-ANAG", nombre_usuario_actual: "Ana Garcia" },
-    historial: [{ fecha: "2025-08-27T14:17:00Z", id_usuario: "USR-ANAG", nombre_usuario: "Ana Garcia", accion: "PEDIDO_CREADO", detalle: "Pedido ingresado al sistema." }],
-    fechas_clave: { creacion: "2025-08-27T14:17:00Z", preparacion: null, despacho: null, entrega_estimada: "2025-08-28", entrega_real: null, anulacion: null },
-    notas: { nota_pedido: "Entregar en horario de oficina.", observaciones_internas: "", motivo_anulacion: null }
+    estado_actual: "EN_PREPARACION",
+    cliente: { id_cliente: "CLI-LIMA-51936239203", nombres: "David", dni: null, celular: "51936239203" },
+    items: [
+      { sku: "5201", nombre: "SOPORTE MAGNÉTICO PARA CELULAR", variante: "Negro", cantidad: 1, precio_unitario: 59.00, subtotal: 59.00, estado_item: 'PENDIENTE' }
+    ],
+    pago: { monto_total: 59.00, monto_pendiente: 39.00, metodo_pago_previsto: "CONTRAENTREGA", estado_pago: "PENDIENTE", comprobante_url: null, fecha_pago: null },
+    envio: { tipo: "LIMA", provincia: "Lima (departamento)", direccion: "Calle Taurija, Los Olivos", courier: "MOTORIZADO INTERNO", agencia_shalom: null, nro_guia: null, link_seguimiento: null, costo_envio: 10.00 },
+    asignacion: { id_usuario_actual: "USR-MARISOL", nombre_usuario_actual: "MARISOL" },
+    historial: [
+      { fecha: "2025-08-27T14:17:00Z", id_usuario: "USR-MARISOL", nombre_usuario: "MARISOL", accion: "PEDIDO_CREADO", detalle: "Pedido ingresado al sistema." },
+      { fecha: "2025-08-27T15:02:10Z", id_usuario: "USR-FIORELLA", nombre_usuario: "FIORELLA", accion: "ASIGNADO_A_PREPARACION", detalle: "Stock confirmado. Movido a 'En Preparación'." }
+    ],
+    fechas_clave: { creacion: "2025-08-27T14:17:00Z", preparacion: "2025-08-27T15:02:10Z", despacho: null, entrega_estimada: "2025-08-28", entrega_real: null, anulacion: null },
+    notas: { nota_pedido: "MAÑANA SIN ESPERA HASTA LAS 2PM", observaciones_internas: "Cliente contactado, confirmar dirección.", motivo_anulacion: null }
   },
   {
     id_pedido: "N-15033",
     id_interno: "51081370",
     tienda: { id_tienda: "T01", nombre: "Cumbre" },
-    estado_actual: "EN_PREPARACION",
+    estado_actual: "PENDIENTE",
     cliente: { id_cliente: "CLI-AREQUIPA-51987654321", nombres: "Javier Torres", dni: "87654321", celular: "51987654321" },
-    items: [{ sku: "MON-002", nombre: "Monitor 4K 27\"", variante: "Única", cantidad: 2, precio_unitario: 450.00, subtotal: 900.00 }],
-    pago: { monto_total: 925.00, monto_pendiente: 0.00, metodo_pago_previsto: "YAPE", estado_pago: "PAGADO", comprobante_url: null, fecha_pago: "2025-08-27T15:00:00Z" },
-    envio: { tipo: "PROVINCIA", provincia: "Arequipa", direccion: "Calle Falsa 456, Yanahuara", courier: "SHALOM", agencia_shalom: "Agencia Arequipa Centro", nro_guia: null, link_seguimiento: null, costo_envio: 25.00 },
-    asignacion: { id_usuario_actual: "USR-CARLOSR", nombre_usuario_actual: "Carlos Rodriguez" },
-    historial: [
-        { fecha: "2025-08-27T15:02:10Z", id_usuario: "USR-CARLOSR", nombre_usuario: "Carlos Rodriguez", accion: "PEDIDO_CREADO", detalle: "Pedido ingresado al sistema." },
-        { fecha: "2025-08-27T16:00:00Z", id_usuario: "USR-CARLOSR", nombre_usuario: "Carlos Rodriguez", accion: "ASIGNADO_A_PREPARACION", detalle: "Stock confirmado." },
+    items: [
+      { sku: "5100-GR-34", nombre: "Pantalón para Hombre Nylon + Strech | K2", variante: "Gris / 34", cantidad: 2, precio_unitario: 149.00, subtotal: 298.00, estado_item: 'PENDIENTE' }
     ],
-    fechas_clave: { creacion: "2025-08-27T15:02:10Z", preparacion: "2025-08-27T16:00:00Z", despacho: null, entrega_estimada: "2025-08-30", entrega_real: null, anulacion: null },
+    pago: { monto_total: 323.00, monto_pendiente: 0.00, metodo_pago_previsto: "YAPE", estado_pago: "PAGADO", comprobante_url: null, fecha_pago: "2025-08-27T15:00:00Z" },
+    envio: { tipo: "PROVINCIA", provincia: "Arequipa", direccion: "Calle Falsa 456, Yanahuara", courier: "SHALOM", agencia_shalom: "Agencia Arequipa Centro", nro_guia: null, link_seguimiento: null, costo_envio: 25.00 },
+    asignacion: { id_usuario_actual: "USR-FIORELLA", nombre_usuario_actual: "FIORELLA" },
+    historial: [
+      { fecha: "2025-08-27T15:02:10Z", id_usuario: "USR-FIORELLA", nombre_usuario: "FIORELLA", accion: "PEDIDO_CREADO", detalle: "Pedido ingresado al sistema." }
+    ],
+    fechas_clave: { creacion: "2025-08-27T15:02:10Z", preparacion: null, despacho: null, entrega_estimada: "2025-08-30", entrega_real: null, anulacion: null },
     notas: { nota_pedido: "Llamar antes de entregar.", observaciones_internas: "Verificar DNI.", motivo_anulacion: null }
   }
 ];

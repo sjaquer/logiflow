@@ -14,8 +14,8 @@ const chartConfig = {
 export function InventoryLevelsChart({ inventory }: { inventory: InventoryItem[] }) {
   const data = useMemo(() => {
     return inventory.map(item => ({
-      name: item.name,
-      stock: item.stock,
+      name: item.nombre,
+      stock: item.stock_actual,
     }));
   }, [inventory]);
 

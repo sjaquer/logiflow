@@ -1,6 +1,6 @@
 'use client';
 import { useState, useMemo, useEffect } from 'react';
-import type { Order, LegacyUser as User, LegacyInventoryItem as InventoryItem, OrderStatus, Shop, Courier, PaymentMethod } from '@/lib/types';
+import type { Order, User, InventoryItem, OrderStatus, Shop, Courier, PaymentMethod } from '@/lib/types';
 import { KANBAN_COLUMNS } from '@/lib/constants';
 import { KanbanColumn } from './kanban-column';
 import { OrderFilters } from './order-filters';
@@ -36,7 +36,7 @@ export function KanbanBoard({ initialOrders, users, inventory }: KanbanBoardProp
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'orders'), (snapshot) => {
-      const newOrders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Order[];
+      const newOrders = snapshot.docs.map(doc => ({ ...doc.data() } as Order));
       setOrders(newOrders);
     });
 
@@ -46,13 +46,13 @@ export function KanbanBoard({ initialOrders, users, inventory }: KanbanBoardProp
   const filteredOrders = useMemo(() => {
     return orders.filter(order => {
       const { shops, assignedUserIds, statuses, paymentMethods, couriers, dateRange } = filters;
-      const orderDate = new Date(order.fecha_creacion);
+      const orderDate = new Date(order.fechas_clave.creacion);
 
-      if (shops.length > 0 && !shops.includes(order.shop)) return false;
-      if (assignedUserIds.length > 0 && !assignedUserIds.includes(order.assignedUserId)) return false;
+      if (shops.length > 0 && !shops.includes(order.tienda.nombre)) return false;
+      if (assignedUserIds.length > 0 && !assignedUserIds.includes(order.asignacion.id_usuario_actual)) return false;
       if (statuses.length > 0 && !statuses.includes(order.estado_actual)) return false;
-      if (paymentMethods.length > 0 && !paymentMethods.includes(order.paymentMethod)) return false;
-      if (couriers.length > 0 && !couriers.includes(order.courier)) return false;
+      if (paymentMethods.length > 0 && !paymentMethods.includes(order.pago.metodo_pago_previsto)) return false;
+      if (couriers.length > 0 && !couriers.includes(order.envio.courier)) return false;
       if (dateRange.from && orderDate < dateRange.from) return false;
       if (dateRange.to) {
         const toDate = new Date(dateRange.to);
@@ -64,12 +64,12 @@ export function KanbanBoard({ initialOrders, users, inventory }: KanbanBoardProp
   }, [orders, filters]);
 
   const updateOrderStatus = async (orderId: string, newStatus: OrderStatus) => {
-    const orderRef = doc(db, 'orders', orderId.replace('#',''));
+    const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, { estado_actual: newStatus });
   };
   
   const updateOrderItems = async (orderId: string, updatedItems: Order['items']) => {
-    const orderRef = doc(db, 'orders', orderId.replace('#',''));
+    const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, { items: updatedItems });
   };
 

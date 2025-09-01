@@ -25,7 +25,7 @@ export function KanbanColumn({ column, orders, users, inventory, onOrderStatusCh
         <div className="flex flex-col gap-4 overflow-y-auto h-full pr-2 -mr-2">
           {orders.map(order => (
             <KanbanCard 
-              key={order.id} 
+              key={order.id_pedido} 
               order={order} 
               users={users} 
               inventory={inventory} 

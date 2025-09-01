@@ -1,5 +1,5 @@
 import { getUsers } from '@/lib/firebase/firestore';
-import type { LegacyUser as User } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { UsersTable } from './components/users-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 

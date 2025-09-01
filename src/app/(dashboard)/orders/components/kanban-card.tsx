@@ -17,12 +17,12 @@ interface KanbanCardProps {
 }
 
 export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrderItemsChange }: KanbanCardProps) {
-  const assignedUser = users.find(u => u.id === order.assignedUserId);
+  const assignedUser = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
 
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    e.dataTransfer.setData('orderId', order.id);
+    e.dataTransfer.setData('orderId', order.id_pedido);
     e.dataTransfer.effectAllowed = 'move';
   };
 
@@ -38,20 +38,20 @@ export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrd
         <Card className="hover:bg-card/95 hover:shadow-md transition-all">
           <CardHeader className="pb-3 pt-4 px-4">
               <div className="flex justify-between items-start">
-                  <h4 className="font-semibold text-base">{order.id}</h4>
-                  <Badge variant={order.estado_pago === 'PAGADO' ? 'success' : 'secondary'} className="capitalize text-xs">
-                      {order.estado_pago.toLowerCase()}
+                  <h4 className="font-semibold text-base">{order.id_pedido}</h4>
+                  <Badge variant={order.pago.estado_pago === 'PAGADO' ? 'success' : 'secondary'} className="capitalize text-xs">
+                      {order.pago.estado_pago.toLowerCase()}
                   </Badge>
               </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-2 pt-1"><Users className="w-4 h-4"/>{order.client.name}</p>
+            <p className="text-sm text-muted-foreground flex items-center gap-2 pt-1"><Users className="w-4 h-4"/>{order.cliente.nombres}</p>
           </CardHeader>
           <CardContent className="px-4 pb-3">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <ShoppingBag className="w-4 h-4" />
-              <span>{order.shop}</span>
+              <span>{order.tienda.nombre}</span>
             </div>
             <div className="mt-2 text-lg font-bold">
-              S/ {order.totalAmount.toFixed(2)}
+              S/ {order.pago.monto_total.toFixed(2)}
             </div>
           </CardContent>
           <CardFooter className="flex justify-between items-center px-4 pb-4">
@@ -59,11 +59,11 @@ export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrd
                {assignedUser && (
                   <Avatar className="h-7 w-7 border-2 border-background">
                     <AvatarImage src={assignedUser.avatar} />
-                    <AvatarFallback>{getInitials(assignedUser.name)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(assignedUser.nombre)}</AvatarFallback>
                   </Avatar>
               )}
               <div className="text-xs text-muted-foreground pl-3">
-                {formatDistanceToNow(new Date(order.fecha_creacion), { addSuffix: true, locale: es })}
+                {formatDistanceToNow(new Date(order.fechas_clave.creacion), { addSuffix: true, locale: es })}
               </div>
             </div>
           </CardFooter>

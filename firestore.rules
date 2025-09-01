@@ -2,53 +2,56 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
-    // Helper function to check if a user has a specific role
-    function isRole(role) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.rol == role;
+
+    // Helper function to check if a user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
     }
 
-    // Helper function to check if a user has a specific permission
-    function hasPermission(permission) {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permisos[permission] == true;
+    // Helper function to get the user's custom claims (like their role)
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+    
+    function isAdmin(userId) {
+      return getUserData(userId).rol == 'ADMIN';
     }
 
-    // Users can read their own data. Admins can read and write all user data.
+    // Users Collection
     match /users/{userId} {
-      allow read: if request.auth.uid == userId || isRole('ADMIN');
-      allow write: if isRole('ADMIN'); // Only Admins can modify user roles and permissions
+      // Any authenticated user can read their own data
+      // An admin can read any user's data
+      allow read: if isAuthenticated() && (request.auth.uid == userId || isAdmin(request.auth.uid));
+      
+      // An admin can create, update, or delete user documents
+      allow write: if isAuthenticated() && isAdmin(request.auth.uid);
     }
 
-    // Authenticated users can read inventory. Only users with permission can write.
-    match /inventory/{itemId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && hasPermission('puede_gestionar_inventario');
-    }
-
-    // Rules for Orders
+    // Orders Collection
     match /orders/{orderId} {
-      allow read: if request.auth != null;
+      // Any authenticated user can read orders (assuming operators need to see all)
+      // You could restrict this further, e.g., only see orders assigned to them
+      allow read: if isAuthenticated();
       
-      // Create: User must have 'puede_crear_pedido' permission.
-      allow create: if request.auth != null && hasPermission('puede_crear_pedido');
+      // Any authenticated user can create an order
+      allow create: if isAuthenticated();
       
-      // Update: Complex logic based on status changes and permissions
-      allow update: if request.auth != null && (
-        // Allow updating if user has general 'puede_preparar' permission (can be refined)
-        hasPermission('puede_preparar') ||
-        hasPermission('puede_despachar') ||
-        hasPermission('puede_confirmar_entrega') ||
-        hasPermission('puede_anular') ||
-        isRole('ADMIN')
-      );
+      // Any authenticated user can update an order (e.g., change status)
+      // You could add more granular checks here based on user permissions
+      allow update: if isAuthenticated();
       
-      // Delete: Restricted to Admins only for data integrity.
-      allow delete: if isRole('ADMIN');
+      // Only an admin can delete an order
+      allow delete: if isAuthenticated() && isAdmin(request.auth.uid);
     }
-
-    // Default deny all other access
-    match /{document=**} {
-      allow read, write: if false;
+    
+    // Inventory Collection
+    match /inventory/{itemId} {
+      // Any authenticated user can read inventory data
+      allow read: if isAuthenticated();
+      
+      // Only admins can write to inventory (create, update, delete)
+      // You might want to give specific "OPERADOR_LOGISTICO" permissions here
+      allow write: if isAuthenticated() && isAdmin(request.auth.uid);
     }
   }
 }

@@ -9,13 +9,13 @@ interface InventoryTableProps {
 
 export function InventoryTable({ inventory }: InventoryTableProps) {
   const getStockStatus = (item: InventoryItem): { text: string; variant: 'success' | 'destructive' | 'secondary' | 'outline' } => {
-    if (item.isDiscontinued) {
+    if (item.estado === 'DESCONTINUADO') {
       return { text: 'Descontinuado', variant: 'outline' };
     }
-    if (item.stock === 0) {
+    if (item.stock_actual === 0) {
       return { text: 'Sin Stock', variant: 'destructive' };
     }
-    if (item.stock <= item.lowStockThreshold) {
+    if (item.stock_actual <= item.stock_minimo) {
       return { text: 'Stock Bajo', variant: 'secondary' };
     }
     return { text: 'En Stock', variant: 'success' };
@@ -38,16 +38,16 @@ export function InventoryTable({ inventory }: InventoryTableProps) {
         {inventory.map((item) => {
           const status = getStockStatus(item);
           return (
-            <TableRow key={item.id}>
+            <TableRow key={item.sku}>
               <TableCell className="font-medium">{item.sku}</TableCell>
-              <TableCell>{item.name}</TableCell>
-              <TableCell className="text-right">{item.stock}</TableCell>
+              <TableCell>{item.nombre}</TableCell>
+              <TableCell className="text-right">{item.stock_actual}</TableCell>
               <TableCell>
                 <Badge variant={status.variant} className="capitalize">{status.text}</Badge>
               </TableCell>
-              <TableCell>{item.location}</TableCell>
-              <TableCell className="text-right">S/ {item.price.toFixed(2)}</TableCell>
-              <TableCell>{item.supplier}</TableCell>
+              <TableCell>{item.ubicacion_almacen}</TableCell>
+              <TableCell className="text-right">S/ {item.precios.venta.toFixed(2)}</TableCell>
+              <TableCell>{item.proveedor.nombre}</TableCell>
             </TableRow>
           );
         })}

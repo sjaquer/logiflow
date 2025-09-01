@@ -41,7 +41,7 @@ function SalesChart({ data }: { data: { name: string; sales: number }[] }) {
 export function SalesByEntityChart({ orders, users }: { orders: Order[]; users: User[] }) {
   const salesByShop = useMemo(() => {
     const sales = orders.reduce((acc, order) => {
-      acc[order.shop] = (acc[order.shop] || 0) + order.totalAmount;
+      acc[order.tienda.nombre] = (acc[order.tienda.nombre] || 0) + order.pago.monto_total;
       return acc;
     }, {} as Record<Shop, number>);
     return Object.entries(sales).map(([name, sales]) => ({ name, sales }));
@@ -49,9 +49,9 @@ export function SalesByEntityChart({ orders, users }: { orders: Order[]; users: 
 
   const salesByUser = useMemo(() => {
     const sales = orders.reduce((acc, order) => {
-      const user = users.find(u => u.id === order.assignedUserId);
-      const userName = user ? user.name : 'No asignado';
-      acc[userName] = (acc[userName] || 0) + order.totalAmount;
+      const user = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
+      const userName = user ? user.nombre : 'No asignado';
+      acc[userName] = (acc[userName] || 0) + order.pago.monto_total;
       return acc;
     }, {} as Record<string, number>);
     return Object.entries(sales).map(([name, sales]) => ({ name, sales }));
@@ -59,7 +59,7 @@ export function SalesByEntityChart({ orders, users }: { orders: Order[]; users: 
   
   const salesByCourier = useMemo(() => {
     const sales = orders.reduce((acc, order) => {
-      acc[order.courier] = (acc[order.courier] || 0) + order.totalAmount;
+      acc[order.envio.courier] = (acc[order.envio.courier] || 0) + order.pago.monto_total;
       return acc;
     }, {} as Record<Courier, number>);
     return Object.entries(sales).map(([name, sales]) => ({ name, sales }));

@@ -22,11 +22,11 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
 
   // Low stock
   inventory.forEach(item => {
-    if (item.stock > 0 && item.stock <= item.lowStockThreshold) {
+    if (item.stock_actual > 0 && item.stock_actual <= item.stock_minimo) {
       notifications.push({
-        id: `low-stock-${item.id}`,
+        id: `low-stock-${item.sku}`,
         type: 'Stock Bajo',
-        message: `${item.name} tiene poco stock (${item.stock} restantes).`,
+        message: `${item.nombre} tiene poco stock (${item.stock_actual} restantes).`,
         timestamp: new Date(),
         icon: AlertTriangle,
         color: 'text-yellow-500'
@@ -36,12 +36,12 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
 
   // Delayed orders
   orders.forEach(order => {
-    if (order.fecha_entrega_real && new Date(order.fecha_entrega_real) > new Date(order.fecha_estimada_entrega)) {
+    if (order.fechas_clave.entrega_real && new Date(order.fechas_clave.entrega_real) > new Date(order.fechas_clave.entrega_estimada)) {
       notifications.push({
-        id: `delayed-${order.id}`,
+        id: `delayed-${order.id_pedido}`,
         type: 'Pedido Retrasado',
-        message: `El pedido ${order.id} se entregó con retraso.`,
-        timestamp: new Date(order.fecha_entrega_real),
+        message: `El pedido ${order.id_pedido} se entregó con retraso.`,
+        timestamp: new Date(order.fechas_clave.entrega_real),
         icon: Clock,
         color: 'text-red-500'
       });
@@ -50,12 +50,12 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
 
   // Pending payments
   orders.forEach(order => {
-    if (order.estado_pago === 'PENDIENTE') {
+    if (order.pago.estado_pago === 'PENDIENTE') {
       notifications.push({
-        id: `payment-${order.id}`,
+        id: `payment-${order.id_pedido}`,
         type: 'Pago Pendiente',
-        message: `El pedido ${order.id} tiene un pago pendiente.`,
-        timestamp: new Date(order.fecha_creacion),
+        message: `El pedido ${order.id_pedido} tiene un pago pendiente.`,
+        timestamp: new Date(order.fechas_clave.creacion),
         icon: CircleDollarSign,
         color: 'text-blue-500'
       });
@@ -66,10 +66,10 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
   orders.forEach(order => {
     if (order.estado_actual === 'RETENIDO') {
       notifications.push({
-        id: `held-${order.id}`,
+        id: `held-${order.id_pedido}`,
         type: 'Pedido Retenido',
-        message: `El pedido ${order.id} está retenido.`,
-        timestamp: new Date(order.fecha_creacion),
+        message: `El pedido ${order.id_pedido} está retenido.`,
+        timestamp: new Date(order.fechas_clave.creacion),
         icon: Archive,
         color: 'text-orange-500'
       });
@@ -80,10 +80,10 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
   orders.forEach(order => {
     if (order.estado_actual === 'ANULADO') {
       notifications.push({
-        id: `cancelled-${order.id}`,
+        id: `cancelled-${order.id_pedido}`,
         type: 'Pedido Anulado',
-        message: `El pedido ${order.id} ha sido anulado.`,
-        timestamp: new Date(order.fecha_creacion),
+        message: `El pedido ${order.id_pedido} ha sido anulado.`,
+        timestamp: new Date(order.fechas_clave.creacion),
         icon: XCircle,
         color: 'text-gray-500'
       });
@@ -92,11 +92,11 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
 
   // Discontinued products
   inventory.forEach(item => {
-    if (item.isDiscontinued) {
+    if (item.estado === 'DESCONTINUADO') {
       notifications.push({
-        id: `discontinued-${item.id}`,
+        id: `discontinued-${item.sku}`,
         type: 'Producto Descontinuado',
-        message: `${item.name} ha sido descontinuado.`,
+        message: `${item.nombre} ha sido descontinuado.`,
         timestamp: new Date(),
         icon: Ban,
         color: 'text-purple-500'

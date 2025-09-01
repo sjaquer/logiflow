@@ -1,5 +1,5 @@
 import { getInventory } from '@/lib/firebase/firestore';
-import type { LegacyInventoryItem as InventoryItem } from '@/lib/types';
+import type { InventoryItem } from '@/lib/types';
 import { InventoryTable } from './components/inventory-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 

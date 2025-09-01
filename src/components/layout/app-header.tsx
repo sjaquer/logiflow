@@ -3,7 +3,7 @@ import { usePathname } from 'next/navigation';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { UserNav } from '@/components/user-nav';
 import { NotificationsDropdown } from '@/components/notifications-dropdown';
-import type { LegacyUser as User, LegacyInventoryItem as InventoryItem, Order } from '@/lib/types';
+import type { User, InventoryItem, Order } from '@/lib/types';
 
 interface AppHeaderProps {
   users: User[];
@@ -39,7 +39,7 @@ export function AppHeader({ users, inventory, orders }: AppHeaderProps) {
       <h1 className="text-xl font-semibold tracking-tight">{getTitle()}</h1>
       <div className="ml-auto flex items-center gap-4">
         <NotificationsDropdown inventory={inventory} orders={orders} />
-        <UserNav user={adminUser} />
+        {adminUser && <UserNav user={adminUser} />}
       </div>
     </header>
   );

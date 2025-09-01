@@ -1,25 +1,18 @@
 // To run this script:
 // 1. Make sure you have ts-node and dotenv installed: npm install ts-node dotenv
-// 2. Set up Application Default Credentials: gcloud auth application-default login
-// 3. Create a .env.local file in the root directory with your Firebase config.
-// 4. Run the script: npx ts-node scripts/seed-firestore.ts
+// 2. Make sure you have credentials set up for your Firebase project.
+// 3. Run the script: npx ts-node scripts/seed-firestore.ts
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, writeBatch, doc } from 'firebase/firestore';
-import { inventory, orders, users as legacyUsers } from '../src/lib/data'; // Using legacy data structure
-import type { User, LegacyUser } from '../src/lib/types';
-import dotenv from 'dotenv';
+import { inventory, orders, users as appUsers } from '../src/lib/data';
+import type { User } from '../src/lib/types';
 import { firebaseConfig } from '../src/lib/firebase/config';
 
-// Load environment variables from .env.local
-dotenv.config({ path: '.env.local' });
-
-
 if (!firebaseConfig.projectId) {
-    console.error("Firebase project ID is not defined in environment variables. Please check your .env.local file.");
+    console.error("Firebase project ID is not defined. Please check your src/lib/firebase/config.ts file.");
     process.exit(1);
 }
-
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
@@ -49,23 +42,15 @@ const seedDatabase = async () => {
     console.log('Seeding users...');
     const usersCollection = collection(db, 'users');
     
-    // Add the admin user
-    const adminDocRef = doc(usersCollection, adminUser.id_usuario);
+    // Add the admin user, using their email as the document ID for easy lookup
+    const adminDocRef = doc(usersCollection, adminUser.email);
     batch.set(adminDocRef, adminUser);
     console.log(`- Added admin user: ${adminUser.email}`);
 
-    // Add other legacy users, converting them to the new structure
-    legacyUsers.forEach(user => {
-        const docRef = doc(usersCollection, user.id);
-        const newUser: Partial<User> = {
-            id_usuario: user.id,
-            nombre: user.name,
-            email: user.email,
-            rol: 'OPERADOR_LOGISTICO', // Default role
-            activo: true,
-            // You can define default permissions here
-        };
-        batch.set(docRef, newUser);
+    // Add other sample users
+    appUsers.forEach(user => {
+        const docRef = doc(usersCollection, user.email); // Use email as unique ID
+        batch.set(docRef, user);
         console.log(`- Added user: ${user.email}`);
     });
 
@@ -74,16 +59,16 @@ const seedDatabase = async () => {
     console.log('Seeding inventory...');
     const inventoryCollection = collection(db, 'inventory');
     inventory.forEach(item => {
-        const docRef = doc(inventoryCollection, item.sku); // Use SKU as ID for new model
+        const docRef = doc(inventoryCollection, item.sku); // Use SKU as the document ID
         batch.set(docRef, item);
-        console.log(`- Added inventory item: ${item.name}`);
+        console.log(`- Added inventory item: ${item.nombre}`);
     });
 
     // Seed Orders
     console.log('Seeding orders...');
     const ordersCollection = collection(db, 'orders');
     orders.forEach(order => {
-        const docRef = doc(ordersCollection, order.id_pedido); // Use id_pedido as ID
+        const docRef = doc(ordersCollection, order.id_pedido); // Use id_pedido as the document ID
         batch.set(docRef, order);
         console.log(`- Added order: ${order.id_pedido}`);
     });
