@@ -1,27 +1,18 @@
 // To run this script:
-// 1. Make sure you have ts-node and dotenv installed: npm install -g ts-node dotenv
+// 1. Make sure you have ts-node and dotenv installed: npm install ts-node dotenv
 // 2. Set up Application Default Credentials: gcloud auth application-default login
 // 3. Create a .env.local file in the root directory with your Firebase config.
-// 4. Run the script: ts-node scripts/seed-firestore.ts
+// 4. Run the script: npx ts-node scripts/seed-firestore.ts
 
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, writeBatch, doc } from 'firebase/firestore';
 import { inventory, orders, users as legacyUsers } from '../src/lib/data'; // Using legacy data structure
 import type { User, LegacyUser } from '../src/lib/types';
 import dotenv from 'dotenv';
+import { firebaseConfig } from '../src/lib/firebase/config';
 
 // Load environment variables from .env.local
 dotenv.config({ path: '.env.local' });
-
-
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
 
 
 if (!firebaseConfig.projectId) {
@@ -83,7 +74,7 @@ const seedDatabase = async () => {
     console.log('Seeding inventory...');
     const inventoryCollection = collection(db, 'inventory');
     inventory.forEach(item => {
-        const docRef = doc(inventoryCollection, item.id);
+        const docRef = doc(inventoryCollection, item.sku); // Use SKU as ID for new model
         batch.set(docRef, item);
         console.log(`- Added inventory item: ${item.name}`);
     });
@@ -92,9 +83,9 @@ const seedDatabase = async () => {
     console.log('Seeding orders...');
     const ordersCollection = collection(db, 'orders');
     orders.forEach(order => {
-        const docRef = doc(ordersCollection, order.id.replace('#',''));
+        const docRef = doc(ordersCollection, order.id_pedido); // Use id_pedido as ID
         batch.set(docRef, order);
-        console.log(`- Added order: ${order.id}`);
+        console.log(`- Added order: ${order.id_pedido}`);
     });
 
     try {

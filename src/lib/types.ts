@@ -1,3 +1,5 @@
+// --- Nuevos Tipos de Datos (Modelo Objetivo) ---
+
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'PREPARADO' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
 export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA';
@@ -122,7 +124,7 @@ export interface User {
     puede_gestionar_inventario: boolean;
     puede_ver_reportes: boolean;
   };
-  avatar?: string; // Avatar es opcional ahora
+  avatar?: string;
 }
 
 
@@ -137,9 +139,9 @@ export interface LegacyOrderItem {
   estado_item: OrderItemStatus;
 }
 
-export type LegacyShop = 'Tienda Online' | 'Tienda Física' | 'Marketplace';
-export type LegacyPaymentMethod = 'Tarjeta de Crédito' | 'Transferencia Bancaria' | 'Efectivo';
-export type LegacyCourier = 'URBANO' | 'SHALOM' | 'OLVA' | 'INTERNO';
+export type LegacyShop = 'Tienda Online' | 'Tienda Física' | 'Marketplace' | 'Novi Perú' | 'Cumbre';
+export type LegacyPaymentMethod = 'Tarjeta de Crédito' | 'Transferencia Bancaria' | 'Efectivo' | 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA';
+export type LegacyCourier = 'URBANO' | 'SHALOM' | 'OLVA' | 'INTERNO' | 'MOTORIZADO INTERNO';
 
 export interface LegacyOrder {
   id: string;
@@ -176,7 +178,7 @@ export interface LegacyInventoryItem {
   isDiscontinued: boolean;
 }
 
-export type LegacyUserRole = 'OPERADOR_LOGISTICO' | 'ADMINISTRADOR' | 'GERENTE';
+export type LegacyUserRole = 'OPERADOR_LOGISTICO' | 'ADMINISTRADOR' | 'GERENTE' | 'ADMIN' | 'VENTAS';
 
 export interface LegacyUser {
   id: string;
