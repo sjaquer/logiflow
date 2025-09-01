@@ -7,7 +7,7 @@ import { InventoryTable } from './components/inventory-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusCircle, ScanLine } from 'lucide-react';
+import { Edit } from 'lucide-react';
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -52,8 +52,8 @@ export default function InventoryPage() {
           <div className="flex gap-2">
             <Button asChild>
               <Link href="/inventory/quick-entry">
-                <ScanLine className="mr-2 h-4 w-4" />
-                Editor Rápido / Escáner
+                <Edit className="mr-2 h-4 w-4" />
+                Editor Rápido de Inventario
               </Link>
             </Button>
           </div>

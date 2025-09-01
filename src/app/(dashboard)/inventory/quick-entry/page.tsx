@@ -1,6 +1,5 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { BarcodeScanner } from 'react-zxing';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,7 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, where, getDocs, doc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import type { InventoryItem } from '@/lib/types';
-import { Loader2, Minus, Plus, Search, VideoOff, ScanLine, Trash2 } from 'lucide-react';
+import { Loader2, Minus, Plus, Search, Edit, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 
@@ -33,17 +32,9 @@ const quickEntryFormSchema = z.object({
 type QuickEntryFormValues = z.infer<typeof quickEntryFormSchema>;
 
 export default function QuickEntryPage() {
-  const [isClient, setIsClient] = useState(false);
-  const [hasCameraPermission, setHasCameraPermission] = useState(true);
-  const [isCameraActive, setIsCameraActive] = useState(true);
-  const [scannedSku, setScannedSku] = useState<string>('');
+  const [skuToSearch, setSkuToSearch] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
-  const videoRef = useRef<HTMLVideoElement>(null);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
 
   const form = useForm<QuickEntryFormValues>({
     resolver: zodResolver(quickEntryFormSchema),
@@ -65,7 +56,7 @@ export default function QuickEntryPage() {
     if (existingItemIndex > -1) {
        toast({ title: "Producto ya en la lista", description: "El producto ya está en la lista de abajo para ser ajustado." });
        setIsSearching(false);
-       setScannedSku('');
+       setSkuToSearch('');
        return;
     }
 
@@ -107,7 +98,7 @@ export default function QuickEntryPage() {
       toast({ variant: "destructive", title: "Error de Búsqueda", description: "No se pudo buscar el producto." });
     } finally {
       setIsSearching(false);
-      setScannedSku('');
+      setSkuToSearch('');
     }
   };
 
@@ -176,54 +167,27 @@ export default function QuickEntryPage() {
     <div className="grid md:grid-cols-2 gap-8 p-4 md:p-6 lg:p-8">
       <Card>
         <CardHeader>
-          <CardTitle>Escáner de Inventario</CardTitle>
-          <CardDescription>Use la cámara para escanear códigos de barras o ingrese el SKU manualmente.</CardDescription>
+          <CardTitle>Búsqueda de Producto</CardTitle>
+          <CardDescription>Ingrese el SKU manualmente para añadirlo a la lista de edición.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-             <div className="flex items-center space-x-2">
-                <Switch
-                    id="camera-switch"
-                    checked={isCameraActive}
-                    onCheckedChange={setIsCameraActive}
-                    aria-label="Activar/desactivar cámara"
-                />
-                <Label htmlFor="camera-switch">Activar Cámara</Label>
-             </div>
-
-            {isCameraActive && (
-                 <div className="relative aspect-video bg-muted rounded-md overflow-hidden border">
-                    {isClient ? <BarcodeScanner
-                        onResult={(result) => findProductBySku(result.getText())}
-                        onError={(error) => {
-                            if(error?.name === "NotAllowedError") {
-                                setHasCameraPermission(false);
-                            }
-                        }}
-                    /> : <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> }
-                    {!hasCameraPermission && isClient && (
-                         <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white p-4">
-                             <VideoOff className="w-12 h-12 mb-4" />
-                            <h3 className="text-lg font-bold">Acceso a la Cámara Denegado</h3>
-                            <p className="text-center text-sm">Por favor, habilita los permisos de la cámara en tu navegador para usar el escáner.</p>
-                        </div>
-                    )}
-                 </div>
-            )}
-           
             <div className="flex w-full items-center space-x-2">
-               <form onSubmit={(e) => { e.preventDefault(); findProductBySku(scannedSku);}} className="flex-grow flex items-center space-x-2">
+               <form onSubmit={(e) => { e.preventDefault(); findProductBySku(skuToSearch);}} className="flex-grow flex items-center space-x-2">
                   <Input
                     type="text"
-                    placeholder="O ingrese SKU manualmente..."
-                    value={scannedSku}
-                    onChange={(e) => setScannedSku(e.target.value)}
+                    placeholder="Ingrese SKU..."
+                    value={skuToSearch}
+                    onChange={(e) => setSkuToSearch(e.target.value)}
                   />
-                  <Button type="submit" disabled={isSearching || !scannedSku}>
+                  <Button type="submit" disabled={isSearching || !skuToSearch}>
                     {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    Buscar
+                    Buscar y Añadir
                   </Button>
                </form>
+            </div>
+             <div className="text-sm text-muted-foreground pt-4">
+                <p>Use este panel para buscar productos por su SKU y agregarlos a la lista de "Editor Rápido". Una vez en la lista, podrá modificar sus datos y guardarlos todos a la vez.</p>
             </div>
           </div>
         </CardContent>
@@ -232,15 +196,15 @@ export default function QuickEntryPage() {
       <Card className="flex flex-col">
         <CardHeader>
           <CardTitle>Editor Rápido de Inventario</CardTitle>
-          <CardDescription>Productos escaneados listos para editar. Los cambios se guardarán en lote.</CardDescription>
+          <CardDescription>Productos añadidos listos para editar. Los cambios se guardarán en lote.</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(processBatchUpdate)} className="flex flex-col flex-grow">
             <CardContent className="flex-grow space-y-4 overflow-y-auto">
               {fields.length === 0 ? (
                 <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full rounded-md border border-dashed p-8">
-                    <ScanLine className="w-12 h-12 mb-4" />
-                    <p>Escanee o busque un producto para comenzar.</p>
+                    <Edit className="w-12 h-12 mb-4" />
+                    <p>Busque un producto para comenzar a editar.</p>
                 </div>
               ) : (
                 <div className="space-y-4">
