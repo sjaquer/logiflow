@@ -9,12 +9,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { collection, query, where, getDocs, doc, writeBatch, documentId } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import type { InventoryItem } from '@/lib/types';
-import { AlertCircle, CheckCircle, Loader2, Minus, Plus, Search, Video, VideoOff, ScanLine, Trash2 } from 'lucide-react';
+import { Loader2, Minus, Plus, Search, VideoOff, ScanLine, Trash2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 
@@ -33,12 +33,17 @@ const quickEntryFormSchema = z.object({
 type QuickEntryFormValues = z.infer<typeof quickEntryFormSchema>;
 
 export default function QuickEntryPage() {
+  const [isClient, setIsClient] = useState(false);
   const [hasCameraPermission, setHasCameraPermission] = useState(true);
   const [isCameraActive, setIsCameraActive] = useState(true);
   const [scannedSku, setScannedSku] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const form = useForm<QuickEntryFormValues>({
     resolver: zodResolver(quickEntryFormSchema),
@@ -47,7 +52,7 @@ export default function QuickEntryPage() {
     },
   });
 
-  const { fields, append, update, remove } = useFieldArray({
+  const { fields, append, remove } = useFieldArray({
     control: form.control,
     name: "items"
   });
@@ -55,12 +60,12 @@ export default function QuickEntryPage() {
   const findProductBySku = async (sku: string) => {
     if (!sku) return;
     setIsSearching(true);
-    form.setValue('skuToSearch', sku);
     
     const existingItemIndex = fields.findIndex(item => item.sku === sku);
     if (existingItemIndex > -1) {
        toast({ title: "Producto ya en la lista", description: "El producto ya está en la lista de abajo para ser ajustado." });
        setIsSearching(false);
+       setScannedSku('');
        return;
     }
 
@@ -126,6 +131,12 @@ export default function QuickEntryPage() {
                 ubicacion_almacen: item.ubicacion_almacen || '',
                 estado: 'ACTIVO',
                 stock_minimo: 0,
+                id_producto_base: `P-${Date.now()}`,
+                tienda: 'N/A',
+                descripcion: '',
+                proveedor: { id_proveedor: 'N/A', nombre: 'N/A' },
+                variantes: [],
+                historial_stock: [],
             });
         } else {
             const newStock = item.stock_actual + item.ajuste;
@@ -182,16 +193,15 @@ export default function QuickEntryPage() {
 
             {isCameraActive && (
                  <div className="relative aspect-video bg-muted rounded-md overflow-hidden border">
-                    <BarcodeScanner
-                        videoRef={videoRef}
+                    {isClient ? <BarcodeScanner
                         onResult={(result) => findProductBySku(result.getText())}
                         onError={(error) => {
                             if(error?.name === "NotAllowedError") {
                                 setHasCameraPermission(false);
                             }
                         }}
-                    />
-                    {!hasCameraPermission && (
+                    /> : <div className="flex h-full w-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div> }
+                    {!hasCameraPermission && isClient && (
                          <div className="absolute inset-0 bg-black/80 flex flex-col items-center justify-center text-white p-4">
                              <VideoOff className="w-12 h-12 mb-4" />
                             <h3 className="text-lg font-bold">Acceso a la Cámara Denegado</h3>
@@ -330,11 +340,4 @@ export default function QuickEntryPage() {
       </Card>
     </div>
   );
-}
-
-// Add a new form state for skuToSearch
-declare module 'react-hook-form' {
-  interface UseFormProps<TData, TContext> {
-    skuToSearch?: string;
-  }
 }
