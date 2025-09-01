@@ -1,16 +1,14 @@
 // To run this script:
-// 1. Make sure you have ts-node and dotenv installed: npm install ts-node dotenv
-// 2. Make sure you have credentials set up for your Firebase project in a .env.local file.
+// 1. Make sure you have ts-node installed: npm install -g ts-node
+// 2. Make sure you have your Firebase credentials in a .env.local file.
 // 3. Run the script: npx ts-node scripts/seed-firestore.ts
 
-import { initializeApp } from 'firebase/app';
-import { getFirestore, collection, writeBatch, doc } from 'firebase/firestore';
-import { inventory, orders, users as appUsers } from '../src/lib/data';
-import type { User } from '../src/lib/types';
+const { initializeApp } = require('firebase/app');
+const { getFirestore, collection, writeBatch, doc } = require('firebase/firestore');
+const { inventory, orders, users: appUsers } = require('../src/lib/data');
 
-// IMPORTANT: Do NOT import from ../src/lib/firebase/config
-// as it can cause module resolution issues in this script.
-// Instead, we construct the config object directly.
+// IMPORTANT: Do NOT import from ../src/lib/firebase/config as it can cause module resolution issues.
+// We construct the config object directly.
 const firebaseConfig = {
     apiKey: "AIzaSyBn63Dp1eXlDJPQgK-E2ltyaR-HUUj_KDU",
     authDomain: "logistics-flow-dp1gz.firebaseapp.com",
@@ -29,7 +27,7 @@ if (!firebaseConfig.projectId) {
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
-const adminUser: User = {
+const adminUser = {
     id_usuario: 'admin-sjaquer',
     nombre: 'SJAQUER',
     email: 'sjaquer@outlook.es',
@@ -60,7 +58,7 @@ const seedDatabase = async () => {
     console.log(`- Added admin user: ${adminUser.email}`);
 
     // Add other sample users
-    appUsers.forEach(user => {
+    appUsers.forEach((user) => {
         const docRef = doc(usersCollection, user.email); // Use email as unique ID
         batch.set(docRef, user);
         console.log(`- Added user: ${user.email}`);
@@ -70,7 +68,7 @@ const seedDatabase = async () => {
     // Seed Inventory
     console.log('Seeding inventory...');
     const inventoryCollection = collection(db, 'inventory');
-    inventory.forEach(item => {
+    inventory.forEach((item) => {
         const docRef = doc(inventoryCollection, item.sku); // Use SKU as the document ID
         batch.set(docRef, item);
         console.log(`- Added inventory item: ${item.nombre}`);
@@ -79,7 +77,7 @@ const seedDatabase = async () => {
     // Seed Orders
     console.log('Seeding orders...');
     const ordersCollection = collection(db, 'orders');
-    orders.forEach(order => {
+    orders.forEach((order) => {
         const docRef = doc(ordersCollection, order.id_pedido); // Use id_pedido as the document ID
         batch.set(docRef, order);
         console.log(`- Added order: ${order.id_pedido}`);
