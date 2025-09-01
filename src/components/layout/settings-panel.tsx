@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from '@/context/theme-provider';
-import type { ColorPalette } from '@/context/theme-provider';
+import type { Palette } from '@/context/theme-provider';
 
 interface SettingsPanelProps {
   children: React.ReactNode;
@@ -12,6 +12,11 @@ interface SettingsPanelProps {
 
 export function SettingsPanel({ children }: SettingsPanelProps) {
   const { theme, setTheme, colorPalette, setColorPalette, palettes } = useTheme();
+  
+  const getDisplayColors = (palette: Palette) => {
+    const p = theme === 'dark' ? palette.dark : palette.light;
+    return [p.primary, p.accent, p.background];
+  }
 
   return (
     <Sheet>
@@ -38,7 +43,7 @@ export function SettingsPanel({ children }: SettingsPanelProps) {
           <div className="space-y-4">
             <Label className="font-medium">Paleta de Colores</Label>
             <div className="grid grid-cols-1 gap-3">
-              {palettes.map((palette: ColorPalette) => (
+              {palettes.map((palette: Palette) => (
                 <Button
                   key={palette.name}
                   variant={colorPalette.name === palette.name ? 'default' : 'outline'}
@@ -47,9 +52,9 @@ export function SettingsPanel({ children }: SettingsPanelProps) {
                 >
                    <div className="flex items-center gap-4">
                      <div className="flex -space-x-2">
-                        <div className="h-6 w-6 rounded-full border-2 border-card" style={{backgroundColor: `hsl(${palette.colors.primary})`}}></div>
-                        <div className="h-6 w-6 rounded-full border-2 border-card" style={{backgroundColor: `hsl(${palette.colors.accent})`}}></div>
-                        <div className="h-6 w-6 rounded-full border-2 border-card" style={{backgroundColor: `hsl(${palette.colors.background})`}}></div>
+                        {getDisplayColors(palette).map((color, index) => (
+                           <div key={index} className="h-6 w-6 rounded-full border-2 border-card" style={{backgroundColor: `hsl(${color})`}}></div>
+                        ))}
                      </div>
                      <span>{palette.displayName}</span>
                    </div>
