@@ -1,25 +1,17 @@
 'use client';
-import { useState } from 'react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useTheme } from '@/context/theme-provider';
+import type { ColorPalette } from '@/context/theme-provider';
 
 interface SettingsPanelProps {
   children: React.ReactNode;
 }
 
-const colorThemes = [
-  { name: 'Azul', value: 'blue', hsl: '197 76% 53%' },
-  { name: 'Naranja', value: 'orange', hsl: '25 95% 53%' },
-  { name: 'Verde', value: 'green', hsl: '142 71% 45%' },
-  { name: 'Violeta', value: 'violet', hsl: '262 84% 58%' },
-  { name: 'Rosa', value: 'rose', hsl: '347 77% 50%' },
-];
-
 export function SettingsPanel({ children }: SettingsPanelProps) {
-  const { theme, setTheme, color, setColor } = useTheme();
+  const { theme, setTheme, colorPalette, setColorPalette, palettes } = useTheme();
 
   return (
     <Sheet>
@@ -44,17 +36,23 @@ export function SettingsPanel({ children }: SettingsPanelProps) {
           </div>
 
           <div className="space-y-4">
-            <Label className="font-medium">Color de Acento</Label>
-            <div className="grid grid-cols-5 gap-2">
-              {colorThemes.map((c) => (
+            <Label className="font-medium">Paleta de Colores</Label>
+            <div className="grid grid-cols-1 gap-3">
+              {palettes.map((palette: ColorPalette) => (
                 <Button
-                  key={c.value}
-                  variant={color === c.value ? 'default' : 'outline'}
-                  className="h-12 w-full"
-                  style={{'--theme-primary': c.hsl} as React.CSSProperties}
-                  onClick={() => setColor(c.value)}
+                  key={palette.name}
+                  variant={colorPalette.name === palette.name ? 'default' : 'outline'}
+                  onClick={() => setColorPalette(palette.name)}
+                  className="h-auto w-full justify-start text-left p-3"
                 >
-                   <span className="h-6 w-6 rounded-full" style={{backgroundColor: `hsl(${c.hsl})`}}></span>
+                   <div className="flex items-center gap-4">
+                     <div className="flex -space-x-2">
+                        <div className="h-6 w-6 rounded-full border-2 border-card" style={{backgroundColor: `hsl(${palette.colors.primary})`}}></div>
+                        <div className="h-6 w-6 rounded-full border-2 border-card" style={{backgroundColor: `hsl(${palette.colors.accent})`}}></div>
+                        <div className="h-6 w-6 rounded-full border-2 border-card" style={{backgroundColor: `hsl(${palette.colors.background})`}}></div>
+                     </div>
+                     <span>{palette.displayName}</span>
+                   </div>
                 </Button>
               ))}
             </div>
