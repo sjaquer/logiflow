@@ -4,9 +4,7 @@ import { KanbanBoard } from './components/kanban-board';
 import { getCollectionData } from '@/lib/firebase/firestore-client';
 import type { Order, User, InventoryItem } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
-import { OrderFilters } from './components/order-filters';
 import type { Filters } from './components/kanban-board';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 
 export default function OrdersPage() {
@@ -41,7 +39,7 @@ export default function OrdersPage() {
 
   if (loading) {
     return (
-      <div className="flex flex-col h-full p-4 md:p-6 lg:p-8 space-y-4">
+      <div className="flex flex-col h-full space-y-4">
         <Skeleton className="h-12 w-full" />
         <div className="flex-1 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
           <Skeleton className="w-full h-full" />

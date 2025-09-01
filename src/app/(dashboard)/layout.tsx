@@ -49,9 +49,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   
   const childrenWithProps = React.Children.map(children, child => {
     if (React.isValidElement(child)) {
-      // Cloning the element and adding the currentUser prop
-      // This is safe because we check if the child is a valid React element
-      // This pattern is useful for passing props down to page components in a layout
       return React.cloneElement(child, { currentUser } as { currentUser: User | null });
     }
     return child;
@@ -76,11 +73,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   }
 
   return (
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen bg-muted/40">
         <AppSidebar currentUser={currentUser} />
         <div className="flex flex-col flex-1 min-w-0">
           <AppHeader user={currentUser} inventory={inventory} orders={orders} />
-          <main className="flex-1 flex flex-col overflow-y-auto bg-background px-4 md:px-6 lg:px-8">
+          <main className="flex-1 flex flex-col p-4 md:p-6 lg:p-8 overflow-auto">
             {childrenWithProps}
           </main>
         </div>

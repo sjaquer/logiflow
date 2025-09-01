@@ -29,10 +29,8 @@ export function AppHeader({ user, inventory, orders }: AppHeaderProps) {
   };
 
   return (
-    <header className="sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b bg-background/80 backdrop-blur-sm px-4 md:px-6">
-      <div>
-        <SidebarTrigger />
-      </div>
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6">
+      <SidebarTrigger className="md:hidden" />
       <h1 className="text-xl font-semibold tracking-tight">{getTitle()}</h1>
       <div className="ml-auto flex items-center gap-4">
         <NotificationsDropdown inventory={inventory} orders={orders} />
