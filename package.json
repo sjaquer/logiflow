@@ -10,7 +10,7 @@
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
-    "seed": "tsx -r dotenv/config --tsconfig tsconfig.scripts.json scripts/seed-firestore.ts"
+    "seed": "TSX_TSCONFIG_PATH=tsconfig.scripts.json tsx -r dotenv/config scripts/seed-firestore.ts"
   },
   "dependencies": {
     "@genkit-ai/googleai": "1.13.0",
