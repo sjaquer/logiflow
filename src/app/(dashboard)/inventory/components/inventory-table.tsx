@@ -27,11 +27,12 @@ export function InventoryTable({ inventory }: InventoryTableProps) {
         <TableRow>
           <TableHead>SKU</TableHead>
           <TableHead>Nombre</TableHead>
+          <TableHead>Tienda</TableHead>
+          <TableHead>Proveedor</TableHead>
           <TableHead className="text-right">Stock</TableHead>
           <TableHead>Estado</TableHead>
-          <TableHead>Ubicación</TableHead>
-          <TableHead className="text-right">Precio</TableHead>
-          <TableHead>Proveedor</TableHead>
+          <TableHead className="text-right">Precio Compra</TableHead>
+          <TableHead className="text-right">Precio Venta</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -41,13 +42,14 @@ export function InventoryTable({ inventory }: InventoryTableProps) {
             <TableRow key={item.sku}>
               <TableCell className="font-medium">{item.sku}</TableCell>
               <TableCell>{item.nombre}</TableCell>
+              <TableCell>{item.tienda}</TableCell>
+              <TableCell>{item.proveedor.nombre}</TableCell>
               <TableCell className="text-right">{item.stock_actual}</TableCell>
               <TableCell>
                 <Badge variant={status.variant} className="capitalize">{status.text}</Badge>
               </TableCell>
-              <TableCell>{item.ubicacion_almacen}</TableCell>
+              <TableCell className="text-right">S/ {item.precios.compra.toFixed(2)}</TableCell>
               <TableCell className="text-right">S/ {item.precios.venta.toFixed(2)}</TableCell>
-              <TableCell>{item.proveedor.nombre}</TableCell>
             </TableRow>
           );
         })}

@@ -23,8 +23,11 @@ const quickEntryFormSchema = z.object({
     nombre: z.string().min(1, "Nombre es requerido"),
     stock_actual: z.number(),
     ajuste: z.number().int("Debe ser un número entero"),
+    precio_compra: z.number().min(0, "El precio no puede ser negativo"),
     precio_venta: z.number().min(0, "El precio no puede ser negativo"),
     ubicacion_almacen: z.string().optional(),
+    proveedor_nombre: z.string().optional(),
+    tienda: z.string().optional(),
     isNew: z.boolean().optional(),
   }))
 });
@@ -75,9 +78,12 @@ export default function QuickEntryPage() {
             sku, 
             nombre: "Nuevo Producto", 
             stock_actual: 0, 
-            ajuste: 1, 
+            ajuste: 1,
+            precio_compra: 0,
             precio_venta: 0, 
             ubicacion_almacen: '',
+            proveedor_nombre: 'N/A',
+            tienda: 'Tienda Online',
             isNew: true 
         });
       } else {
@@ -87,8 +93,11 @@ export default function QuickEntryPage() {
           nombre: docData.nombre,
           stock_actual: docData.stock_actual,
           ajuste: 1,
+          precio_compra: docData.precios.compra,
           precio_venta: docData.precios.venta,
           ubicacion_almacen: docData.ubicacion_almacen,
+          proveedor_nombre: docData.proveedor.nombre,
+          tienda: docData.tienda,
           isNew: false
         });
          toast({ title: "Producto Encontrado", description: `${docData.nombre} añadido a la lista.` });
@@ -118,14 +127,14 @@ export default function QuickEntryPage() {
                 sku: item.sku,
                 nombre: item.nombre,
                 stock_actual: item.ajuste,
-                precios: { venta: item.precio_venta, compra: 0 },
+                precios: { compra: item.precio_compra, venta: item.precio_venta },
                 ubicacion_almacen: item.ubicacion_almacen || '',
+                proveedor: { id_proveedor: 'N/A', nombre: item.proveedor_nombre || 'N/A' },
+                tienda: item.tienda || 'N/A',
                 estado: 'ACTIVO',
                 stock_minimo: 0,
                 id_producto_base: `P-${Date.now()}`,
-                tienda: 'N/A',
                 descripcion: '',
-                proveedor: { id_proveedor: 'N/A', nombre: 'N/A' },
                 variantes: [],
                 historial_stock: [],
             });
@@ -134,7 +143,10 @@ export default function QuickEntryPage() {
             batch.update(itemRef, { 
                 stock_actual: newStock,
                 nombre: item.nombre,
+                'precios.compra': item.precio_compra,
                 'precios.venta': item.precio_venta,
+                'proveedor.nombre': item.proveedor_nombre,
+                tienda: item.tienda,
                 ubicacion_almacen: item.ubicacion_almacen
             });
         }
@@ -235,6 +247,17 @@ export default function QuickEntryPage() {
                                     </FormItem>
                                 )}
                            />
+                            <FormField
+                                control={form.control}
+                                name={`items.${index}.precio_compra`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Precio Compra (S/)</FormLabel>
+                                        <FormControl><Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                           />
                            <FormField
                                 control={form.control}
                                 name={`items.${index}.precio_venta`}
@@ -248,10 +271,21 @@ export default function QuickEntryPage() {
                            />
                            <FormField
                                 control={form.control}
-                                name={`items.${index}.ubicacion_almacen`}
+                                name={`items.${index}.tienda`}
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Ubicación</FormLabel>
+                                        <FormLabel>Tienda</FormLabel>
+                                        <FormControl><Input {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                           />
+                           <FormField
+                                control={form.control}
+                                name={`items.${index}.proveedor_nombre`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Proveedor</FormLabel>
                                         <FormControl><Input {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
