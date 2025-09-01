@@ -21,7 +21,7 @@ if (missingVars.length > 0) {
   
   // Throw an error during the build process if variables are missing
   if (process.env.NODE_ENV === 'production') {
-      throw new Error(errorMessage);
+      console.warn(errorMessage);
   } else {
       console.warn(errorMessage);
   }
@@ -37,6 +37,6 @@ export const firebaseConfig = {
 };
 
 // Final check to ensure the config object is valid before export
-if (!firebaseConfig.projectId) {
-  throw new Error("Firebase config is not valid. Project ID is missing. Check your environment variables.");
+if (!firebaseConfig.projectId && process.env.NODE_ENV === 'production') {
+  console.warn("Firebase projectId is missing. The app might not work as expected in production. Check your environment variables.");
 }

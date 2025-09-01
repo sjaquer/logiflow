@@ -7,18 +7,25 @@ import { users, inventory, orders } from '../src/lib/data';
 import type { Order, OrderItem, User } from '../src/lib/types';
 
 // Check for required environment variables
-if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
-  console.error('Error: Required environment variables are not set.');
-  console.log('Please ensure GOOGLE_APPLICATION_CREDENTIALS and NEXT_PUBLIC_FIREBASE_PROJECT_ID are in your .env.local file.');
+if (!process.env.GOOGLE_APPLICATION_CREDENTIALS && !process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+  console.error('Error: Firebase credentials are not set.');
+  console.log('Please ensure GOOGLE_APPLICATION_CREDENTIALS (for local) or NEXT_PUBLIC_FIREBASE_PROJECT_ID (for Vercel/CI) are set.');
   process.exit(1);
 }
 
 // Initialize Firebase Admin SDK
 try {
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
+      credential: admin.credential.applicationDefault(),
+      projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+    });
+  } else {
+    // Fallback for environments like Vercel where service account JSON is not available
+    admin.initializeApp({
         projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
     });
+  }
 } catch (error: any) {
      if (error.code !== 'app/duplicate-app') {
         console.error('Firebase Admin initialization error:', error);
