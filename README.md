@@ -65,8 +65,8 @@ Para que la aplicación se conecte con Firebase, necesitarás tus propias creden
 1.  Ve a la [Consola de Firebase](https://console.firebase.google.com/) y crea un nuevo proyecto.
 2.  Dentro de tu proyecto, crea una nueva aplicación web.
 3.  Copia las credenciales de configuración de tu aplicación (el objeto `firebaseConfig`).
-4.  En la raíz del proyecto, renombra el archivo `.env.example` a `.env.local`.
-5.  Pega tus credenciales de Firebase en el archivo `.env.local` correspondiente a cada variable.
+4.  En la raíz del proyecto, crea un archivo llamado `.env.local`.
+5.  Pega tus credenciales de Firebase en el archivo `.env.local` correspondiente a cada variable (puedes usar el archivo `.env.example` como plantilla).
 6. Habilita **Firestore Database** y **Authentication** (con el proveedor de Email/Contraseña) en la consola de Firebase.
 
 ### 4. Poblar la Base de Datos con Datos de Ejemplo (Seed)

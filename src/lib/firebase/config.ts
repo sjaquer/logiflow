@@ -12,24 +12,31 @@ const requiredEnvVars = [
 
 const missingVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
-if (missingVars.length > 0 && process.env.NODE_ENV !== 'production') {
-  console.warn(
-    `[Firebase] Missing environment variables from .env.local: ${missingVars.join(
-      ', '
-    )}. Falling back to hardcoded values for development.`
-  );
+// In a Vercel deployment, these variables must be set in the project settings.
+// In local development, they must be in .env.local
+if (missingVars.length > 0) {
+  const errorMessage = `[Firebase] Missing required environment variables: ${missingVars.join(
+    ', '
+  )}. Please set them in your Vercel project settings or in your local .env.local file.`;
+  
+  // Throw an error during the build process if variables are missing
+  if (process.env.NODE_ENV === 'production') {
+      throw new Error(errorMessage);
+  } else {
+      console.warn(errorMessage);
+  }
 }
 
 export const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || "AIzaSyBn63Dp1eXlDJPQgK-E2ltyaR-HUUj_KDU",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || "logistics-flow-dp1gz.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || "logistics-flow-dp1gz",
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || "logistics-flow-dp1gz.appspot.com",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || "440587721618",
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || "1:440587721618:web:c54541af217589361b7f4b"
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
 // Final check to ensure the config object is valid before export
 if (!firebaseConfig.projectId) {
-  throw new Error("Firebase config is not valid. Project ID is missing.");
+  throw new Error("Firebase config is not valid. Project ID is missing. Check your environment variables.");
 }

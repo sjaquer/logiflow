@@ -7,10 +7,9 @@ import { users, inventory, orders } from '../src/lib/data';
 import type { Order, OrderItem, User } from '../src/lib/types';
 
 // Check for required environment variables
-if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-  console.error('Error: GOOGLE_APPLICATION_CREDENTIALS environment variable is not set.');
-  console.log('Please create a .env.local file in the root directory and add:');
-  console.log('GOOGLE_APPLICATION_CREDENTIALS=./firebase-service-account.json');
+if (!process.env.GOOGLE_APPLICATION_CREDENTIALS || !process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) {
+  console.error('Error: Required environment variables are not set.');
+  console.log('Please ensure GOOGLE_APPLICATION_CREDENTIALS and NEXT_PUBLIC_FIREBASE_PROJECT_ID are in your .env.local file.');
   process.exit(1);
 }
 
