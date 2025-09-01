@@ -58,14 +58,13 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
       collapsible="icon"
       className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
     >
-      <SidebarHeader className="h-16 flex items-center justify-between px-2">
+      <SidebarHeader className="h-16 flex items-center justify-center px-2">
         <Link href="/orders" className="flex items-center gap-2 font-bold text-primary group-data-[collapsible=icon]:justify-center">
           <Warehouse className="h-6 w-6 shrink-0" />
-          <span className="text-lg text-sidebar-foreground group-data-[collapsible=icon]:hidden">
+          <span className="text-lg text-sidebar-foreground group-data-[collapsible=icon]:hidden sr-only">
             LogiFlow
           </span>
         </Link>
-        <SidebarTrigger className="hidden md:flex" />
       </SidebarHeader>
       <SidebarContent className="flex-1 p-2">
         <SidebarMenu>

@@ -37,13 +37,13 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
   const hasActiveFilters = Object.values(filters).some(val => Array.isArray(val) ? val.length > 0 : val.from || val.to);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 p-4 border-b">
+    <div className="flex flex-wrap items-center gap-2 p-4 md:px-6 lg:px-8 border-b">
       <Filter className="w-5 h-5 text-muted-foreground" />
-      <span className="font-semibold">Filtros:</span>
+      <span className="font-semibold text-sm">Filtros:</span>
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" className="ml-2">Tienda <ChevronDown className="ml-2 h-4 w-4" /></Button>
+          <Button variant="outline" size="sm" className="ml-2">Tienda <ChevronDown className="ml-2 h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {SHOPS.map(shop => (
@@ -56,7 +56,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline">Responsable <ChevronDown className="ml-2 h-4 w-4" /></Button>
+          <Button variant="outline" size="sm">Responsable <ChevronDown className="ml-2 h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {users.map(user => (
@@ -69,7 +69,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline">Estado <ChevronDown className="ml-2 h-4 w-4" /></Button>
+          <Button variant="outline" size="sm">Estado <ChevronDown className="ml-2 h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {KANBAN_COLUMNS.map(col => (
@@ -82,7 +82,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline">Courier <ChevronDown className="ml-2 h-4 w-4" /></Button>
+          <Button variant="outline" size="sm">Courier <ChevronDown className="ml-2 h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {COURIERS.map(courier => (
@@ -95,7 +95,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
       
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline">Pago <ChevronDown className="ml-2 h-4 w-4" /></Button>
+          <Button variant="outline" size="sm">Pago <ChevronDown className="ml-2 h-4 w-4" /></Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent>
             {PAYMENT_METHODS.map(method => (
@@ -110,8 +110,9 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
         <PopoverTrigger asChild>
           <Button
             variant={"outline"}
+            size="sm"
             className={cn(
-              "w-[280px] justify-start text-left font-normal",
+              "w-auto justify-start text-left font-normal",
               !filters.dateRange.from && "text-muted-foreground"
             )}
           >
@@ -141,7 +142,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
         </PopoverContent>
       </Popover>
 
-      {hasActiveFilters && <Button variant="ghost" onClick={clearFilters}>Limpiar</Button>}
+      {hasActiveFilters && <Button variant="ghost" size="sm" onClick={clearFilters}>Limpiar</Button>}
 
       <div className="ml-auto text-sm text-muted-foreground">
         Mostrando <span className="font-semibold text-foreground">{orderCount}</span> pedidos
