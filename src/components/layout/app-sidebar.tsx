@@ -22,7 +22,7 @@ import {
   LogOut,
   PanelLeft,
 } from 'lucide-react';
-import type { User } from '@/lib/types';
+import type { User, UserRole } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
@@ -31,11 +31,11 @@ interface AppSidebarProps {
   currentUser: User | null;
 }
 
-const menuItems = [
-  { href: '/orders', label: 'Pedidos', icon: LayoutDashboard, requiredRole: null },
-  { href: '/inventory', label: 'Inventario', icon: Box, requiredRole: null },
-  { href: '/reports', label: 'Reportes', icon: BarChart3, requiredRole: null },
-  { href: '/users', label: 'Usuarios', icon: Users, requiredRole: 'ADMIN' },
+const menuItems: { href: string; label: string; icon: React.ElementType; requiredRoles?: UserRole[] }[] = [
+  { href: '/orders', label: 'Pedidos', icon: LayoutDashboard },
+  { href: '/inventory', label: 'Inventario', icon: Box },
+  { href: '/reports', label: 'Reportes', icon: BarChart3 },
+  { href: '/users', label: 'Usuarios', icon: Users, requiredRoles: ['Admin', 'Desarrolladores'] },
 ];
 
 export function AppSidebar({ currentUser }: AppSidebarProps) {
@@ -49,8 +49,9 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
   };
 
   const filteredMenuItems = menuItems.filter(item => {
-    if (!item.requiredRole) return true;
-    return currentUser?.rol === item.requiredRole;
+    if (!item.requiredRoles) return true; // No roles required, show to everyone
+    if (!currentUser) return false; // If no user, don't show role-restricted items
+    return item.requiredRoles.includes(currentUser.rol);
   });
 
   return (

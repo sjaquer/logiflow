@@ -111,9 +111,9 @@ export interface InventoryItem {
   }[];
 }
 
-export type UserRole = 'OPERADOR_LOGISTICO' | 'ADMIN' | 'VENTAS' | 'ADMINISTRADOR' | 'GERENTE';
+export type UserRole = 'Call Center' | 'Logistica' | 'Empacado' | 'Desarrolladores' | 'Marketing' | 'Jefatura' | 'Admin';
 
-export const USER_ROLES: UserRole[] = ['OPERADOR_LOGISTICO', 'ADMIN', 'VENTAS', 'ADMINISTRADOR', 'GERENTE'];
+export const USER_ROLES: UserRole[] = ['Call Center', 'Logistica', 'Empacado', 'Desarrolladores', 'Marketing', 'Jefatura', 'Admin'];
 
 export interface User {
   id_usuario: string;

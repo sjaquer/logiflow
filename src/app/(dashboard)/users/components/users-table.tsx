@@ -17,12 +17,15 @@ import { Badge } from '@/components/ui/badge';
 interface UsersTableProps {
   users: User[];
   currentUser: User | null;
+  onRoleChange: (email: string, newRole: UserRole) => void;
 }
 
-export function UsersTable({ users, currentUser }: UsersTableProps) {
+export function UsersTable({ users, currentUser, onRoleChange }: UsersTableProps) {
     const { toast } = useToast();
     const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('').toUpperCase();
-    const isAdmin = currentUser?.rol === 'ADMIN';
+    
+    // Check if the current user has rights to manage users.
+    const canManageUsers = currentUser?.rol === 'Admin' || currentUser?.rol === 'Desarrolladores';
 
     const handleRoleChange = async (userEmail: string, newRole: UserRole) => {
         const userRef = doc(db, 'users', userEmail);
@@ -32,8 +35,7 @@ export function UsersTable({ users, currentUser }: UsersTableProps) {
                 title: 'Rol Actualizado',
                 description: `El rol del usuario ${userEmail} ha sido cambiado a ${newRole}.`,
             });
-            // Note: For a fully real-time experience, you'd listen to collection changes
-            // or manually update the local state. For now, a page refresh will show the change.
+            onRoleChange(userEmail, newRole);
         } catch (error) {
             console.error("Error updating role: ", error);
             toast({
@@ -72,37 +74,37 @@ export function UsersTable({ users, currentUser }: UsersTableProps) {
               </div>
             </TableCell>
             <TableCell>
-              {isAdmin ? (
+              {canManageUsers ? (
                 <Select
                   defaultValue={user.rol}
                   onValueChange={(value: UserRole) => handleRoleChange(user.email, value)}
-                  disabled={user.email === currentUser.email} // Admin can't change their own role
+                  disabled={user.email === currentUser.email} // Admin/Dev can't change their own role
                 >
                   <SelectTrigger className="w-[200px]">
                     <SelectValue placeholder="Seleccionar rol" />
                   </SelectTrigger>
                   <SelectContent>
                     {USER_ROLES.map(role => (
-                      <SelectItem key={role} value={role}>{role.replace('_', ' ').toLowerCase()}</SelectItem>
+                      <SelectItem key={role} value={role}>{role}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <Badge variant="outline" className="capitalize">{user.rol.replace('_', ' ').toLowerCase()}</Badge>
+                <Badge variant="outline" className="capitalize">{user.rol}</Badge>
               )}
             </TableCell>
             <TableCell>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button aria-haspopup="true" size="icon" variant="ghost" disabled={!isAdmin}>
+                    <Button aria-haspopup="true" size="icon" variant="ghost" disabled={!canManageUsers}>
                       <MoreHorizontal className="h-4 w-4" />
                       <span className="sr-only">Toggle menu</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
                     <DropdownMenuLabel>Acciones</DropdownMenuLabel>
-                    <DropdownMenuItem>Editar Permisos</DropdownMenuItem>
-                    <DropdownMenuItem className="text-destructive">Eliminar Usuario</DropdownMenuItem>
+                    <DropdownMenuItem disabled>Editar Permisos</DropdownMenuItem>
+                    <DropdownMenuItem className="text-destructive" disabled>Eliminar Usuario</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
             </TableCell>

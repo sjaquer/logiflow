@@ -87,25 +87,25 @@ async function seedUsers() {
     console.log(`\nSeeding Users and creating auth entries...`);
     const userIds: string[] = [];
 
-    // Separate admin user from others
-    const adminData = users.find(u => u.email === 'sjaquer@outlook.es');
+    // Separate developer user from others
+    const devUserData = users.find(u => u.email === 'sjaquer@outlook.es');
     const otherUsersData = users.filter(u => u.email !== 'sjaquer@outlook.es');
 
-    if (adminData) {
+    if (devUserData) {
         try {
-            console.log(`Looking for existing admin user: ${adminData.email}...`);
-            const adminUserRecord = await auth.getUserByEmail(adminData.email);
-            console.log(`Found existing admin user: ${adminUserRecord.uid}`);
-            const adminDoc: User = { ...adminData, id_usuario: adminUserRecord.uid };
-            await db.collection('users').doc(adminDoc.email).set(adminDoc);
-            userIds.push(adminUserRecord.uid);
-            console.log(`Updated admin user ${adminData.email} in Firestore.`);
+            console.log(`Looking for existing developer user: ${devUserData.email}...`);
+            const devUserRecord = await auth.getUserByEmail(devUserData.email);
+            console.log(`Found existing developer user: ${devUserRecord.uid}`);
+            const devDoc: User = { ...devUserData, id_usuario: devUserRecord.uid };
+            await db.collection('users').doc(devDoc.email).set(devDoc);
+            userIds.push(devUserRecord.uid);
+            console.log(`Updated developer user ${devUserData.email} in Firestore.`);
         } catch (error: any) {
              if (error.code === 'auth/user-not-found') {
-                 console.error(`Error: Admin user ${adminData.email} not found in Firebase Auth.`);
+                 console.error(`Error: Developer user ${devUserData.email} not found in Firebase Auth.`);
                  console.error('Please make sure this user exists before running the seed script.');
              } else {
-                console.error(`Error processing admin user ${adminData.email}:`, error);
+                console.error(`Error processing developer user ${devUserData.email}:`, error);
              }
         }
     }
@@ -238,7 +238,7 @@ async function main() {
     await seedOrders(userIds, seededInventory);
     console.log('\n--- Firestore Seeding Complete! ---');
     console.log('You can now run `npm run dev` to start the application.');
-    console.log('Log in with your admin account: sjaquer@outlook.es');
+    console.log('Log in with your developer account: sjaquer@outlook.es');
   } catch (error) {
     console.error('\n❌ An error occurred during seeding:', error);
   }

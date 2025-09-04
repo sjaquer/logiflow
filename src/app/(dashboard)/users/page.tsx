@@ -1,12 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { getCollectionData } from '@/lib/firebase/firestore-client';
-import type { User } from '@/lib/types';
+import type { User, UserRole } from '@/lib/types';
 import { UsersTable } from './components/users-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
+import { listenToCollection } from '@/lib/firebase/firestore-client';
 
 interface UsersPageProps {
   currentUser: User | null;
@@ -17,16 +17,31 @@ export default function UsersPage({ currentUser }: UsersPageProps) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      const usersData = await getCollectionData<User>('users');
-      setUsers(usersData);
-      setLoading(false);
-    };
-    fetchUsers();
+    const unsubscribe = listenToCollection<User>('users', (usersData) => {
+        setUsers(usersData);
+        setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
   
-  if (currentUser?.rol !== 'ADMIN') {
+  const handleRoleChange = (email: string, newRole: UserRole) => {
+      setUsers(prevUsers => 
+          prevUsers.map(u => u.email === email ? { ...u, rol: newRole } : u)
+      );
+  };
+
+  if (!currentUser) {
+      return (
+        <div className="p-4 md:p-6 lg:p-8">
+            <Skeleton className="h-64 w-full" />
+        </div>
+      );
+  }
+
+  const canAccess = currentUser.rol === 'Admin' || currentUser.rol === 'Desarrolladores';
+
+  if (!canAccess) {
     return (
       <div className="p-4 md:p-6 lg:p-8">
         <Alert variant="destructive">
@@ -64,7 +79,7 @@ export default function UsersPage({ currentUser }: UsersPageProps) {
           <CardDescription>Ver y gestionar roles y permisos de usuarios.</CardDescription>
         </CardHeader>
         <CardContent>
-          <UsersTable users={users} currentUser={currentUser} />
+          <UsersTable users={users} currentUser={currentUser} onRoleChange={handleRoleChange} />
         </CardContent>
       </Card>
     </div>

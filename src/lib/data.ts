@@ -3,9 +3,9 @@ import type { User, InventoryItem, Order } from './types';
 // --- USERS ---
 export const users: Omit<User, 'id_usuario'>[] = [
   {
-    nombre: 'Admin User',
+    nombre: 'Santiago Jaquer',
     email: 'sjaquer@outlook.es',
-    rol: 'ADMIN',
+    rol: 'Desarrolladores',
     activo: true,
     permisos: {
         puede_crear_pedido: true,
@@ -19,41 +19,9 @@ export const users: Omit<User, 'id_usuario'>[] = [
     avatar: 'https://i.pravatar.cc/150?u=sjaquer@outlook.es',
   },
   {
-    nombre: 'Luis Torres (Logística)',
-    email: 'operador@example.com',
-    rol: 'OPERADOR_LOGISTICO',
-    activo: true,
-    permisos: {
-        puede_crear_pedido: false,
-        puede_preparar: true,
-        puede_despachar: true,
-        puede_confirmar_entrega: true,
-        puede_anular: false,
-        puede_gestionar_inventario: true,
-        puede_ver_reportes: false,
-    },
-     avatar: 'https://i.pravatar.cc/150?u=operador@example.com',
-  },
-  {
-    nombre: 'Carla Solano (Ventas)',
-    email: 'ventas@example.com',
-    rol: 'VENTAS',
-    activo: true,
-    permisos: {
-        puede_crear_pedido: true,
-        puede_preparar: false,
-        puede_despachar: false,
-        puede_confirmar_entrega: false,
-        puede_anular: false,
-        puede_gestionar_inventario: false,
-        puede_ver_reportes: true,
-    },
-     avatar: 'https://i.pravatar.cc/150?u=ventas@example.com',
-  },
-  {
-    nombre: 'Miguel Castro (Gerente)',
-    email: 'gerente@example.com',
-    rol: 'GERENTE',
+    nombre: 'Admin User',
+    email: 'admin@example.com',
+    rol: 'Admin',
     activo: true,
     permisos: {
         puede_crear_pedido: true,
@@ -64,7 +32,39 @@ export const users: Omit<User, 'id_usuario'>[] = [
         puede_gestionar_inventario: true,
         puede_ver_reportes: true,
     },
-     avatar: 'https://i.pravatar.cc/150?u=gerente@example.com',
+     avatar: 'https://i.pravatar.cc/150?u=admin@example.com',
+  },
+  {
+    nombre: 'Carla Solano (Call Center)',
+    email: 'callcenter@example.com',
+    rol: 'Call Center',
+    activo: true,
+    permisos: {
+        puede_crear_pedido: true,
+        puede_preparar: false,
+        puede_despachar: false,
+        puede_confirmar_entrega: false,
+        puede_anular: false,
+        puede_gestionar_inventario: false,
+        puede_ver_reportes: true,
+    },
+     avatar: 'https://i.pravatar.cc/150?u=callcenter@example.com',
+  },
+  {
+    nombre: 'Miguel Castro (Jefatura)',
+    email: 'jefatura@example.com',
+    rol: 'Jefatura',
+    activo: true,
+    permisos: {
+        puede_crear_pedido: true,
+        puede_preparar: true,
+        puede_despachar: true,
+        puede_confirmar_entrega: true,
+        puede_anular: true,
+        puede_gestionar_inventario: true,
+        puede_ver_reportes: true,
+    },
+     avatar: 'https://i.pravatar.cc/150?u=jefatura@example.com',
   },
 ];
 
@@ -74,7 +74,7 @@ export const inventory: Omit<InventoryItem, 'sku'>[] = [
     {
         id_producto_base: 'PROD-001',
         nombre: 'Zapatillas Deportivas Runner Pro',
-        tienda: 'Tienda Online',
+        tienda: 'Trazto',
         descripcion: 'Zapatillas ligeras para corredores de alto rendimiento.',
         stock_actual: 50,
         stock_minimo: 10,
@@ -88,7 +88,7 @@ export const inventory: Omit<InventoryItem, 'sku'>[] = [
     {
         id_producto_base: 'PROD-002',
         nombre: 'Mochila Urbana Impermeable',
-        tienda: 'Tienda Online',
+        tienda: 'Trazto',
         descripcion: 'Mochila resistente al agua, ideal para la ciudad.',
         stock_actual: 8,
         stock_minimo: 5,
@@ -102,7 +102,7 @@ export const inventory: Omit<InventoryItem, 'sku'>[] = [
     {
         id_producto_base: 'PROD-003',
         nombre: 'Audífonos Bluetooth ProSound',
-        tienda: 'Marketplace',
+        tienda: 'Blumi',
         descripcion: 'Sonido de alta fidelidad con cancelación de ruido.',
         stock_actual: 0,
         stock_minimo: 10,
@@ -116,7 +116,7 @@ export const inventory: Omit<InventoryItem, 'sku'>[] = [
     {
         id_producto_base: 'PROD-004',
         nombre: 'Lentes de Sol Aviador Clásico',
-        tienda: 'Tienda Física',
+        tienda: 'Dearel',
         descripcion: 'Protección UV400, estilo atemporal.',
         stock_actual: 40,
         stock_minimo: 15,
@@ -130,7 +130,7 @@ export const inventory: Omit<InventoryItem, 'sku'>[] = [
     {
         id_producto_base: 'PROD-005',
         nombre: 'Smartwatch FitLife 2',
-        tienda: 'Marketplace',
+        tienda: 'Blumi',
         descripcion: 'Monitor de actividad, ritmo cardíaco y notificaciones.',
         stock_actual: 25,
         stock_minimo: 5,
@@ -144,7 +144,7 @@ export const inventory: Omit<InventoryItem, 'sku'>[] = [
      {
         id_producto_base: 'PROD-006',
         nombre: 'Casaca Cortavientos',
-        tienda: 'Tienda Física',
+        tienda: 'Cumbre',
         descripcion: 'Casaca ultra ligera para protección contra el viento y la llovizna.',
         stock_actual: 15,
         stock_minimo: 5,
@@ -158,7 +158,7 @@ export const inventory: Omit<InventoryItem, 'sku'>[] = [
     {
         id_producto_base: 'PROD-007',
         nombre: 'Taza de Cerámica "Code Mode"',
-        tienda: 'Tienda Online',
+        tienda: 'Trazto',
         descripcion: 'Taza de 15oz para tu bebida favorita mientras programas.',
         stock_actual: 100,
         stock_minimo: 20,
@@ -174,16 +174,16 @@ export const inventory: Omit<InventoryItem, 'sku'>[] = [
 // --- ORDERS ---
 export const orders: Omit<Order, 'id_pedido' | 'id_interno' | 'asignacion' | 'items' | 'historial'>[] = [
     {
-        tienda: { id_tienda: 'T01', nombre: 'Tienda Online' },
+        tienda: { id_tienda: 'T01', nombre: 'Trazto' },
         estado_actual: 'PENDIENTE',
         cliente: { id_cliente: 'C001', nombres: 'Juan Pérez', dni: '45678912', celular: '987654321' },
         pago: { monto_total: 185.00, monto_pendiente: 185.00, metodo_pago_previsto: 'YAPE', estado_pago: 'PENDIENTE', comprobante_url: null, fecha_pago: null },
-        envio: { tipo: 'LIMA', provincia: 'Lima', direccion: 'Av. La Marina 123, San Miguel', courier: 'MOTORIZADO INTERNO', agencia_shalom: null, nro_guia: null, link_seguimiento: null, costo_envio: 10.00 },
+        envio: { tipo: 'LIMA', provincia: 'Lima', direccion: 'Av. La Marina 123, San Miguel', courier: 'INTERNO', agencia_shalom: null, nro_guia: null, link_seguimiento: null, costo_envio: 10.00 },
         fechas_clave: { creacion: '2023-10-26T10:00:00Z', preparacion: null, despacho: null, entrega_estimada: '2023-10-28T18:00:00Z', entrega_real: null, anulacion: null },
         notas: { nota_pedido: 'Entregar en portería.', observaciones_internas: '', motivo_anulacion: null },
     },
     {
-        tienda: { id_tienda: 'T02', nombre: 'Tienda Física' },
+        tienda: { id_tienda: 'T02', nombre: 'Cumbre' },
         estado_actual: 'ENTREGADO',
         cliente: { id_cliente: 'C002', nombres: 'María López', dni: '12345678', celular: '912345678' },
         pago: { monto_total: 95.00, monto_pendiente: 0.00, metodo_pago_previsto: 'Efectivo', estado_pago: 'PAGADO', comprobante_url: null, fecha_pago: '2023-10-25T15:30:00Z' },
@@ -192,7 +192,7 @@ export const orders: Omit<Order, 'id_pedido' | 'id_interno' | 'asignacion' | 'it
         notas: { nota_pedido: '', observaciones_internas: 'Cliente solicitó bolsa de regalo.', motivo_anulacion: null },
     },
     {
-        tienda: { id_tienda: 'T01', nombre: 'Tienda Online' },
+        tienda: { id_tienda: 'T01', nombre: 'Trazto' },
         estado_actual: 'EN_TRANSITO_PROVINCIA',
         cliente: { id_cliente: 'C003', nombres: 'Carlos Sanchez', dni: '87654321', celular: '998877665' },
         pago: { monto_total: 405.00, monto_pendiente: 0.00, metodo_pago_previsto: 'Tarjeta de Crédito', estado_pago: 'PAGADO', comprobante_url: 'https://comprobante.com/pago3.jpg', fecha_pago: '2023-10-24T09:00:00Z' },
@@ -201,7 +201,7 @@ export const orders: Omit<Order, 'id_pedido' | 'id_interno' | 'asignacion' | 'it
         notas: { nota_pedido: 'Por favor, embalar con cuidado, son productos frágiles.', observaciones_internas: '', motivo_anulacion: null },
     },
     {
-        tienda: { id_tienda: 'T03', nombre: 'Marketplace' },
+        tienda: { id_tienda: 'T03', nombre: 'Dearel' },
         estado_actual: 'ANULADO',
         cliente: { id_cliente: 'C004', nombres: 'Laura Fernandez', dni: '11223344', celular: '911223344' },
         pago: { monto_total: 75.00, monto_pendiente: 75.00, metodo_pago_previsto: 'Transferencia Bancaria', estado_pago: 'PENDIENTE', comprobante_url: null, fecha_pago: null },
@@ -210,11 +210,11 @@ export const orders: Omit<Order, 'id_pedido' | 'id_interno' | 'asignacion' | 'it
         notas: { nota_pedido: '', observaciones_internas: 'Cliente se desistió de la compra.', motivo_anulacion: 'Cliente se desistió' },
     },
     {
-        tienda: { id_tienda: 'T01', nombre: 'Tienda Online' },
+        tienda: { id_tienda: 'T01', nombre: 'Trazto' },
         estado_actual: 'EN_PREPARACION',
         cliente: { id_cliente: 'C005', nombres: 'Pedro Gomez', dni: '44556677', celular: '944556677' },
         pago: { monto_total: 130.00, monto_pendiente: 0.00, metodo_pago_previsto: 'PLIN', estado_pago: 'PAGADO', comprobante_url: 'https://comprobante.com/pago5.jpg', fecha_pago: '2023-10-26T12:00:00Z' },
-        envio: { tipo: 'LIMA', provincia: 'Lima', direccion: 'Jirón de la Unión 899, Cercado', courier: 'MOTORIZADO INTERNO', agencia_shalom: null, nro_guia: null, link_seguimiento: null, costo_envio: 10.00 },
+        envio: { tipo: 'LIMA', provincia: 'Lima', direccion: 'Jirón de la Unión 899, Cercado', courier: 'INTERNO', agencia_shalom: null, nro_guia: null, link_seguimiento: null, costo_envio: 10.00 },
         fechas_clave: { creacion: '2023-10-26T12:00:00Z', preparacion: '2023-10-26T14:00:00Z', despacho: null, entrega_estimada: '2023-10-27T18:00:00Z', entrega_real: null, anulacion: null },
         notas: { nota_pedido: 'Tocar el intercomunicador 301.', observaciones_internas: 'Verificar stock de Casaca.', motivo_anulacion: null },
     }

@@ -57,17 +57,22 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const shouldInjectProps = !pathname.startsWith('/reports');
 
   const childrenWithProps = React.Children.map(children, child => {
-    if (React.isValidElement(child) && shouldInjectProps) {
-      return React.cloneElement(child, { currentUser, users, inventory, orders } as any);
-    }
-    // For reports page, pass only currentUser if needed, or no props.
-    if (React.isValidElement(child) && !shouldInjectProps) {
-      return React.cloneElement(child, { currentUser } as any);
+    // For all pages, pass the currentUser
+    if (React.isValidElement(child)) {
+      const propsToInject: any = { currentUser };
+
+      // For pages other than reports, pass all the data
+      if(shouldInjectProps) {
+        propsToInject.users = users;
+        propsToInject.inventory = inventory;
+        propsToInject.orders = orders;
+      }
+      return React.cloneElement(child, propsToInject);
     }
     return child;
   });
 
-  if (loading || !user || dataLoading) {
+  if (loading || !user || (shouldInjectProps && dataLoading)) {
     return (
         <div className="flex min-h-screen">
             <div className="hidden md:flex flex-col w-64 border-r p-4 space-y-4">
