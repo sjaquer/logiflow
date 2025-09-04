@@ -26,7 +26,7 @@ export interface Order {
   };
   estado_actual: OrderStatus;
   cliente: {
-    id_cliente: string;
+    id_cliente?: string; // Made optional for new clients
     nombres: string;
     dni: string | null;
     celular: string;
@@ -43,6 +43,7 @@ export interface Order {
   envio: {
     tipo: ShippingType;
     provincia: string;
+    distrito: string;
     direccion: string;
     courier: Courier;
     agencia_shalom: string | null;

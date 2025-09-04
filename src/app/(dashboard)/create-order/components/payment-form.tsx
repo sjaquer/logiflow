@@ -1,0 +1,84 @@
+'use client';
+import { useForm, useWatch } from 'react-hook-form';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PAYMENT_METHODS } from '@/lib/constants';
+import type { CreateOrderFormValues } from '../types';
+
+interface PaymentFormProps {
+  form: ReturnType<typeof useForm<CreateOrderFormValues>>;
+}
+
+export function PaymentForm({ form }: PaymentFormProps) {
+
+  const subtotal = useWatch({ control: form.control, name: 'pago.subtotal' });
+  const shippingCost = useWatch({ control: form.control, name: 'envio.costo_envio' });
+  const total = subtotal + shippingCost;
+  
+  form.setValue('pago.monto_total', total);
+  
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>3. Pago y Resumen</CardTitle>
+        <CardDescription>
+          Define los detalles finales del pago y confirma el pedido.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="space-y-6">
+           <FormField
+              control={form.control}
+              name="pago.metodo_pago_previsto"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Método de Pago</FormLabel>
+                   <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecciona un método de pago" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PAYMENT_METHODS.map(method => (
+                            <SelectItem key={method} value={method}>{method}</SelectItem>
+                          ))}
+                        </SelectContent>
+                    </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+                control={form.control}
+                name="envio.costo_envio"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Costo de Envío (S/)</FormLabel>
+                        <FormControl><Input {...field} type="number" step="0.10" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
+        <div className="bg-muted/50 p-6 rounded-lg space-y-4">
+            <h4 className="font-medium text-lg border-b pb-2">Resumen del Pedido</h4>
+            <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Subtotal de productos:</span>
+                <span className="font-medium">S/ {subtotal.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Costo de envío:</span>
+                <span className="font-medium">S/ {shippingCost.toFixed(2)}</span>
+            </div>
+            <div className="flex justify-between text-lg font-bold border-t pt-2">
+                <span>Total a Pagar:</span>
+                <span>S/ {total.toFixed(2)}</span>
+            </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

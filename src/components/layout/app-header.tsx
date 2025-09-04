@@ -17,6 +17,8 @@ export function AppHeader({ user, inventory, orders }: AppHeaderProps) {
     switch (pathname) {
       case '/orders':
         return 'Pedidos';
+      case '/create-order':
+        return 'Crear Pedido';
       case '/inventory':
         return 'Inventario';
       case '/reports':

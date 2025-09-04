@@ -159,6 +159,18 @@ async function seedInventory() {
     return dataWithSku;
 }
 
+async function seedClients() {
+    const clientData = orders.map(order => ({
+        ...order.cliente,
+        direccion: order.envio.direccion,
+        distrito: order.envio.distrito || '',
+        provincia: order.envio.provincia
+    }));
+    // Remove duplicates
+    const uniqueClients = Array.from(new Map(clientData.map(c => [c.dni, c])).values());
+    await seedCollection('clients', uniqueClients, 'dni');
+}
+
 async function seedOrders(userIds: string[], inventoryItems: any[]) {
     console.log(`\nSeeding Orders...`);
     if (userIds.length === 0) {
@@ -235,6 +247,7 @@ async function main() {
   try {
     const userIds = await seedUsers();
     const seededInventory = await seedInventory();
+    await seedClients();
     await seedOrders(userIds, seededInventory);
     console.log('\n--- Firestore Seeding Complete! ---');
     console.log('You can now run `npm run dev` to start the application.');
