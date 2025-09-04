@@ -30,9 +30,11 @@ export default function ReportsPage({ orders, users, inventory }: ReportsPagePro
     return filterOrders(orders, filters);
   }, [orders, filters]);
 
+  // Si los datos aún no están listos, muestra un esqueleto de carga.
   if (!orders || !users || !inventory) {
     return (
-      <div className="grid gap-6 p-4 md:p-6 lg:p-8">
+      <div className="flex flex-col gap-6 p-4 md:p-6 lg:p-8">
+        <Skeleton className="h-14 w-full" />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Skeleton className="h-24" />
           <Skeleton className="h-24" />
@@ -82,7 +84,7 @@ export default function ReportsPage({ orders, users, inventory }: ReportsPagePro
           <CardHeader>
             <CardTitle>Análisis de Ventas</CardTitle>
             <CardDescription>Desglose del monto total de ventas por diferentes entidades.</CardDescription>
-          </CardHeader>
+          </Header>
           <CardContent>
             <SalesByEntityChart orders={filteredOrders} users={users} />
           </CardContent>
