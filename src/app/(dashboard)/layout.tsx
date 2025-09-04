@@ -16,6 +16,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -26,24 +28,24 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      const unsub = listenToCollection<User>('users', (usersData) => {
+      const unsubs: (() => void)[] = [];
+      
+      unsubs.push(listenToCollection<User>('users', (usersData) => {
         const foundUser = usersData.find(u => u.email === user.email) || null;
         setCurrentUser(foundUser);
+        // We consider data loaded once we have the current user info.
         if (foundUser) {
           setDataLoading(false);
         }
-      });
-      return () => unsub();
+      }));
+
+      // Listen to other collections needed for the header/notifications
+      unsubs.push(listenToCollection<InventoryItem>('inventory', setInventory));
+      unsubs.push(listenToCollection<Order>('orders', setOrders));
+
+      return () => unsubs.forEach(unsub => unsub());
     }
   }, [user]);
-  
-  const childrenWithProps = React.Children.map(children, child => {
-    if (React.isValidElement(child)) {
-      // Cloning the element and adding the currentUser prop
-      return React.cloneElement(child, { currentUser } as { currentUser: User | null });
-    }
-    return child;
-  });
 
   if (authLoading || dataLoading || !currentUser) {
     return (
@@ -67,10 +69,9 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen bg-muted/40">
         <AppSidebar currentUser={currentUser} />
         <div className="flex flex-col flex-1 min-w-0">
-          {/* We pass an empty array for orders/inventory to header, as they are not critical for it */}
-          <AppHeader user={currentUser} inventory={[]} orders={[]} />
+          <AppHeader user={currentUser} inventory={inventory} orders={orders} />
           <main className="flex-1 flex flex-col overflow-auto">
-            {childrenWithProps}
+            {children}
           </main>
         </div>
       </div>

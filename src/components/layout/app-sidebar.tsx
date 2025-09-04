@@ -35,7 +35,6 @@ const menuItems: { href: string; label: string; icon: React.ElementType; require
   { href: '/orders', label: 'Pedidos', icon: LayoutDashboard },
   { href: '/inventory', label: 'Inventario', icon: Box },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
-  { href: '/users', label: 'Usuarios', icon: Users, requiredRoles: ['Admin', 'Desarrolladores'] },
 ];
 
 export function AppSidebar({ currentUser }: AppSidebarProps) {

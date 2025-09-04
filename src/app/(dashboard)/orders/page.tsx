@@ -22,37 +22,27 @@ export default function OrdersPage() {
   
   useEffect(() => {
     setLoading(true);
-    let ordersLoaded = false;
-    let usersLoaded = false;
-    let inventoryLoaded = false;
-
-    const checkLoading = () => {
-        if (ordersLoaded && usersLoaded && inventoryLoaded) {
-            setLoading(false);
-        }
-    }
-
-    const unsubscribers = [
+    
+    const unsubs = [
       listenToCollection<Order>('orders', (data) => {
         data.sort((a, b) => new Date(b.fechas_clave.creacion).getTime() - new Date(a.fechas_clave.creacion).getTime());
         setOrders(data);
-        ordersLoaded = true;
-        checkLoading();
       }),
       listenToCollection<User>('users', (data) => {
           setUsers(data);
-          usersLoaded = true;
-          checkLoading();
       }),
       listenToCollection<InventoryItem>('inventory', (data) => {
           setInventory(data);
-          inventoryLoaded = true;
-          checkLoading();
       }),
     ];
+    
+    // A simple way to set loading to false once all initial data streams have likely fired once.
+    // For a more robust solution, you might check if each state array has length.
+    const timer = setTimeout(() => setLoading(false), 1500); 
 
     return () => {
-      unsubscribers.forEach(unsubscribe => unsubscribe());
+      clearTimeout(timer);
+      unsubs.forEach(unsubscribe => unsubscribe());
     };
   }, []);
 
