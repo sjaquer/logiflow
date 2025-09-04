@@ -5,7 +5,7 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { User, InventoryItem, Order } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   
   const [users, setUsers] = useState<User[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -34,20 +35,15 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         listenToCollection<User>('users', setUsers),
         listenToCollection<InventoryItem>('inventory', setInventory),
         listenToCollection<Order>('orders', (ordersData) => {
-            // Sort orders by creation date descending
             ordersData.sort((a, b) => new Date(b.fechas_clave.creacion).getTime() - new Date(a.fechas_clave.creacion).getTime());
             setOrders(ordersData);
         }),
       ];
       
-      // Check if initial data has been loaded
-      // This is a simple check; a more robust solution might use Promise.all
-      // or track loading state for each collection.
       const initialLoadCheck = setTimeout(() => {
           setDataLoading(false);
-      }, 1500); // Wait for 1.5 seconds for data to initially load.
+      }, 1500);
 
-      // Cleanup function to unsubscribe from listeners on component unmount
       return () => {
         unsubscribers.forEach(unsubscribe => unsubscribe());
         clearTimeout(initialLoadCheck);
@@ -57,10 +53,16 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   
   const currentUser = users.find(u => u.email === user?.email) || null;
   
+  // Do not pass props to the reports page, it will handle its own data fetching
+  const shouldInjectProps = !pathname.startsWith('/reports');
+
   const childrenWithProps = React.Children.map(children, child => {
-    if (React.isValidElement(child)) {
-      // Clone element and add all data as props
+    if (React.isValidElement(child) && shouldInjectProps) {
       return React.cloneElement(child, { currentUser, users, inventory, orders } as any);
+    }
+    // For reports page, pass only currentUser if needed, or no props.
+    if (React.isValidElement(child) && !shouldInjectProps) {
+      return React.cloneElement(child, { currentUser } as any);
     }
     return child;
   });
