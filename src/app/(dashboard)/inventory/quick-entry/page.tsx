@@ -3,6 +3,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import Link from 'next/link';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,7 +15,7 @@ import { useToast } from '@/hooks/use-toast';
 import { collection, query, where, getDocs, doc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import type { InventoryItem } from '@/lib/types';
-import { Loader2, Minus, Plus, Search, Edit, Trash2 } from 'lucide-react';
+import { Loader2, Minus, Plus, Search, Edit, Trash2, ArrowLeft } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { SHOPS } from '@/lib/constants';
 
@@ -185,190 +186,200 @@ export default function QuickEntryPage() {
   };
   
   return (
-    <div className="grid md:grid-cols-2 gap-8 p-4 md:p-6 lg:p-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Búsqueda de Producto</CardTitle>
-          <CardDescription>Ingrese el código del SKU para añadirlo a la lista de edición.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-             <form onSubmit={handleManualSearch} className="flex w-full items-center space-x-2">
-                <div className="flex-grow grid grid-cols-[auto_1fr] items-center rounded-md border border-input focus-within:ring-2 focus-within:ring-ring">
-                  <span className="pl-3 text-sm font-medium text-muted-foreground">SKU-</span>
-                  <Input
-                    type="text"
-                    placeholder="0001"
-                    value={skuNumber}
-                    onChange={(e) => setSkuNumber(e.target.value.replace(/[^0-9]/g, ''))}
-                    className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                  />
-                </div>
-                <Button type="submit" disabled={isSearching || !skuNumber}>
-                  {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                  Buscar y Añadir
-                </Button>
-             </form>
-             <div className="text-sm text-muted-foreground pt-4">
-                <p>Use este panel para buscar productos por su SKU y agregarlos a la lista de "Editor Rápido". Una vez en la lista, podrá modificar sus datos y guardarlos todos a la vez.</p>
+    <div className="space-y-6 p-4 md:p-6 lg:p-8">
+      <div className="flex items-center gap-4">
+        <Button asChild variant="outline" size="icon">
+          <Link href="/inventory">
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <h1 className="text-2xl font-semibold">Editor Rápido de Inventario</h1>
+      </div>
+      <div className="grid md:grid-cols-2 gap-8">
+        <Card>
+          <CardHeader>
+            <CardTitle>Búsqueda de Producto</CardTitle>
+            <CardDescription>Ingrese el código del SKU para añadirlo a la lista de edición.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <form onSubmit={handleManualSearch} className="flex w-full items-center space-x-2">
+                  <div className="flex-grow grid grid-cols-[auto_1fr] items-center rounded-md border border-input focus-within:ring-2 focus-within:ring-ring">
+                    <span className="pl-3 text-sm font-medium text-muted-foreground">SKU-</span>
+                    <Input
+                      type="text"
+                      placeholder="0001"
+                      value={skuNumber}
+                      onChange={(e) => setSkuNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                      className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                    />
+                  </div>
+                  <Button type="submit" disabled={isSearching || !skuNumber}>
+                    {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    Buscar y Añadir
+                  </Button>
+              </form>
+              <div className="text-sm text-muted-foreground pt-4">
+                  <p>Use este panel para buscar productos por su SKU y agregarlos a la lista de "Editor Rápido". Una vez en la lista, podrá modificar sus datos y guardarlos todos a la vez.</p>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Card className="flex flex-col">
-        <CardHeader>
-          <CardTitle>Editor Rápido de Inventario</CardTitle>
-          <CardDescription>Productos añadidos listos para editar. Los cambios se guardarán en lote.</CardDescription>
-        </CardHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(processBatchUpdate)} className="flex flex-col flex-grow">
-            <CardContent className="flex-grow space-y-4 overflow-y-auto">
-              {fields.length === 0 ? (
-                <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full rounded-md border border-dashed p-8">
-                    <Edit className="w-12 h-12 mb-4" />
-                    <p>Busque un producto para comenzar a editar.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {fields.map((field, index) => (
-                    <div key={field.id} className="p-4 rounded-md border bg-muted/50 space-y-4">
-                       <div className="flex justify-between items-start">
-                           <div>
+          </CardContent>
+        </Card>
+        
+        <Card className="flex flex-col">
+          <CardHeader>
+            <CardTitle>Lista de Edición</CardTitle>
+            <CardDescription>Productos añadidos listos para editar. Los cambios se guardarán en lote.</CardDescription>
+          </CardHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(processBatchUpdate)} className="flex flex-col flex-grow">
+              <CardContent className="flex-grow space-y-4 overflow-y-auto">
+                {fields.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full rounded-md border border-dashed p-8">
+                      <Edit className="w-12 h-12 mb-4" />
+                      <p>Busque un producto para comenzar a editar.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {fields.map((field, index) => (
+                      <div key={field.id} className="p-4 rounded-md border bg-muted/50 space-y-4">
+                        <div className="flex justify-between items-start">
+                            <div>
                                 <p className="font-semibold text-lg">{field.sku}</p>
                                 <p className="text-sm text-muted-foreground">
                                     Stock Actual: {field.stock_actual}
                                     {field.isNew && <span className="text-primary font-medium ml-2">(Nuevo)</span>}
                                 </p>
-                           </div>
-                           <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
-                               <Trash2 className="w-4 h-4 text-destructive" />
-                           </Button>
-                       </div>
-                       
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           <FormField
-                                control={form.control}
-                                name={`items.${index}.nombre`}
-                                render={({ field }) => (
-                                    <FormItem className="md:col-span-2">
-                                        <FormLabel>Nombre del Producto</FormLabel>
-                                        <FormControl><Input {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                           />
-                            <FormField
-                                control={form.control}
-                                name={`items.${index}.precio_compra`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Precio Compra (S/)</FormLabel>
-                                        <FormControl><Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                           />
-                           <FormField
-                                control={form.control}
-                                name={`items.${index}.precio_venta`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Precio Venta (S/)</FormLabel>
-                                        <FormControl><Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                           />
-                           <FormField
-                                control={form.control}
-                                name={`items.${index}.tienda`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                      <FormLabel>Tienda</FormLabel>
-                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                        <FormControl>
-                                          <SelectTrigger>
-                                            <SelectValue placeholder="Seleccione una tienda" />
-                                          </SelectTrigger>
-                                        </FormControl>
-                                        <SelectContent>
-                                          {SHOPS.map((shop) => (
-                                            <SelectItem key={shop} value={shop}>{shop}</SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
-                                      <FormMessage />
-                                    </FormItem>
-                                )}
-                           />
-                           <FormField
-                                control={form.control}
-                                name={`items.${index}.proveedor_nombre`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Proveedor</FormLabel>
-                                        <FormControl><Input {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                           />
-                           <FormField
-                                control={form.control}
-                                name={`items.${index}.ubicacion_almacen`}
-                                render={({ field }) => (
-                                    <FormItem className="md:col-span-2">
-                                        <FormLabel>Ubicación en Almacén</FormLabel>
-                                        <FormControl><Input {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                           />
+                            </div>
+                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                                <Trash2 className="w-4 h-4 text-destructive" />
+                            </Button>
                         </div>
                         
-                        <Separator />
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <FormField
+                                  control={form.control}
+                                  name={`items.${index}.nombre`}
+                                  render={({ field }) => (
+                                      <FormItem className="md:col-span-2">
+                                          <FormLabel>Nombre del Producto</FormLabel>
+                                          <FormControl><Input {...field} /></FormControl>
+                                          <FormMessage />
+                                      </FormItem>
+                                  )}
+                            />
+                              <FormField
+                                  control={form.control}
+                                  name={`items.${index}.precio_compra`}
+                                  render={({ field }) => (
+                                      <FormItem>
+                                          <FormLabel>Precio Compra (S/)</FormLabel>
+                                          <FormControl><Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                                          <FormMessage />
+                                      </FormItem>
+                                  )}
+                            />
+                            <FormField
+                                  control={form.control}
+                                  name={`items.${index}.precio_venta`}
+                                  render={({ field }) => (
+                                      <FormItem>
+                                          <FormLabel>Precio Venta (S/)</FormLabel>
+                                          <FormControl><Input {...field} type="number" step="0.01" onChange={e => field.onChange(parseFloat(e.target.value) || 0)} /></FormControl>
+                                          <FormMessage />
+                                      </FormItem>
+                                  )}
+                            />
+                            <FormField
+                                  control={form.control}
+                                  name={`items.${index}.tienda`}
+                                  render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel>Tienda</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                          <FormControl>
+                                            <SelectTrigger>
+                                              <SelectValue placeholder="Seleccione una tienda" />
+                                            </SelectTrigger>
+                                          </FormControl>
+                                          <SelectContent>
+                                            {SHOPS.map((shop) => (
+                                              <SelectItem key={shop} value={shop}>{shop}</SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                      </FormItem>
+                                  )}
+                            />
+                            <FormField
+                                  control={form.control}
+                                  name={`items.${index}.proveedor_nombre`}
+                                  render={({ field }) => (
+                                      <FormItem>
+                                          <FormLabel>Proveedor</FormLabel>
+                                          <FormControl><Input {...field} /></FormControl>
+                                          <FormMessage />
+                                      </FormItem>
+                                  )}
+                            />
+                            <FormField
+                                  control={form.control}
+                                  name={`items.${index}.ubicacion_almacen`}
+                                  render={({ field }) => (
+                                      <FormItem className="md:col-span-2">
+                                          <FormLabel>Ubicación en Almacén</FormLabel>
+                                          <FormControl><Input {...field} /></FormControl>
+                                          <FormMessage />
+                                      </FormItem>
+                                  )}
+                            />
+                          </div>
+                          
+                          <Separator />
 
-                        <div className="flex items-end justify-between gap-4">
-                            <div>
-                                <FormLabel>Ajuste de Stock</FormLabel>
-                                <div className="flex items-center gap-1 mt-2">
-                                     <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => adjustStock(index, -1)}>
-                                        <Minus className="h-4 w-4" />
-                                    </Button>
-                                    <FormField
-                                        control={form.control}
-                                        name={`items.${index}.ajuste`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormControl>
-                                                     <Input {...field} type="number" className="w-20 h-8 text-center" onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
-                                                </FormControl>
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => adjustStock(index, 1)}>
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </div>
-                            </div>
-                             <p className="text-sm">
-                                Stock Final: <span className="font-bold">{ form.watch(`items.${index}.stock_actual`) + form.watch(`items.${index}.ajuste`) }</span>
-                            </p>
-                        </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-            <CardFooter className="pt-6">
-              <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || fields.length === 0}>
-                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Guardar Cambios en Lote
-              </Button>
-            </CardFooter>
-          </form>
-        </Form>
-      </Card>
+                          <div className="flex items-end justify-between gap-4">
+                              <div>
+                                  <FormLabel>Ajuste de Stock</FormLabel>
+                                  <div className="flex items-center gap-1 mt-2">
+                                      <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => adjustStock(index, -1)}>
+                                          <Minus className="h-4 w-4" />
+                                      </Button>
+                                      <FormField
+                                          control={form.control}
+                                          name={`items.${index}.ajuste`}
+                                          render={({ field }) => (
+                                              <FormItem>
+                                                  <FormControl>
+                                                      <Input {...field} type="number" className="w-20 h-8 text-center" onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                                  </FormControl>
+                                              </FormItem>
+                                          )}
+                                      />
+                                      <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => adjustStock(index, 1)}>
+                                          <Plus className="h-4 w-4" />
+                                      </Button>
+                                  </div>
+                              </div>
+                              <p className="text-sm">
+                                  Stock Final: <span className="font-bold">{ form.watch(`items.${index}.stock_actual`) + form.watch(`items.${index}.ajuste`) }</span>
+                              </p>
+                          </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+              <CardFooter className="pt-6">
+                <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || fields.length === 0}>
+                  {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Guardar Cambios en Lote
+                </Button>
+              </CardFooter>
+            </form>
+          </Form>
+        </Card>
+      </div>
     </div>
   );
 }

@@ -13,18 +13,18 @@ interface InventoryTableProps {
 }
 
 export function InventoryTable({ inventory, requestSort, sortConfig }: InventoryTableProps) {
-  const getStockStatus = (item: InventoryItem): { text: string; variant: 'success' | 'destructive' | 'secondary' | 'outline' } => {
+  const getStockStatus = (item: InventoryItem): { text: string; variant: 'success' | 'destructive' | 'secondary' | 'outline' | 'accent' } => {
     if (item.estado === 'DESCONTINUADO') {
       return { text: 'Descontinuado', variant: 'outline' };
     }
     if (item.stock_actual === 0) {
       return { text: 'Sin Stock', variant: 'destructive' };
     }
-    if (item.stock_actual <= item.stock_minimo) {
-      return { text: 'Stock Bajo', variant: 'secondary' }; 
-    }
-     if (item.stock_actual < 5) {
+    if (item.stock_actual < 5) {
       return { text: 'Stock Crítico', variant: 'destructive' };
+    }
+    if (item.stock_actual <= item.stock_minimo) {
+      return { text: 'Stock Bajo', variant: 'accent' }; 
     }
     return { text: 'En Stock', variant: 'success' };
   };
