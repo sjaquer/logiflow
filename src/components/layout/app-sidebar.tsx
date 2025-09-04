@@ -34,7 +34,7 @@ interface AppSidebarProps {
 
 const menuItems: { href: string; label: string; icon: React.ElementType; requiredRoles?: UserRole[] }[] = [
   { href: '/orders', label: 'Pedidos', icon: LayoutDashboard },
-  { href: '/create-order', label: 'Crear Pedido', icon: PlusCircle, requiredRoles: ['Call Center'] },
+  { href: '/create-order', label: 'Crear Pedido', icon: PlusCircle, requiredRoles: ['Call Center', 'Admin', 'Desarrolladores'] },
   { href: '/inventory', label: 'Inventario', icon: Box },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
 ];

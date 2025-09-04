@@ -166,10 +166,15 @@ async function seedClients() {
         distrito: order.envio.distrito || '',
         provincia: order.envio.provincia
     }));
-    // Remove duplicates
+    // Remove duplicates based on DNI
     const uniqueClients = Array.from(new Map(clientData.map(c => [c.dni, c])).values());
-    await seedCollection('clients', uniqueClients, 'dni');
+    if (uniqueClients.length > 0) {
+      await seedCollection('clients', uniqueClients, 'dni');
+    } else {
+      console.log('No unique clients found in orders to seed.');
+    }
 }
+
 
 async function seedOrders(userIds: string[], inventoryItems: any[]) {
     console.log(`\nSeeding Orders...`);
@@ -184,6 +189,11 @@ async function seedOrders(userIds: string[], inventoryItems: any[]) {
 
     const allUsers = await db.collection('users').get();
     const userDocs = allUsers.docs.map(doc => doc.data() as User);
+    
+    if (userDocs.length === 0) {
+        console.log('No users found in Firestore to assign orders. Skipping order seeding.');
+        return;
+    }
 
     const ordersWithDetails = orders.map((order, index) => {
         const id_pedido = `PED-${String(new Date().getFullYear())}-${String(index + 1).padStart(5, '0')}`;

@@ -11,7 +11,7 @@ import { useAuth } from '@/context/auth-context';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import type { InventoryItem, Order, User, Shop, PaymentMethod, Courier } from '@/lib/types';
+import type { InventoryItem, Order, User, Shop, PaymentMethod, Courier, UserRole } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from './types';
 import { SHOPS } from '@/lib/constants';
 
@@ -52,6 +52,8 @@ const createOrderSchema = z.object({
         nota_pedido: z.string().optional(),
     })
 });
+
+const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
 export default function CreateOrderPage() {
     const { user: authUser } = useAuth();
@@ -121,7 +123,7 @@ export default function CreateOrderPage() {
                 id_usuario: currentUser.id_usuario,
                 nombre_usuario: currentUser.nombre,
                 accion: 'Creación de Pedido',
-                detalle: `Pedido creado por Call Center.`
+                detalle: `Pedido creado por ${currentUser.rol}.`
             }],
             fechas_clave: {
                 creacion: new Date().toISOString(),
@@ -166,13 +168,13 @@ export default function CreateOrderPage() {
         }
     };
     
-    if (!currentUser || currentUser.rol !== 'Call Center') {
+    if (!currentUser || !ALLOWED_ROLES.includes(currentUser.rol)) {
         return (
             <div className="flex-1 flex items-center justify-center">
                  <div className="text-center">
                     <h3 className="text-lg font-semibold">Acceso Denegado</h3>
                     <p className="text-sm text-muted-foreground">
-                        Esta sección es exclusiva para usuarios del rol Call Center.
+                        Esta sección es exclusiva para usuarios autorizados.
                     </p>
                 </div>
             </div>
