@@ -3,9 +3,8 @@ import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Calendar as CalendarIcon, ChevronDown, Filter } from 'lucide-react';
-import type { User, OrderStatus } from '@/lib/types';
-import type { Filters } from './kanban-board';
+import { Calendar as CalendarIcon, ChevronDown, Filter, X } from 'lucide-react';
+import type { User, Filters } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -37,7 +36,7 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
   const hasActiveFilters = Object.values(filters).some(val => Array.isArray(val) ? val.length > 0 : val.from || val.to);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 p-4 md:px-6 lg:px-8 border-b">
+    <div className="flex flex-wrap items-center gap-2 p-4 md:px-6 lg:px-8 border-b bg-card">
       <Filter className="w-5 h-5 text-muted-foreground" />
       <span className="font-semibold text-sm">Filtros:</span>
 
@@ -135,14 +134,14 @@ export function OrderFilters({ users, filters, onFilterChange, orderCount }: Ord
           <Calendar
             locale={es}
             mode="range"
-            selected={{from: filters.dateRange.from!, to: filters.dateRange.to}}
+            selected={{from: filters.dateRange.from, to: filters.dateRange.to}}
             onSelect={(range) => onFilterChange({...filters, dateRange: {from: range?.from, to: range?.to}})}
             numberOfMonths={2}
           />
         </PopoverContent>
       </Popover>
 
-      {hasActiveFilters && <Button variant="ghost" size="sm" onClick={clearFilters}>Limpiar</Button>}
+      {hasActiveFilters && <Button variant="ghost" size="sm" onClick={clearFilters}><X className="mr-2 h-4 w-4"/>Limpiar</Button>}
 
       <div className="ml-auto text-sm text-muted-foreground">
         Mostrando <span className="font-semibold text-foreground">{orderCount}</span> pedidos

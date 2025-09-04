@@ -132,3 +132,14 @@ export interface User {
   };
   avatar?: string;
 }
+
+
+// --- FILTERS ---
+export interface Filters {
+  shops: Shop[];
+  assignedUserIds: string[];
+  statuses: OrderStatus[];
+  paymentMethods: PaymentMethod[];
+  couriers: Courier[];
+  dateRange: { from?: Date; to?: Date };
+}

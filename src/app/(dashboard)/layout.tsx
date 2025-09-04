@@ -3,12 +3,12 @@
 import * as React from 'react';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
-import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
+import { SidebarProvider } from '@/components/ui/sidebar';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { User, InventoryItem, Order } from '@/lib/types';
-import { getCollectionData } from '@/lib/firebase/firestore-client';
+import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
@@ -28,19 +28,30 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      const fetchData = async () => {
-        setDataLoading(true);
-        const [usersData, inventoryData, ordersData] = await Promise.all([
-          getCollectionData<User>('users'),
-          getCollectionData<InventoryItem>('inventory'),
-          getCollectionData<Order>('orders')
-        ]);
-        setUsers(usersData);
-        setInventory(inventoryData);
-        setOrders(ordersData);
-        setDataLoading(false);
+      setDataLoading(true);
+      
+      const unsubscribers = [
+        listenToCollection<User>('users', setUsers),
+        listenToCollection<InventoryItem>('inventory', setInventory),
+        listenToCollection<Order>('orders', (ordersData) => {
+            // Sort orders by creation date descending
+            ordersData.sort((a, b) => new Date(b.fechas_clave.creacion).getTime() - new Date(a.fechas_clave.creacion).getTime());
+            setOrders(ordersData);
+        }),
+      ];
+      
+      // Check if initial data has been loaded
+      // This is a simple check; a more robust solution might use Promise.all
+      // or track loading state for each collection.
+      const initialLoadCheck = setTimeout(() => {
+          setDataLoading(false);
+      }, 1500); // Wait for 1.5 seconds for data to initially load.
+
+      // Cleanup function to unsubscribe from listeners on component unmount
+      return () => {
+        unsubscribers.forEach(unsubscribe => unsubscribe());
+        clearTimeout(initialLoadCheck);
       };
-      fetchData();
     }
   }, [user]);
   
@@ -48,7 +59,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   
   const childrenWithProps = React.Children.map(children, child => {
     if (React.isValidElement(child)) {
-      return React.cloneElement(child, { currentUser } as { currentUser: User | null });
+      // Clone element and add all data as props
+      return React.cloneElement(child, { currentUser, users, inventory, orders } as any);
     }
     return child;
   });
@@ -76,7 +88,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <AppSidebar currentUser={currentUser} />
         <div className="flex flex-col flex-1 min-w-0">
           <AppHeader user={currentUser} inventory={inventory} orders={orders} />
-          <main className="flex-1 flex flex-col p-4 md:p-6 lg:p-8 overflow-auto">
+          <main className="flex-1 flex flex-col overflow-auto">
             {childrenWithProps}
           </main>
         </div>
