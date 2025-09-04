@@ -30,7 +30,6 @@ export default function ReportsPage({ orders, users, inventory }: ReportsPagePro
     return filterOrders(orders, filters);
   }, [orders, filters]);
 
-  // Si los datos aún no están listos, muestra un esqueleto de carga.
   if (!orders || !users || !inventory) {
     return (
       <div className="flex flex-col gap-6 p-4 md:p-6 lg:p-8">
