@@ -35,7 +35,7 @@ const quickEntryFormSchema = z.object({
 type QuickEntryFormValues = z.infer<typeof quickEntryFormSchema>;
 
 export default function QuickEntryPage() {
-  const [skuToSearch, setSkuToSearch] = useState<string>('');
+  const [skuNumber, setSkuNumber] = useState<string>('');
   const [isSearching, setIsSearching] = useState(false);
   const { toast } = useToast();
 
@@ -59,7 +59,7 @@ export default function QuickEntryPage() {
     if (existingItemIndex > -1) {
        toast({ title: "Producto ya en la lista", description: "El producto ya está en la lista de abajo para ser ajustado." });
        setIsSearching(false);
-       setSkuToSearch('');
+       setSkuNumber('');
        return;
     }
 
@@ -107,8 +107,15 @@ export default function QuickEntryPage() {
       toast({ variant: "destructive", title: "Error de Búsqueda", description: "No se pudo buscar el producto." });
     } finally {
       setIsSearching(false);
-      setSkuToSearch('');
+      setSkuNumber('');
     }
+  };
+
+  const handleManualSearch = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (skuNumber) {
+          findProductBySku(`SKU-${skuNumber}`);
+      }
   };
 
   const processBatchUpdate = async (data: QuickEntryFormValues) => {
@@ -180,24 +187,26 @@ export default function QuickEntryPage() {
       <Card>
         <CardHeader>
           <CardTitle>Búsqueda de Producto</CardTitle>
-          <CardDescription>Ingrese el SKU manualmente para añadirlo a la lista de edición.</CardDescription>
+          <CardDescription>Ingrese el código del SKU para añadirlo a la lista de edición.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            <div className="flex w-full items-center space-x-2">
-               <form onSubmit={(e) => { e.preventDefault(); findProductBySku(skuToSearch);}} className="flex-grow flex items-center space-x-2">
+             <form onSubmit={handleManualSearch} className="flex w-full items-center space-x-2">
+                <div className="flex-grow grid grid-cols-[auto_1fr] items-center rounded-md border border-input focus-within:ring-2 focus-within:ring-ring">
+                  <span className="pl-3 text-sm font-medium text-muted-foreground">SKU-</span>
                   <Input
                     type="text"
-                    placeholder="Ingrese SKU..."
-                    value={skuToSearch}
-                    onChange={(e) => setSkuToSearch(e.target.value)}
+                    placeholder="0001"
+                    value={skuNumber}
+                    onChange={(e) => setSkuNumber(e.target.value.replace(/[^0-9]/g, ''))}
+                    className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
                   />
-                  <Button type="submit" disabled={isSearching || !skuToSearch}>
-                    {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    Buscar y Añadir
-                  </Button>
-               </form>
-            </div>
+                </div>
+                <Button type="submit" disabled={isSearching || !skuNumber}>
+                  {isSearching ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                  Buscar y Añadir
+                </Button>
+             </form>
              <div className="text-sm text-muted-foreground pt-4">
                 <p>Use este panel para buscar productos por su SKU y agregarlos a la lista de "Editor Rápido". Una vez en la lista, podrá modificar sus datos y guardarlos todos a la vez.</p>
             </div>
