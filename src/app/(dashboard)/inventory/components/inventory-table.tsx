@@ -21,7 +21,10 @@ export function InventoryTable({ inventory, requestSort, sortConfig }: Inventory
       return { text: 'Sin Stock', variant: 'destructive' };
     }
     if (item.stock_actual <= item.stock_minimo) {
-      return { text: 'Stock Bajo', variant: 'secondary' }; // 'warning' color
+      return { text: 'Stock Bajo', variant: 'secondary' }; 
+    }
+     if (item.stock_actual < 5) {
+      return { text: 'Stock Crítico', variant: 'destructive' };
     }
     return { text: 'En Stock', variant: 'success' };
   };

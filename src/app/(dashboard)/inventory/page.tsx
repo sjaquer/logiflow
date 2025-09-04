@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Edit, Settings, Search } from 'lucide-react';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { SHOPS } from '@/lib/constants';
 
 export type SortConfig = {
   key: keyof InventoryItem | 'precios.venta' | 'precios.compra';
@@ -89,16 +91,40 @@ export default function InventoryPage() {
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
             <CardTitle>Gestión de Inventario</CardTitle>
             <CardDescription>Ver y gestionar stock, ubicación, precios e información de proveedores.</CardDescription>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" disabled>
-                <Settings className="mr-2 h-4 w-4" />
-                Gestionar Tiendas
-            </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="outline">
+                    <Settings className="mr-2 h-4 w-4" />
+                    Gestionar Tiendas
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Gestionar Tiendas</SheetTitle>
+                  <SheetDescription>
+                    Aquí puedes ver la lista de tiendas actualmente en el sistema.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="py-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Para agregar o eliminar una tienda, por favor modifica la lista en el siguiente archivo de configuración del proyecto:
+                  </p>
+                  <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
+                    src/lib/constants.ts
+                  </code>
+                   <ul className="mt-4 list-disc list-inside space-y-2">
+                      {SHOPS.map(shop => <li key={shop}>{shop}</li>)}
+                   </ul>
+                </div>
+              </SheetContent>
+            </Sheet>
+            
             <Button asChild>
               <Link href="/inventory/quick-entry">
                 <Edit className="mr-2 h-4 w-4" />
@@ -119,11 +145,13 @@ export default function InventoryPage() {
                     />
                 </div>
             </div>
-          <InventoryTable 
-            inventory={sortedAndFilteredInventory} 
-            requestSort={requestSort}
-            sortConfig={sortConfig}
-            />
+            <div className="overflow-x-auto">
+              <InventoryTable 
+                inventory={sortedAndFilteredInventory} 
+                requestSort={requestSort}
+                sortConfig={sortConfig}
+                />
+            </div>
         </CardContent>
       </Card>
     </div>
