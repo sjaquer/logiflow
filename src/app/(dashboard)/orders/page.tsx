@@ -22,21 +22,37 @@ export default function OrdersPage() {
   
   useEffect(() => {
     setLoading(true);
+    let ordersLoaded = false;
+    let usersLoaded = false;
+    let inventoryLoaded = false;
+
+    const checkLoading = () => {
+        if (ordersLoaded && usersLoaded && inventoryLoaded) {
+            setLoading(false);
+        }
+    }
+
     const unsubscribers = [
       listenToCollection<Order>('orders', (data) => {
         data.sort((a, b) => new Date(b.fechas_clave.creacion).getTime() - new Date(a.fechas_clave.creacion).getTime());
         setOrders(data);
+        ordersLoaded = true;
+        checkLoading();
       }),
-      listenToCollection<User>('users', setUsers),
-      listenToCollection<InventoryItem>('inventory', setInventory),
+      listenToCollection<User>('users', (data) => {
+          setUsers(data);
+          usersLoaded = true;
+          checkLoading();
+      }),
+      listenToCollection<InventoryItem>('inventory', (data) => {
+          setInventory(data);
+          inventoryLoaded = true;
+          checkLoading();
+      }),
     ];
-    
-    // This is a simplified check. A more robust solution might wait for all listeners to fire once.
-    const timer = setTimeout(() => setLoading(false), 1500);
 
     return () => {
       unsubscribers.forEach(unsubscribe => unsubscribe());
-      clearTimeout(timer);
     };
   }, []);
 

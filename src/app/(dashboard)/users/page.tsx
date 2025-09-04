@@ -32,9 +32,18 @@ export default function UsersPage({ currentUser }: UsersPageProps) {
   };
 
   if (!currentUser) {
+      // This might be shown briefly while currentUser is loading from the layout
       return (
         <div className="p-4 md:p-6 lg:p-8">
-            <Skeleton className="h-64 w-full" />
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-1/3" />
+                    <Skeleton className="h-4 w-2/3" />
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-64 w-full" />
+                </CardContent>
+            </Card>
         </div>
       );
   }

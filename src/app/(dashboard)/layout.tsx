@@ -16,8 +16,6 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [inventory, setInventory] = useState<InventoryItem[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -28,24 +26,14 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user) {
-      setDataLoading(true);
-      const unsubscribers: (() => void)[] = [];
-      
-      unsubscribers.push(listenToCollection<User>('users', (usersData) => {
+      const unsub = listenToCollection<User>('users', (usersData) => {
         const foundUser = usersData.find(u => u.email === user.email) || null;
         setCurrentUser(foundUser);
-        // We consider data loaded once we have the current user
         if (foundUser) {
           setDataLoading(false);
         }
-      }));
-      
-      unsubscribers.push(listenToCollection<InventoryItem>('inventory', setInventory));
-      unsubscribers.push(listenToCollection<Order>('orders', setOrders));
-
-      return () => {
-        unsubscribers.forEach(unsubscribe => unsubscribe());
-      };
+      });
+      return () => unsub();
     }
   }, [user]);
   
@@ -79,7 +67,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       <div className="flex min-h-screen bg-muted/40">
         <AppSidebar currentUser={currentUser} />
         <div className="flex flex-col flex-1 min-w-0">
-          <AppHeader user={currentUser} inventory={inventory} orders={orders} />
+          {/* We pass an empty array for orders/inventory to header, as they are not critical for it */}
+          <AppHeader user={currentUser} inventory={[]} orders={[]} />
           <main className="flex-1 flex flex-col overflow-auto">
             {childrenWithProps}
           </main>
