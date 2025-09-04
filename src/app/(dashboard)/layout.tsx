@@ -28,30 +28,31 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (user) {
+      setDataLoading(true);
       const unsubscribers: (() => void)[] = [];
       
       unsubscribers.push(listenToCollection<User>('users', (usersData) => {
         const foundUser = usersData.find(u => u.email === user.email) || null;
         setCurrentUser(foundUser);
+        // We consider data loaded once we have the current user
+        if (foundUser) {
+          setDataLoading(false);
+        }
       }));
       
       unsubscribers.push(listenToCollection<InventoryItem>('inventory', setInventory));
-      
       unsubscribers.push(listenToCollection<Order>('orders', setOrders));
-      
-      // We assume data is loaded after a short period, individual pages will handle their own loading state.
-      const timer = setTimeout(() => setDataLoading(false), 1500);
 
       return () => {
         unsubscribers.forEach(unsubscribe => unsubscribe());
-        clearTimeout(timer);
       };
     }
   }, [user]);
   
   const childrenWithProps = React.Children.map(children, child => {
     if (React.isValidElement(child)) {
-      return React.cloneElement(child, { currentUser } as any);
+      // Cloning the element and adding the currentUser prop
+      return React.cloneElement(child, { currentUser } as { currentUser: User | null });
     }
     return child;
   });
