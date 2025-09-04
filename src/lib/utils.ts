@@ -8,6 +8,9 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export function filterOrders(orders: Order[], filters: Filters): Order[] {
+  if (!orders) {
+    return [];
+  }
   return orders.filter(order => {
       const { shops, assignedUserIds, statuses, paymentMethods, couriers, dateRange } = filters;
       const orderDate = new Date(order.fechas_clave.creacion);
