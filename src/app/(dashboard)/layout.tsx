@@ -5,74 +5,58 @@ import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useAuth } from '@/context/auth-context';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { User, InventoryItem, Order } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { Skeleton } from '@/components/ui/skeleton';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
   
-  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
-    if (!loading && !user) {
+    if (!authLoading && !user) {
       router.push('/login');
     }
-  }, [user, loading, router]);
+  }, [user, authLoading, router]);
 
   useEffect(() => {
     if (user) {
-      setDataLoading(true);
+      const unsubscribers: (() => void)[] = [];
       
-      const unsubscribers = [
-        listenToCollection<User>('users', setUsers),
-        listenToCollection<InventoryItem>('inventory', setInventory),
-        listenToCollection<Order>('orders', (ordersData) => {
-            ordersData.sort((a, b) => new Date(b.fechas_clave.creacion).getTime() - new Date(a.fechas_clave.creacion).getTime());
-            setOrders(ordersData);
-        }),
-      ];
+      unsubscribers.push(listenToCollection<User>('users', (usersData) => {
+        const foundUser = usersData.find(u => u.email === user.email) || null;
+        setCurrentUser(foundUser);
+      }));
       
-      const initialLoadCheck = setTimeout(() => {
-          setDataLoading(false);
-      }, 1500);
+      unsubscribers.push(listenToCollection<InventoryItem>('inventory', setInventory));
+      
+      unsubscribers.push(listenToCollection<Order>('orders', setOrders));
+      
+      // We assume data is loaded after a short period, individual pages will handle their own loading state.
+      const timer = setTimeout(() => setDataLoading(false), 1500);
 
       return () => {
         unsubscribers.forEach(unsubscribe => unsubscribe());
-        clearTimeout(initialLoadCheck);
+        clearTimeout(timer);
       };
     }
   }, [user]);
   
-  const currentUser = users.find(u => u.email === user?.email) || null;
-  
-  // Do not pass props to the reports page, it will handle its own data fetching
-  const shouldInjectProps = !pathname.startsWith('/reports');
-
   const childrenWithProps = React.Children.map(children, child => {
-    // For all pages, pass the currentUser
     if (React.isValidElement(child)) {
-      const propsToInject: any = { currentUser };
-
-      // For pages other than reports, pass all the data
-      if(shouldInjectProps) {
-        propsToInject.users = users;
-        propsToInject.inventory = inventory;
-        propsToInject.orders = orders;
-      }
-      return React.cloneElement(child, propsToInject);
+      return React.cloneElement(child, { currentUser } as any);
     }
     return child;
   });
 
-  if (loading || !user || (shouldInjectProps && dataLoading)) {
+  if (authLoading || dataLoading || !currentUser) {
     return (
         <div className="flex min-h-screen">
             <div className="hidden md:flex flex-col w-64 border-r p-4 space-y-4">
