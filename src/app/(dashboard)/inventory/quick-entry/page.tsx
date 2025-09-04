@@ -9,13 +9,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { collection, query, where, getDocs, doc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import type { InventoryItem } from '@/lib/types';
 import { Loader2, Minus, Plus, Search, Edit, Trash2 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { SHOPS } from '@/lib/constants';
+
 
 const quickEntryFormSchema = z.object({
   items: z.array(z.object({
@@ -83,7 +85,7 @@ export default function QuickEntryPage() {
             precio_venta: 0, 
             ubicacion_almacen: '',
             proveedor_nombre: 'N/A',
-            tienda: 'Tienda Online',
+            tienda: SHOPS[0],
             isNew: true 
         });
       } else {
@@ -114,7 +116,7 @@ export default function QuickEntryPage() {
   const handleManualSearch = (e: React.FormEvent) => {
       e.preventDefault();
       if (skuNumber) {
-          findProductBySku(`SKU-${skuNumber}`);
+          findProductBySku(`SKU-${skuNumber.padStart(4, '0')}`);
       }
   };
 
@@ -137,7 +139,7 @@ export default function QuickEntryPage() {
                 precios: { compra: item.precio_compra, venta: item.precio_venta },
                 ubicacion_almacen: item.ubicacion_almacen || '',
                 proveedor: { id_proveedor: 'N/A', nombre: item.proveedor_nombre || 'N/A' },
-                tienda: item.tienda || 'N/A',
+                tienda: item.tienda || SHOPS[0],
                 estado: 'ACTIVO',
                 stock_minimo: 0,
                 id_producto_base: `P-${Date.now()}`,
@@ -283,9 +285,20 @@ export default function QuickEntryPage() {
                                 name={`items.${index}.tienda`}
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Tienda</FormLabel>
-                                        <FormControl><Input {...field} /></FormControl>
-                                        <FormMessage />
+                                      <FormLabel>Tienda</FormLabel>
+                                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <FormControl>
+                                          <SelectTrigger>
+                                            <SelectValue placeholder="Seleccione una tienda" />
+                                          </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                          {SHOPS.map((shop) => (
+                                            <SelectItem key={shop} value={shop}>{shop}</SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                      <FormMessage />
                                     </FormItem>
                                 )}
                            />
@@ -295,6 +308,17 @@ export default function QuickEntryPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Proveedor</FormLabel>
+                                        <FormControl><Input {...field} /></FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                           />
+                           <FormField
+                                control={form.control}
+                                name={`items.${index}.ubicacion_almacen`}
+                                render={({ field }) => (
+                                    <FormItem className="md:col-span-2">
+                                        <FormLabel>Ubicación en Almacén</FormLabel>
                                         <FormControl><Input {...field} /></FormControl>
                                         <FormMessage />
                                     </FormItem>

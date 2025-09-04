@@ -27,6 +27,6 @@ export const ITEM_STATUS_BADGE_MAP: Record<OrderItemStatus, 'default' | 'success
     BACKORDER: 'secondary',
 }
 
-export const SHOPS: Shop[] = ['Tienda Online', 'Tienda Física', 'Marketplace'];
+export const SHOPS: Shop[] = ['Blumi', 'Cumbre', 'Dearel', 'Trazto'];
 export const COURIERS: Courier[] = ['URBANO', 'SHALOM', 'OLVA', 'INTERNO'];
 export const PAYMENT_METHODS: PaymentMethod[] = ['Tarjeta de Crédito', 'Transferencia Bancaria', 'Efectivo', 'YAPE', 'PLIN'];

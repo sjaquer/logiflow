@@ -7,7 +7,7 @@ import { InventoryTable } from './components/inventory-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit } from 'lucide-react';
+import { Edit, Settings } from 'lucide-react';
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
@@ -50,6 +50,10 @@ export default function InventoryPage() {
             <CardDescription>Ver y gestionar stock, ubicación, precios e información de proveedores.</CardDescription>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" disabled>
+                <Settings className="mr-2 h-4 w-4" />
+                Gestionar Tiendas
+            </Button>
             <Button asChild>
               <Link href="/inventory/quick-entry">
                 <Edit className="mr-2 h-4 w-4" />
