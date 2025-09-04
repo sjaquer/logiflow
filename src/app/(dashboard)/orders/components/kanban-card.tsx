@@ -35,37 +35,35 @@ export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrd
       onOrderItemsChange={onOrderItemsChange}
     >
       <div draggable onDragStart={handleDragStart} className="cursor-grab active:cursor-grabbing">
-        <Card className="hover:bg-card/95 hover:shadow-md transition-all">
+        <Card className="hover:bg-card/95 hover:shadow-lg transition-all border-l-4 border-primary/50">
           <CardHeader className="pb-3 pt-4 px-4">
               <div className="flex justify-between items-start">
-                  <h4 className="font-semibold text-base">{order.id_pedido}</h4>
+                  <h4 className="font-semibold text-sm">{order.id_pedido}</h4>
                   <Badge variant={order.pago.estado_pago === 'PAGADO' ? 'success' : 'secondary'} className="capitalize text-xs">
                       {order.pago.estado_pago.toLowerCase()}
                   </Badge>
               </div>
-            <p className="text-sm text-muted-foreground flex items-center gap-2 pt-1"><Users className="w-4 h-4"/>{order.cliente.nombres}</p>
+            <p className="text-sm text-muted-foreground pt-1 truncate">{order.cliente.nombres}</p>
           </CardHeader>
           <CardContent className="px-4 pb-3">
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+             <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
               <ShoppingBag className="w-4 h-4" />
               <span>{order.tienda.nombre}</span>
             </div>
-            <div className="mt-2 text-lg font-bold">
+            <div className="text-xl font-bold">
               S/ {order.pago.monto_total.toFixed(2)}
             </div>
           </CardContent>
-          <CardFooter className="flex justify-between items-center px-4 pb-4">
-            <div className="flex items-center -space-x-2">
+          <CardFooter className="flex justify-between items-center px-4 pb-3">
+             <div className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(order.fechas_clave.creacion), { addSuffix: true, locale: es })}
+              </div>
                {assignedUser && (
                   <Avatar className="h-7 w-7 border-2 border-background">
                     <AvatarImage src={assignedUser.avatar} />
                     <AvatarFallback>{getInitials(assignedUser.nombre)}</AvatarFallback>
                   </Avatar>
               )}
-              <div className="text-xs text-muted-foreground pl-3">
-                {formatDistanceToNow(new Date(order.fechas_clave.creacion), { addSuffix: true, locale: es })}
-              </div>
-            </div>
           </CardFooter>
         </Card>
       </div>

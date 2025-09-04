@@ -43,7 +43,7 @@ export function KanbanBoard({ orders, users, inventory, filters, onFilterChange 
         orderCount={filteredOrders.length}
       />
       <ScrollArea className="flex-grow w-full" type="always">
-        <div className="flex gap-6 p-4 md:p-6 lg:p-8 pt-0">
+        <div className="flex gap-8 p-4 md:p-6 lg:p-8 pt-4">
           {KANBAN_COLUMNS.map(column => (
             <KanbanColumn
               key={column.id}
