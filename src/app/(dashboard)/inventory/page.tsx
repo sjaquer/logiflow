@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { getCollectionData } from '@/lib/firebase/firestore-client';
 import type { InventoryItem } from '@/lib/types';
@@ -7,23 +7,68 @@ import { InventoryTable } from './components/inventory-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Edit, Settings } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Edit, Settings, Search } from 'lucide-react';
+
+export type SortConfig = {
+  key: keyof InventoryItem | 'precios.venta' | 'precios.compra';
+  direction: 'ascending' | 'descending';
+};
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'nombre', direction: 'ascending'});
 
   useEffect(() => {
     const fetchInventory = async () => {
       setLoading(true);
       const inventoryData = await getCollectionData<InventoryItem>('inventory');
-      // Sort inventory alphabetically by name
-      inventoryData.sort((a, b) => a.nombre.localeCompare(b.nombre));
       setInventory(inventoryData);
       setLoading(false);
     };
     fetchInventory();
   }, []);
+
+  const requestSort = (key: keyof InventoryItem | 'precios.venta' | 'precios.compra') => {
+    let direction: 'ascending' | 'descending' = 'ascending';
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'ascending') {
+      direction = 'descending';
+    }
+    setSortConfig({ key, direction });
+  };
+  
+  const getValue = (object: any, path: string) => {
+    return path.split('.').reduce((o, i) => o?.[i], object);
+  }
+
+  const sortedAndFilteredInventory = useMemo(() => {
+    let sortableItems = [...inventory];
+
+    if (searchQuery) {
+        sortableItems = sortableItems.filter(item => 
+            item.nombre.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            item.sku.toLowerCase().includes(searchQuery.toLowerCase())
+        );
+    }
+    
+    if (sortConfig !== null) {
+      sortableItems.sort((a, b) => {
+        const aValue = getValue(a, sortConfig.key);
+        const bValue = getValue(b, sortConfig.key);
+
+        if (aValue < bValue) {
+          return sortConfig.direction === 'ascending' ? -1 : 1;
+        }
+        if (aValue > bValue) {
+          return sortConfig.direction === 'ascending' ? 1 : -1;
+        }
+        return 0;
+      });
+    }
+    return sortableItems;
+  }, [inventory, searchQuery, sortConfig]);
 
   if (loading) {
     return (
@@ -63,7 +108,22 @@ export default function InventoryPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <InventoryTable inventory={inventory} />
+            <div className="mb-4">
+                <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Buscar por nombre o SKU..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
+            </div>
+          <InventoryTable 
+            inventory={sortedAndFilteredInventory} 
+            requestSort={requestSort}
+            sortConfig={sortConfig}
+            />
         </CardContent>
       </Card>
     </div>
