@@ -4,35 +4,43 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 import { UserNav } from '@/components/user-nav';
 import { NotificationsDropdown } from '@/components/notifications-dropdown';
 import type { User, InventoryItem, Order } from '@/lib/types';
+import { listenToCollection } from '@/lib/firebase/firestore-client';
+import { useState, useEffect } from 'react';
 
 interface AppHeaderProps {
   user: User | null;
-  inventory: InventoryItem[];
-  orders: Order[];
 }
 
-export function AppHeader({ user, inventory, orders }: AppHeaderProps) {
+export function AppHeader({ user }: AppHeaderProps) {
   const pathname = usePathname();
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
+
+  useEffect(() => {
+    const unsubs: (() => void)[] = [];
+    unsubs.push(listenToCollection<InventoryItem>('inventory', setInventory));
+    unsubs.push(listenToCollection<Order>('orders', setOrders));
+    return () => unsubs.forEach(unsub => unsub());
+  }, []);
+
   const getTitle = () => {
-    switch (pathname) {
-      case '/orders':
+    switch (true) {
+      case pathname.startsWith('/orders'):
         return 'Pedidos';
-      case '/create-order':
+      case pathname.startsWith('/create-order'):
         return 'Crear Pedido';
-      case '/inventory':
+      case pathname.startsWith('/inventory'):
         return 'Inventario';
-      case '/reports':
+      case pathname.startsWith('/reports'):
         return 'Reportes';
-      case '/users':
-        return 'Usuarios';
       default:
         return 'Dashboard';
     }
   };
 
   return (
-    <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6">
-      <SidebarTrigger className="md:hidden" />
+    <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 sticky top-0 z-10">
+      <SidebarTrigger className="hidden md:flex" />
       <h1 className="text-xl font-semibold tracking-tight">{getTitle()}</h1>
       <div className="ml-auto flex items-center gap-4">
         <NotificationsDropdown inventory={inventory} orders={orders} />

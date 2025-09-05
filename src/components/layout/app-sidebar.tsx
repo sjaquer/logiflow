@@ -10,17 +10,14 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
-  SidebarTrigger,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
   Box,
   BarChart3,
-  Users,
   Warehouse,
   Settings,
   LogOut,
-  PanelLeft,
   PlusCircle,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
@@ -58,12 +55,12 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
   return (
     <Sidebar
       collapsible="icon"
-      className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
+      className="hidden md:flex border-r border-sidebar-border bg-sidebar text-sidebar-foreground sticky top-0 h-screen"
     >
       <SidebarHeader className="h-16 flex items-center justify-center px-2">
         <Link href="/orders" className="flex items-center gap-2 font-bold text-primary group-data-[collapsible=icon]:justify-center">
           <Warehouse className="h-6 w-6 shrink-0" />
-          <span className="text-lg text-sidebar-foreground group-data-[collapsible=icon]:hidden sr-only">
+          <span className="text-lg text-sidebar-foreground group-data-[collapsible=icon]:data-[state=collapsed]:hidden">
             LogiFlow
           </span>
         </Link>
