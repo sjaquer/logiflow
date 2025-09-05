@@ -33,13 +33,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       unsubs.push(listenToCollection<User>('users', (usersData) => {
         const foundUser = usersData.find(u => u.email === user.email) || null;
         setCurrentUser(foundUser);
-        // We consider data loaded once we have the current user info.
         if (foundUser) {
           setDataLoading(false);
         }
       }));
 
-      // Listen to other collections needed for the header/notifications
       unsubs.push(listenToCollection<InventoryItem>('inventory', setInventory));
       unsubs.push(listenToCollection<Order>('orders', setOrders));
 
@@ -70,7 +68,7 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
         <AppSidebar currentUser={currentUser} />
         <div className="flex flex-col flex-1 min-w-0">
           <AppHeader user={currentUser} inventory={inventory} orders={orders} />
-          <main className="flex-1 flex flex-col overflow-auto">
+          <main className="flex-1 overflow-auto">
             {children}
           </main>
         </div>

@@ -40,7 +40,18 @@ export default function OrdersPage() {
       }),
     ];
     
-    const timer = setTimeout(() => setLoading(false), 1500); 
+    // Check if all initial data has been loaded.
+    const checkDataLoaded = () => {
+        if (orders.length > 0 && users.length > 0 && inventory.length > 0 && shops.length > 0) {
+            setLoading(false);
+        }
+    };
+    
+    const timer = setTimeout(() => {
+        if (loading) {
+            setLoading(false);
+        }
+    }, 1500); 
 
     return () => {
       clearTimeout(timer);
@@ -53,12 +64,12 @@ export default function OrdersPage() {
     return (
       <div className="flex flex-col h-full p-4 md:p-6 lg:p-8 space-y-4">
         <Skeleton className="h-12 w-full" />
-        <div className="flex-1 flex gap-8">
-          <Skeleton className="w-[320px] h-full" />
-          <Skeleton className="w-[320px] h-full" />
-          <Skeleton className="w-[320px] h-full" />
-          <Skeleton className="w-[320px] h-full" />
-          <Skeleton className="w-[320px] h-full" />
+        <div className="flex-1 flex gap-8 overflow-x-auto pb-4">
+          <Skeleton className="w-[320px] shrink-0 h-full" />
+          <Skeleton className="w-[320px] shrink-0 h-full" />
+          <Skeleton className="w-[320px] shrink-0 h-full" />
+          <Skeleton className="w-[320px] shrink-0 h-full" />
+          <Skeleton className="w-[320px] shrink-0 h-full" />
         </div>
       </div>
     );
