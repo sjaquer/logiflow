@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -224,9 +225,9 @@ const Sidebar = React.forwardRef<
         data-collapsible={state === 'collapsed' ? collapsible : ''}
         data-side={side}
         className={cn(
-          "h-screen shrink-0 transition-[width] duration-300 ease-in-out",
+          "h-screen shrink-0 transition-[width] duration-300 ease-in-out overflow-hidden",
           "w-[var(--sidebar-width)]",
-          "data-[collapsible=icon]:data-[state=collapsed]:w-[var(--sidebar-width-icon)]",
+          "data-[collapsible=icon]:data-[state=collapsed]:w-0",
           className
         )}
       >
