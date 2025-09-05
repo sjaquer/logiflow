@@ -77,7 +77,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
               >
                 <Link href={item.href}>
                   <item.icon className="h-5 w-5" />
-                  <span>{item.label}</span>
+                  <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">{item.label}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -90,7 +90,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
                 <SidebarMenuItem>
                     <SidebarMenuButton size="lg" tooltip={{ children: 'Ajustes', side: 'right' }}>
                         <Settings className="h-5 w-5" />
-                        <span>Ajustes</span>
+                        <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">Ajustes</span>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
@@ -99,7 +99,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" tooltip={{ children: 'Cerrar Sesión', side: 'right' }} onClick={handleLogout}>
                 <LogOut className="h-5 w-5" />
-                <span>Cerrar Sesión</span>
+                <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">Cerrar Sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
          </SidebarMenu>
