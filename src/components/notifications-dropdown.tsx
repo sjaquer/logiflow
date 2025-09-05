@@ -158,25 +158,27 @@ export function NotificationsDropdown({ inventory, orders }: { inventory: Invent
             ) : (
                 <div className="divide-y divide-border">
                     {visibleNotifications.map((notification) => (
-                        <Link key={notification.id} href={notification.href} passHref>
-                            <a className="p-4 flex items-start gap-4 hover:bg-muted/50 transition-colors group relative cursor-pointer">
-                                <notification.icon className={`h-5 w-5 mt-0.5 shrink-0 ${notification.color}`} />
-                                <div className="flex-1">
-                                    <p className="text-sm font-medium">{notification.type}</p>
-                                    <p className="text-sm text-muted-foreground">{notification.message}</p>
-                                    <p className="text-xs text-muted-foreground/70 mt-1">
-                                        {formatDistanceToNow(notification.timestamp, { addSuffix: true, locale: es })}
-                                    </p>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={(e) => dismissNotification(e, notification.id)}
-                                >
-                                  <X className="w-4 h-4" />
-                                </Button>
-                            </a>
+                        <Link
+                          key={notification.id}
+                          href={notification.href}
+                          className="p-4 flex items-start gap-4 hover:bg-muted/50 transition-colors group relative cursor-pointer"
+                        >
+                            <notification.icon className={`h-5 w-5 mt-0.5 shrink-0 ${notification.color}`} />
+                            <div className="flex-1">
+                                <p className="text-sm font-medium">{notification.type}</p>
+                                <p className="text-sm text-muted-foreground">{notification.message}</p>
+                                <p className="text-xs text-muted-foreground/70 mt-1">
+                                    {formatDistanceToNow(notification.timestamp, { addSuffix: true, locale: es })}
+                                </p>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6 absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => dismissNotification(e, notification.id)}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
                         </Link>
                     ))}
                 </div>
