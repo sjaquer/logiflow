@@ -1,16 +1,19 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { getCollectionData } from '@/lib/firebase/firestore-client';
-import type { InventoryItem } from '@/lib/types';
+import { getCollectionData, listenToCollection } from '@/lib/firebase/firestore-client';
+import type { InventoryItem, Shop } from '@/lib/types';
 import { InventoryTable } from './components/inventory-table';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Edit, Settings, Search } from 'lucide-react';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
-import { SHOPS } from '@/lib/constants';
+import { Edit, Settings, Search, Plus, Trash2 } from 'lucide-react';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
+import { useToast } from '@/hooks/use-toast';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/firebase';
+
 
 export type SortConfig = {
   key: keyof InventoryItem | 'precios.venta' | 'precios.compra';
@@ -19,18 +22,23 @@ export type SortConfig = {
 
 export default function InventoryPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortConfig, setSortConfig] = useState<SortConfig | null>({ key: 'nombre', direction: 'ascending'});
+  const [newShopName, setNewShopName] = useState('');
+  const { toast } = useToast();
 
   useEffect(() => {
-    const fetchInventory = async () => {
-      setLoading(true);
-      const inventoryData = await getCollectionData<InventoryItem>('inventory');
-      setInventory(inventoryData);
-      setLoading(false);
-    };
-    fetchInventory();
+    setLoading(true);
+    const unsubs: (() => void)[] = [];
+    unsubs.push(listenToCollection<InventoryItem>('inventory', (data) => {
+        setInventory(data);
+        if (loading) setLoading(false);
+    }));
+    unsubs.push(listenToCollection<Shop>('shops', (data) => setShops(data)));
+
+    return () => unsubs.forEach(unsub => unsub());
   }, []);
 
   const requestSort = (key: keyof InventoryItem | 'precios.venta' | 'precios.compra') => {
@@ -72,6 +80,31 @@ export default function InventoryPage() {
     return sortableItems;
   }, [inventory, searchQuery, sortConfig]);
 
+  const handleAddShop = async () => {
+    if (!newShopName.trim()) return;
+    try {
+      const newShopRef = doc(db, 'shops', newShopName.trim());
+      await setDoc(newShopRef, { name: newShopName.trim() });
+      toast({ title: "Tienda Agregada", description: `La tienda "${newShopName}" ha sido creada.` });
+      setNewShopName('');
+    } catch (error) {
+      console.error("Error adding shop:", error);
+      toast({ title: "Error", description: "No se pudo agregar la tienda.", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteShop = async (shopId: string) => {
+    if (!confirm(`¿Estás seguro de que quieres eliminar la tienda "${shopId}"? Esta acción no se puede deshacer.`)) return;
+    try {
+        await deleteDoc(doc(db, 'shops', shopId));
+        toast({ title: "Tienda Eliminada", description: `La tienda "${shopId}" ha sido eliminada.` });
+    } catch (error) {
+        console.error("Error deleting shop:", error);
+        toast({ title: "Error", description: "No se pudo eliminar la tienda.", variant: "destructive" });
+    }
+  };
+
+
   if (loading) {
     return (
       <div className="p-4 md:p-6 lg:p-8">
@@ -108,19 +141,30 @@ export default function InventoryPage() {
                 <SheetHeader>
                   <SheetTitle>Gestionar Tiendas</SheetTitle>
                   <SheetDescription>
-                    Aquí puedes ver la lista de tiendas actualmente en el sistema.
+                    Agrega, edita o elimina las tiendas disponibles en el sistema.
                   </SheetDescription>
                 </SheetHeader>
-                <div className="py-4">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Para agregar o eliminar una tienda, por favor modifica la lista en el siguiente archivo de configuración del proyecto:
-                  </p>
-                  <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
-                    src/lib/constants.ts
-                  </code>
-                   <ul className="mt-4 list-disc list-inside space-y-2">
-                      {SHOPS.map(shop => <li key={shop}>{shop}</li>)}
-                   </ul>
+                <div className="py-4 space-y-4">
+                  <div className="flex gap-2">
+                    <Input 
+                      placeholder="Nombre de la nueva tienda..." 
+                      value={newShopName}
+                      onChange={(e) => setNewShopName(e.target.value)}
+                    />
+                    <Button onClick={handleAddShop}>
+                        <Plus className="h-4 w-4"/>
+                    </Button>
+                  </div>
+                  <ul className="mt-4 space-y-2">
+                      {shops.map(shop => (
+                        <li key={shop.id} className="flex justify-between items-center p-2 rounded-md bg-muted">
+                           <span>{shop.name}</span>
+                           <Button variant="ghost" size="icon" className="text-destructive h-8 w-8" onClick={() => handleDeleteShop(shop.id)}>
+                             <Trash2 className="h-4 w-4" />
+                           </Button>
+                        </li>
+                      ))}
+                  </ul>
                 </div>
               </SheetContent>
             </Sheet>

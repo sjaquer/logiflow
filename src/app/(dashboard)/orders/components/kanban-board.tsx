@@ -14,11 +14,12 @@ interface KanbanBoardProps {
   orders: Order[];
   users: User[];
   inventory: InventoryItem[];
+  shops: Shop[];
   filters: Filters;
   onFilterChange: (filters: Filters) => void;
 }
 
-export function KanbanBoard({ orders, users, inventory, filters, onFilterChange }: KanbanBoardProps) {
+export function KanbanBoard({ orders, users, inventory, shops, filters, onFilterChange }: KanbanBoardProps) {
 
   const filteredOrders = useMemo(() => {
     return filterOrders(orders, filters);
@@ -38,6 +39,7 @@ export function KanbanBoard({ orders, users, inventory, filters, onFilterChange 
     <div className="flex flex-col h-full">
       <OrderFilters
         users={users}
+        shops={shops}
         filters={filters}
         onFilterChange={onFilterChange}
         orderCount={filteredOrders.length}

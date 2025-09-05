@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { KanbanBoard } from './components/kanban-board';
-import type { Order, User, InventoryItem, Filters } from '@/lib/types';
+import type { Order, User, InventoryItem, Filters, Shop } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 
@@ -9,6 +9,7 @@ export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [filters, setFilters] = useState<Filters>({
@@ -34,10 +35,11 @@ export default function OrdersPage() {
       listenToCollection<InventoryItem>('inventory', (data) => {
           setInventory(data);
       }),
+       listenToCollection<Shop>('shops', (data) => {
+          setShops(data);
+      }),
     ];
     
-    // A simple way to set loading to false once all initial data streams have likely fired once.
-    // For a more robust solution, you might check if each state array has length.
     const timer = setTimeout(() => setLoading(false), 1500); 
 
     return () => {
@@ -68,6 +70,7 @@ export default function OrdersPage() {
         orders={orders}
         users={users}
         inventory={inventory}
+        shops={shops}
         filters={filters}
         onFilterChange={setFilters}
       />
