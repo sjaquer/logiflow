@@ -2,6 +2,7 @@
 
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Sidebar,
   SidebarHeader,
@@ -57,12 +58,10 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
       collapsible="icon"
       className="hidden md:flex border-r border-sidebar-border bg-sidebar text-sidebar-foreground sticky top-0 h-screen"
     >
-      <SidebarHeader className="h-16 flex items-center justify-center px-2">
+      <SidebarHeader className="h-16 flex items-center justify-center px-4">
         <Link href="/orders" className="flex items-center gap-2 font-bold text-primary group-data-[collapsible=icon]:justify-center">
-          <Warehouse className="h-6 w-6 shrink-0" />
-          <span className="text-lg text-sidebar-foreground group-data-[collapsible=icon]:data-[state=collapsed]:hidden">
-            LogiFlow
-          </span>
+          <Image src="/logo.png" alt="LogiFlow Logo" width={120} height={30} className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden" />
+          <Warehouse className="h-6 w-6 shrink-0 hidden group-data-[collapsible=icon]:data-[state=collapsed]:block" />
         </Link>
       </SidebarHeader>
       <SidebarContent className="flex-1 p-2">

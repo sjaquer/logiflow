@@ -1,13 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { useAuth } from '@/context/auth-context';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Warehouse, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -41,8 +42,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="flex justify-center items-center gap-2 mb-4">
-               <Warehouse className="h-8 w-8 text-primary" />
-               <h1 className="text-3xl font-bold text-primary">LogiFlow</h1>
+               <Image src="/logo.png" alt="LogiFlow Logo" width={180} height={40} />
             </div>
           <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
           <CardDescription>Ingresa tus credenciales para acceder al panel.</CardDescription>

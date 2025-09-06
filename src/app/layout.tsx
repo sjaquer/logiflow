@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 export const metadata: Metadata = {
   title: "Flujo Logístico",
   description: "Gestiona eficientemente tus operaciones logísticas.",
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({
