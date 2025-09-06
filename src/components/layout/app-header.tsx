@@ -40,7 +40,7 @@ export function AppHeader({ user }: AppHeaderProps) {
 
   return (
     <header className="flex h-16 shrink-0 items-center gap-4 border-b bg-background px-4 md:px-6 sticky top-0 z-10">
-      <SidebarTrigger className="hidden md:flex" />
+      <SidebarTrigger className="flex" />
       <h1 className="text-xl font-semibold tracking-tight">{getTitle()}</h1>
       <div className="ml-auto flex items-center gap-4">
         <NotificationsDropdown inventory={inventory} orders={orders} />
