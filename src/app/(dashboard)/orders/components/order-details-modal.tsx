@@ -74,26 +74,12 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
     setIsNotifying(true);
     toast({ title: 'Enviando notificación...', description: 'Disparando escenario en Make.com.' });
 
-    // ** IMPORTANTE: ** Pega aquí la URL del webhook que te dio Make.com
-    const makeWebhookUrl = 'https://hook.us1.make.com/tu-webhook-aqui';
-
-    if (makeWebhookUrl.includes('tu-webhook-aqui')) {
-        toast({
-            title: 'Configuración Requerida',
-            description: 'Por favor, edita el código en order-details-modal.tsx para añadir tu URL de webhook de Make.com.',
-            variant: 'destructive',
-            duration: 9000,
-        });
-        setIsNotifying(false);
-        return;
-    }
-
     try {
         const response = await fetch('/api/notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                webhookUrl: makeWebhookUrl,
+                // El webhook URL ahora se lee del lado del servidor
                 payload: {
                     orderId: order.id_pedido,
                     clientName: order.cliente.nombres,
@@ -104,7 +90,8 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
         });
 
         if (!response.ok) {
-            throw new Error('La respuesta del servidor no fue OK');
+            const errorResult = await response.json().catch(() => ({ message: 'La respuesta del servidor no fue OK y no contenía JSON.' }));
+            throw new Error(errorResult.message || 'Error en la respuesta del servidor.');
         }
 
         const result = await response.json();
@@ -228,5 +215,3 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
     </Dialog>
   );
 }
-
-    

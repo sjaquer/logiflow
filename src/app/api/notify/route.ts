@@ -3,7 +3,6 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
 const NotifyRequestSchema = z.object({
-  webhookUrl: z.string().url('La URL del webhook no es válida.'),
   payload: z.record(z.any()), // Permite cualquier objeto JSON como payload
 });
 
@@ -13,15 +12,21 @@ const NotifyRequestSchema = z.object({
  */
 export async function POST(request: Request) {
   try {
+    const webhookUrl = process.env.MAKE_WEBHOOK_URL;
+
+    if (!webhookUrl) {
+      return NextResponse.json({ success: false, message: 'La URL del webhook no está configurada en el servidor.' }, { status: 500 });
+    }
+
     const body = await request.json();
 
     // 1. Validar la solicitud que llega desde nuestra propia app
     const parsedRequest = NotifyRequestSchema.safeParse(body);
     if (!parsedRequest.success) {
-      return NextResponse.json({ success: false, message: 'Solicitud inválida.', errors: parsedRequest.error.flatten() }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Solicitud inválida, se esperaba un "payload".', errors: parsedRequest.error.flatten() }, { status: 400 });
     }
 
-    const { webhookUrl, payload } = parsedRequest.data;
+    const { payload } = parsedRequest.data;
 
     // 2. Llamar al webhook externo (Make.com) de forma segura desde el servidor
     const makeResponse = await fetch(webhookUrl, {
@@ -33,7 +38,9 @@ export async function POST(request: Request) {
     // Make.com responde con "Accepted" (texto plano) y status 200 si el webhook fue recibido.
     if (!makeResponse.ok) {
         console.error('Error al llamar al webhook de Make.com:', makeResponse.statusText);
-        return NextResponse.json({ success: false, message: 'El servicio externo devolvió un error.' }, { status: makeResponse.status });
+        const responseBody = await makeResponse.text();
+        console.error('Respuesta de Make.com:', responseBody);
+        return NextResponse.json({ success: false, message: `El servicio externo devolvió un error: ${makeResponse.statusText}` }, { status: makeResponse.status });
     }
     
     // 3. Responder a nuestra app que todo salió bien
@@ -44,5 +51,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Error interno del servidor.' }, { status: 500 });
   }
 }
-
-    
