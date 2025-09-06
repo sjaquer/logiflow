@@ -60,8 +60,8 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     >
       <SidebarHeader className="h-16 flex items-center justify-center px-4">
         <Link href="/orders" className="flex items-center gap-2 font-bold text-primary group-data-[collapsible=icon]:justify-center">
-           <div className="w-full max-w-[120px] group-data-[collapsible=icon]:data-[state=collapsed]:hidden">
-              <Image src="/logo.png" alt="LogiFlow Logo" width={180} height={40} className="w-full h-auto" />
+           <div className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">
+              <Image src="/logo.png" alt="LogiFlow Logo" width={120} height={30} className="h-auto" />
            </div>
           <Warehouse className="h-6 w-6 shrink-0 hidden group-data-[collapsible=icon]:data-[state=collapsed]:block" />
         </Link>
