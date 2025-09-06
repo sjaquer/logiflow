@@ -42,7 +42,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="flex justify-center items-center gap-2 mb-4">
-               <Image src="/logo.png" alt="LogiFlow Logo" width={180} height={40} />
+               <Image src="/logo.png" alt="LogiFlow Logo" width={140} height={35} />
             </div>
           <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
           <CardDescription>Ingresa tus credenciales para acceder al panel.</CardDescription>
