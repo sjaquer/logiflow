@@ -125,9 +125,7 @@ export async function POST(request: Request) {
         const parsedOrder = OrderSchema.parse(payload);
         // Para pedidos, no definimos docId para que Firestore lo genere automáticamente.
         // Aquí completamos el objeto del pedido con valores por defecto y campos requeridos.
-        const allUsers = await db.collection('users').where('rol', '==', 'Admin').limit(1).get();
-        const adminUser = allUsers.docs[0]?.data() as User | undefined;
-
+        
         dataToSave = {
             ...parsedOrder,
             id_interno: `EXT-${Date.now()}`,
@@ -145,12 +143,12 @@ export async function POST(request: Request) {
                 link_seguimiento: null,
             },
             asignacion: {
-                id_usuario_actual: adminUser?.id_usuario || 'admin_default',
-                nombre_usuario_actual: adminUser?.nombre || 'Sistema',
+                id_usuario_actual: 'system_make_com',
+                nombre_usuario_actual: 'Sistema (Make.com)',
             },
             historial: [{
                 fecha: new Date().toISOString(),
-                id_usuario: adminUser?.id_usuario || 'admin_default',
+                id_usuario: 'system_make_com',
                 nombre_usuario: 'Sistema (Make.com)',
                 accion: 'Creación de Pedido',
                 detalle: 'Pedido creado desde servicio externo.'
