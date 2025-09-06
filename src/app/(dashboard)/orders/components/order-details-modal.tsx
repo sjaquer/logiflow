@@ -9,7 +9,7 @@ import type { Order, User, InventoryItem, OrderStatus, OrderItem, OrderItemStatu
 import { KANBAN_COLUMNS, ITEM_STATUS_BADGE_MAP } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { CheckCircle2, Package, User as UserIcon, Calendar, MapPin, Truck, CreditCard, ShoppingBag, Hash, CircleHelp, AlertCircle, XCircle } from 'lucide-react';
+import { CheckCircle2, Package, User as UserIcon, Calendar, MapPin, Truck, CreditCard, ShoppingBag, Hash, CircleHelp, AlertCircle, XCircle, Send } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 
@@ -25,6 +25,7 @@ interface OrderDetailsModalProps {
 export function OrderDetailsModal({ children, order: initialOrder, users, inventory, onOrderStatusChange, onOrderItemsChange }: OrderDetailsModalProps) {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isCheckingStock, setIsCheckingStock] = useState(false);
+  const [isNotifying, setIsNotifying] = useState(false);
   const { toast } = useToast();
 
   const assignedUser = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
@@ -67,6 +68,59 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
         variant: allConfirmed ? "default" : "destructive",
       });
     }, 1000);
+  };
+  
+  const handleNotifyViaMake = async () => {
+    setIsNotifying(true);
+    toast({ title: 'Enviando notificación...', description: 'Disparando escenario en Make.com.' });
+
+    // ** IMPORTANTE: ** Pega aquí la URL del webhook que te dio Make.com
+    const makeWebhookUrl = 'https://hook.us1.make.com/tu-webhook-aqui';
+
+    if (makeWebhookUrl.includes('tu-webhook-aqui')) {
+        toast({
+            title: 'Configuración Requerida',
+            description: 'Por favor, edita el código en order-details-modal.tsx para añadir tu URL de webhook de Make.com.',
+            variant: 'destructive',
+            duration: 9000,
+        });
+        setIsNotifying(false);
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/notify', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                webhookUrl: makeWebhookUrl,
+                payload: {
+                    orderId: order.id_pedido,
+                    clientName: order.cliente.nombres,
+                    total: order.pago.monto_total,
+                    status: order.estado_actual,
+                }
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('La respuesta del servidor no fue OK');
+        }
+
+        const result = await response.json();
+
+        if (result.success) {
+            toast({ title: '¡Éxito!', description: 'El escenario en Make.com fue disparado correctamente.' });
+        } else {
+            throw new Error(result.message || 'El webhook de Make.com no aceptó la solicitud.');
+        }
+
+    } catch (error: any) {
+        console.error("Error notifying via Make:", error);
+        toast({ title: 'Error de Notificación', description: error.message, variant: 'destructive' });
+    } finally {
+        setIsNotifying(false);
+    }
   };
 
   const getStatusIcon = (status: OrderItemStatus) => {
@@ -114,9 +168,9 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
             <Separator />
             <div>
                <h4 className="font-medium mb-3 text-primary">Acciones</h4>
-               <div className="flex items-center gap-4">
+               <div className="flex flex-wrap items-center gap-4">
                 <Button onClick={checkStock} disabled={isCheckingStock}>
-                  {isCheckingStock ? 'Verificando...' : 'Verificar Disponibilidad de Stock'}
+                  {isCheckingStock ? 'Verificando...' : 'Verificar Stock'}
                 </Button>
                  <Select onValueChange={(value: OrderStatus) => handleStatusChange(value)} value={order.estado_actual}>
                     <SelectTrigger className="w-[200px]">
@@ -128,6 +182,10 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
                         ))}
                     </SelectContent>
                 </Select>
+                 <Button variant="outline" onClick={handleNotifyViaMake} disabled={isNotifying}>
+                   <Send className="mr-2 h-4 w-4" />
+                  {isNotifying ? 'Notificando...' : 'Notificar Cliente'}
+                </Button>
                </div>
             </div>
           </div>
@@ -170,3 +228,5 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
     </Dialog>
   );
 }
+
+    
