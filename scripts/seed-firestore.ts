@@ -1,44 +1,12 @@
 // tsx -r dotenv/config --tsconfig tsconfig.scripts.json scripts/seed-firestore.ts
 import 'dotenv/config';
-import * as admin from 'firebase-admin';
 import { getAuth } from 'firebase-admin/auth';
-import { getFirestore, Timestamp } from 'firebase-admin/firestore';
+import { getAdminDb } from '../src/lib/firebase/firebase-admin';
 import { users, inventory, orders } from '../src/lib/data';
 import type { Order, OrderItem, User } from '../src/lib/types';
 
-// Check for required environment variables for the script
-if (!process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-  console.error('Error: Firebase Admin credentials are not set.');
-  console.log('Please ensure the GOOGLE_APPLICATION_CREDENTIALS environment variable is set. For Vercel, this should be the raw JSON content. For local dev, a path to the file.');
-  process.exit(1);
-}
 
-// Initialize Firebase Admin SDK
-try {
-  let credentials;
-  // Vercel and other environments might pass the credentials as a raw JSON string
-  // Check if the credential string starts with '{' to determine if it's JSON
-  if (process.env.GOOGLE_APPLICATION_CREDENTIALS.trim().startsWith('{')) {
-    credentials = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-  } else {
-    // For local development, it's a path to the file
-    credentials = require(process.env.GOOGLE_APPLICATION_CREDENTIALS);
-  }
-
-  admin.initializeApp({
-    credential: admin.credential.cert(credentials),
-    projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  });
-
-} catch (error: any) {
-     if (error.code !== 'app/duplicate-app') {
-        console.error('Firebase Admin initialization error:', error);
-        process.exit(1);
-    }
-}
-
-
-const db = getFirestore();
+const db = getAdminDb();
 const auth = getAuth();
 
 const BATCH_LIMIT = 500; // Firestore batch limit
