@@ -6,6 +6,8 @@ import { NotificationsDropdown } from '@/components/notifications-dropdown';
 import type { User, InventoryItem, Order } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useState, useEffect } from 'react';
+import { useDevMode } from '@/context/dev-mode-context';
+import { useTheme } from '@/context/theme-provider';
 
 interface AppHeaderProps {
   user: User | null;
@@ -15,6 +17,18 @@ export function AppHeader({ user }: AppHeaderProps) {
   const pathname = usePathname();
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const { isDevMode } = useDevMode();
+  const { theme, colorPalette } = useTheme();
+
+  useEffect(() => {
+    if (isDevMode) {
+      console.group("Dev Mode Active");
+      console.log("Current User:", user);
+      console.log("Current Theme:", theme);
+      console.log("Current Color Palette:", colorPalette);
+      console.groupEnd();
+    }
+  }, [isDevMode, user, theme, colorPalette]);
 
   useEffect(() => {
     const unsubs: (() => void)[] = [];

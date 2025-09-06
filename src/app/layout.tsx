@@ -4,6 +4,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from "@/context/auth-context";
 import { ThemeProvider } from "@/context/theme-provider";
+import { DevModeProvider } from "@/context/dev-mode-context";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
@@ -21,11 +22,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es" className={`${inter.variable} dark`} suppressHydrationWarning>
+    <html lang="es" className="dark" suppressHydrationWarning>
       <body className="font-body antialiased">
         <ThemeProvider>
           <AuthProvider>
-            {children}
+            <DevModeProvider>
+              {children}
+            </DevModeProvider>
           </AuthProvider>
           <Toaster />
         </ThemeProvider>

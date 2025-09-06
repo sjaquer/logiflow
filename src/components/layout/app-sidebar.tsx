@@ -20,11 +20,15 @@ import {
   Settings,
   LogOut,
   PlusCircle,
+  Code,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
+import { useDevMode } from '@/context/dev-mode-context';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 interface AppSidebarProps {
   currentUser: User | null;
@@ -41,6 +45,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
   const router = useRouter();
+  const { isDevMode, setIsDevMode } = useDevMode();
 
   const handleLogout = async () => {
     await logout();
@@ -60,8 +65,8 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     >
       <SidebarHeader className="h-16 flex items-center justify-center px-4">
         <Link href="/orders" className="flex items-center gap-2 font-bold text-primary group-data-[collapsible=icon]:justify-center">
-           <div className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden flex items-center justify-center overflow-hidden">
-              <Image src="/logo.png" alt="LogiFlow Logo" width={65} height={65} />
+           <div className="flex items-center justify-center overflow-hidden group-data-[collapsible=icon]:data-[state=collapsed]:hidden">
+              <Image src="/logo.png" alt="LogiFlow Logo" width={100} height={25} style={{ height: '25px', width: 'auto' }} />
            </div>
           <Warehouse className="h-6 w-6 shrink-0 hidden group-data-[collapsible=icon]:data-[state=collapsed]:block" />
         </Link>
@@ -85,7 +90,22 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-2">
+      <SidebarFooter className="p-2 space-y-2">
+        {currentUser?.rol === 'Desarrolladores' && (
+           <div className="p-2 group-data-[collapsible=icon]:data-[state=collapsed]:hidden">
+              <div className="flex items-center justify-between p-2 rounded-lg border border-sidebar-border/50">
+                  <Label htmlFor="dev-mode" className="flex items-center gap-2 text-sm text-sidebar-foreground/80">
+                      <Code className="h-4 w-4" />
+                      Modo Dev
+                  </Label>
+                  <Switch
+                      id="dev-mode"
+                      checked={isDevMode}
+                      onCheckedChange={setIsDevMode}
+                  />
+              </div>
+           </div>
+        )}
          <SettingsPanel>
             <SidebarMenu>
                 <SidebarMenuItem>
