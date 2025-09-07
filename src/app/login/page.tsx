@@ -42,7 +42,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
             <div className="flex justify-center items-center gap-2 mb-4">
-               <Image src="/logo.png" alt="LogiFlow Logo" width={35} height={35} />
+               <Image src="/logo.png" alt="LogiFlow Logo" width={70} height={70} />
             </div>
           <CardTitle className="text-2xl">Iniciar Sesión</CardTitle>
           <CardDescription>Ingresa tus credenciales para acceder al panel.</CardDescription>
@@ -54,7 +54,7 @@ export default function LoginPage() {
               <Input
                 id="email"
                 type="email"
-                placeholder="admin@example.com"
+                placeholder="correo@example.com"
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
