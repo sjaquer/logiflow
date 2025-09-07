@@ -86,42 +86,6 @@ export default function CreateOrderPage() {
         unsubs.push(listenToCollection<Client>('clients', setClients));
         return () => unsubs.forEach(unsub => unsub());
     }, [authUser]);
-    
-    // This function sends customer data to our secure API endpoint,
-    // which then calls the Make.com webhook.
-    const syncContactToKommo = async (clientData: CreateOrderFormValues['cliente']) => {
-        toast({ title: 'Sincronizando con Kommo...', description: `Enviando cliente ${clientData.nombres} a Make.com` });
-        try {
-            const response = await fetch('/api/notify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    // The payload is what Make.com will receive
-                    payload: {
-                        dni: clientData.dni,
-                        nombres: clientData.nombres,
-                        celular: clientData.celular,
-                    }
-                }),
-            });
-
-            if (!response.ok) {
-                 const errorResult = await response.json();
-                 throw new Error(errorResult.message || 'Error en la respuesta del servidor de notificación.');
-            }
-            
-            const result = await response.json();
-            if (result.success) {
-                toast({ title: '¡Éxito en la Sincronización!', description: 'El contacto fue enviado a Kommo correctamente.' });
-            } else {
-                 throw new Error(result.message || 'El webhook no aceptó la solicitud.');
-            }
-
-        } catch (error: any) {
-            console.error("Error syncing contact to Kommo:", error);
-            toast({ title: 'Error de Sincronización', description: error.message, variant: 'destructive' });
-        }
-    };
 
     const onSubmit = async (data: CreateOrderFormValues) => {
         if (!currentUser) {
@@ -195,10 +159,6 @@ export default function CreateOrderPage() {
             
             toast({ title: "¡Éxito!", description: `Pedido ${docRef.id} creado correctamente.` });
             form.reset();
-            
-            // Sync contact to Kommo via Make.com AFTER successfully creating the order
-            await syncContactToKommo(data.cliente);
-
 
         } catch (error) {
             console.error("Error creating order:", error);
