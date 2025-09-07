@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/firebase-admin';
 import type { NextRequest } from 'next/server';
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
     // IMPORTANT: Kommo expects a 200 OK response to confirm receipt.
     return NextResponse.json({ success: true, message: `Cliente procesado.`, id: docRef.id });
 
-  } catch (error) => {
+  } catch (error) {
     console.error(`Error procesando webhook de Kommo:`, error);
     return NextResponse.json({ message: 'Error interno del servidor al procesar el webhook.' }, { status: 500 });
   }
