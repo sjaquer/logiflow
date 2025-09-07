@@ -1,8 +1,9 @@
-export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'PREPARADO' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
+
+export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
 export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo' | 'Transferencia Bancaria';
 export type ShippingType = 'LIMA' | 'PROVINCIA';
-export type Courier = 'MOTORIZADO INTERNO' | 'SHALOM' | 'OLVA' | 'INTERNO';
+export type Courier = 'URBANO' | 'SHALOM' | 'OLVA' | 'INTERNO';
 export type Shop = 'Blumi' | 'Cumbre' | 'Dearel' | 'Trazto';
 export type OrderItemStatus = 'CONFIRMADO' | 'SIN_STOCK' | 'BACKORDER' | 'PENDIENTE';
 
@@ -143,4 +144,23 @@ export interface Filters {
   paymentMethods: PaymentMethod[];
   couriers: Courier[];
   dateRange: { from?: Date; to?: Date };
+}
+
+// --- WEBHOOKS ---
+export type WebhookEvent = 'ORDER_CREATED' | 'ORDER_STATUS_CHANGED' | 'STOCK_CONFIRMED' | 'ORDER_CANCELLED';
+
+export const WEBHOOK_EVENTS: { value: WebhookEvent, label: string }[] = [
+    { value: 'ORDER_CREATED', label: 'Pedido Creado' },
+    { value: 'ORDER_STATUS_CHANGED', label: 'Cambio de Estado de Pedido' },
+    { value: 'STOCK_CONFIRMED', label: 'Stock Confirmado' },
+    { value: 'ORDER_CANCELLED', label: 'Pedido Anulado' },
+];
+
+export interface Webhook {
+    id?: string;
+    name: string;
+    url: string;
+    event: WebhookEvent;
+    active: boolean;
+    createdAt: string;
 }

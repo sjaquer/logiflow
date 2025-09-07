@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getAdminDb } from '@/lib/firebase/firebase-admin';
@@ -56,3 +57,4 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: false, message: 'Error interno del servidor.' }, { status: 500 });
   }
 }
+

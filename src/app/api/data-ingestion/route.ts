@@ -1,103 +1,109 @@
 
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/firebase-admin';
-import type { NextRequest } from 'next/server';
+import { getContactDetails, getLeadDetails } from '@/lib/kommo';
 
 const db = getAdminDb();
 
 /**
- * API Endpoint to receive and process webhook data from Kommo.
- * This endpoint is designed to be triggered when a new lead is created or updated in Kommo.
- * It expects the data in `application/x-www-form-urlencoded` format.
+ * API Endpoint to receive webhook data from Kommo.
+ * This endpoint is triggered when a lead status changes in Kommo.
+ * It then fetches full lead and contact details from Kommo's API
+ * and saves the client information to Firestore.
  */
-export async function POST(request: NextRequest) {
+export async function POST(request: Request) {
+  // 1. Validate incoming request security
   const serverApiKey = process.env.MAKE_API_KEY;
-
   if (!serverApiKey) {
-    console.error("MAKE_API_KEY (Server API Key) is not configured in environment variables.");
-    return NextResponse.json({ message: 'Error de configuración del servidor.' }, { status: 500 });
+    console.error("MAKE_API_KEY is not configured in environment variables.");
+    return NextResponse.json({ message: 'Server configuration error.' }, { status: 500 });
   }
 
-  const apiKeyFromUrl = request.nextUrl.searchParams.get('apiKey');
+  const apiKeyFromUrl = new URL(request.url).searchParams.get('apiKey');
   if (apiKeyFromUrl !== serverApiKey) {
     console.warn("Unauthorized webhook attempt. Ignoring.");
-    return NextResponse.json({ message: 'No autorizado' }, { status: 401 });
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
   try {
-    const formData = await request.formData();
-    const data = Object.fromEntries(formData.entries());
-    console.log("Received full data object from Kommo:", data);
+    const body = await request.formData();
+    const data = Object.fromEntries(body.entries());
+    console.log("Received status change data from Kommo:", data);
 
-    // Kommo can send different event types. We are interested in 'add' or 'update' for leads/contacts.
-    const eventKey = Object.keys(data).find(key => key.includes('[add][0]') || key.includes('[update][0]'));
+    // 2. Extract Lead ID from the webhook payload
+    const leadId = data['leads[status][0][id]'] as string;
+    if (!leadId) {
+        console.log("Webhook payload did not contain a lead ID. Ignoring.");
+        return NextResponse.json({ success: true, message: "No lead ID found, ignored." });
+    }
     
-    if (!eventKey) {
-        console.log("Webhook received, but it's not a lead/contact creation or update event. Ignoring.");
-        return NextResponse.json({ success: true, message: 'Evento no relevante. Ignorado.' });
+    // 3. Fetch Lead Details from Kommo API to get the Contact ID
+    const leadDetails = await getLeadDetails(leadId);
+    if (!leadDetails) {
+        console.error(`Could not fetch details for lead ID: ${leadId}`);
+        return NextResponse.json({ success: false, message: "Failed to fetch lead details." }, { status: 500 });
     }
 
-    const eventType = eventKey.split('[')[0]; // 'leads' or 'contacts'
-    const eventIndex = eventKey.match(/\[(\d+)\]/g)?.[0] || '[0]';
-    const prefix = `${eventType}[add]${eventIndex}`; // We'll assume the 'add' event for simplicity
-
-    const clientName = data[`${prefix}[name]`] as string || '';
+    const contactId = leadDetails._embedded?.contacts?.[0]?.id;
+    if (!contactId) {
+        console.error(`Lead ${leadId} has no associated contact. Cannot proceed.`);
+        return NextResponse.json({ success: false, message: "Lead has no associated contact." });
+    }
     
+    // 4. Fetch Contact Details from Kommo API
+    const contactDetails = await getContactDetails(contactId);
+    if (!contactDetails) {
+      console.error(`Could not fetch details for contact ID: ${contactId}`);
+      return NextResponse.json({ success: false, message: "Failed to fetch contact details." }, { status: 500 });
+    }
+
+    // 5. Extract and clean the data
+    const clientName = contactDetails.name;
     let clientDNI: string | null = null;
     let clientPhone: string | null = null;
-    let clientEmail: string | null = data[`${prefix}[custom_fields][email]`] as string || null;
+    let clientEmail: string | null = null;
     let clientAddress: string | null = null;
     let clientDistrict: string | null = null;
-
-    // Kommo sends custom fields as an array. We need to find them.
-    for (const key in data) {
-        if (key.startsWith(`${prefix}[custom_fields]`)) {
-            if (key.endsWith('[name]')) {
-                const valueKey = key.replace('[name]', '[values][0][value]');
-                const fieldName = data[key] as string;
-                const fieldValue = data[valueKey] as string;
-
-                if (fieldName.toLowerCase() === 'dni') {
-                    clientDNI = fieldValue;
-                }
-                if (fieldName.toLowerCase() === 'phone') {
-                    clientPhone = fieldValue;
-                }
-                if (fieldName.toLowerCase() === 'direccion') {
-                    clientAddress = fieldValue;
-                }
-                if (fieldName.toLowerCase() === 'distrito') {
-                    clientDistrict = fieldValue;
-                }
-            }
+    
+    if (contactDetails.custom_fields_values) {
+      for (const field of contactDetails.custom_fields_values) {
+        const value = field.values[0]?.value;
+        switch (field.field_name.toLowerCase()) {
+          case 'dni':
+            clientDNI = value;
+            break;
+          case 'phone':
+            clientPhone = value;
+            break;
+          case 'email':
+            clientEmail = value;
+            break;
+          case 'direccion':
+            clientAddress = value;
+            break;
+          case 'distrito':
+            clientDistrict = value;
+            break;
         }
+      }
     }
     
-    // In Kommo, the standard phone and email are not in custom_fields
-    // Let's check for them in their standard locations as a fallback.
-     if (!clientPhone) {
-        const phoneKey = Object.keys(data).find(k => k.endsWith('[values][0][value]') && data[k.replace('value', 'code')] === 'PHONE');
-        if (phoneKey) clientPhone = data[phoneKey] as string;
-     }
-     if (!clientEmail) {
-        const emailKey = Object.keys(data).find(k => k.endsWith('[values][0][value]') && data[k.replace('value', 'code')] === 'EMAIL');
-        if (emailKey) clientEmail = data[emailKey] as string;
-     }
-
     if (!clientDNI) {
-      console.warn("Webhook processing stopped: DNI not found in custom fields.");
-      return NextResponse.json({ success: false, message: 'DNI no encontrado en los campos personalizados.' }, { status: 400 });
+      console.warn("Webhook processing stopped: DNI not found in contact's custom fields.");
+      return NextResponse.json({ success: false, message: 'DNI not found in custom fields.' }, { status: 400 });
     }
-
+    
+    // 6. Save the client to Firestore
     const clientData = {
       dni: clientDNI,
-      nombres: clientName,
+      nombres: clientName || '',
       celular: clientPhone || '',
       email: clientEmail || '',
       direccion: clientAddress || '',
       distrito: clientDistrict || '',
       provincia: 'Lima', // Default value
-      kommo_lead_id: data[`${prefix}[id]`] as string || null,
+      kommo_lead_id: leadId,
+      kommo_contact_id: contactId,
       last_updated_from_kommo: new Date().toISOString(),
     };
 
@@ -108,7 +114,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, message: `Cliente procesado.`, id: docRef.id });
 
   } catch (error) {
-    console.error(`Error procesando webhook de Kommo:`, error);
-    return NextResponse.json({ message: 'Error interno del servidor al procesar el webhook.' }, { status: 500 });
+    console.error(`Error processing webhook from Kommo:`, error);
+    return NextResponse.json({ message: 'Internal server error while processing webhook.' }, { status: 500 });
   }
 }
