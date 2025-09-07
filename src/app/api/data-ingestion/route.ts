@@ -18,9 +18,16 @@ const KOMMO_FIELD_ADDRESS = 'Address';
  * This endpoint is the public "mailbox" for Kommo to send data to.
  */
 export async function POST(request: NextRequest) {
-  const apiKey = request.headers.get('Authorization')?.split('Bearer ')[1];
+  // Security check: API key now comes as a URL query parameter
+  const apiKeyFromUrl = request.nextUrl.searchParams.get('apiKey');
+  const serverApiKey = process.env.MAKE_API_KEY;
 
-  if (!apiKey || apiKey !== process.env.MAKE_API_KEY) {
+  if (!serverApiKey) {
+      console.error("MAKE_API_KEY is not configured on the server.");
+      return NextResponse.json({ message: 'Error de configuración del servidor' }, { status: 500 });
+  }
+
+  if (!apiKeyFromUrl || apiKeyFromUrl !== serverApiKey) {
     return NextResponse.json({ message: 'No autorizado' }, { status: 401 });
   }
 
