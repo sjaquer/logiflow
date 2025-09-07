@@ -4,7 +4,7 @@
 
 interface KommoToken {
     access_token: string;
-    refresh_token: string;
+    refresh_token: string | null; // Can be null for long-lived tokens
     expires_in: number;
     created_at?: number; // Store creation time to check for expiration
 }
@@ -27,12 +27,12 @@ async function getAccessToken(): Promise<string | null> {
         return null;
     }
     
-    // If we don't have a token, use the initial one from env
-    if (!token && KOMMO_ACCESS_TOKEN && KOMMO_REFRESH_TOKEN) {
+    // If we don't have a token in memory, use the initial one from env
+    if (!token && KOMMO_ACCESS_TOKEN) {
         token = {
             access_token: KOMMO_ACCESS_TOKEN,
-            refresh_token: KOMMO_REFRESH_TOKEN,
-            expires_in: 86400, // Default to 24 hours
+            refresh_token: KOMMO_REFRESH_TOKEN || null,
+            expires_in: 31536000, // Long-lived token, set expiry to 1 year
             created_at: Date.now() / 1000,
         };
     }
@@ -42,8 +42,8 @@ async function getAccessToken(): Promise<string | null> {
         return null;
     }
     
-    // Check if token is expired (with a 5-minute buffer)
-    const isExpired = (token.created_at || 0) + token.expires_in - 300 < Date.now() / 1000;
+    // Check if token is expired (with a 5-minute buffer), only if we have a refresh token
+    const isExpired = token.refresh_token && (token.created_at || 0) + token.expires_in - 300 < Date.now() / 1000;
 
     if (isExpired) {
         console.log("Kommo token expired, refreshing...");
@@ -69,10 +69,6 @@ async function getAccessToken(): Promise<string | null> {
             token = { ...newToken, created_at: Date.now() / 1000 };
             console.log("Successfully refreshed Kommo token.");
 
-            // Here you would ideally update the environment variables or a secure secret manager
-            // For Vercel, this is complex. The new token will live in memory for the lambda's lifetime.
-            // A more robust solution might use Firestore to store the token.
-            
         } catch (error) {
             console.error("Error during token refresh:", error);
             return null;
@@ -101,6 +97,8 @@ async function kommoApiRequest<T>(endpoint: string): Promise<T | null> {
 
         if (!response.ok) {
             console.error(`Kommo API request failed for ${endpoint}: ${response.status} ${response.statusText}`);
+            const errorBody = await response.text();
+            console.error('Error body:', errorBody);
             return null;
         }
         return await response.json() as T;
@@ -117,5 +115,5 @@ export async function getLeadDetails(leadId: string): Promise<any | null> {
 
 // Fetches details for a specific contact
 export async function getContactDetails(contactId: number): Promise<any | null> {
-    return kommoApiRequest(`contacts/${contactId}`);
+    return kommoApiRequest(`contacts/${contactId}?with=leads`);
 }
