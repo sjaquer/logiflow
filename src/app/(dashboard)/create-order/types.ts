@@ -1,5 +1,7 @@
-import type { Order, InventoryItem, User } from '@/lib/types';
+import type { Order, InventoryItem, User, Client } from '@/lib/types';
 import { z } from 'zod';
+
+export type { Client };
 
 export type CreateOrderFormValues = {
     tienda: Order['tienda']['nombre'];
@@ -27,12 +29,3 @@ export type CreateOrderFormValues = {
     }
 };
 
-export interface Client {
-    id: string;
-    dni: string;
-    nombres: string;
-    celular: string;
-    direccion: string;
-    distrito: string;
-    provincia: string;
-}
