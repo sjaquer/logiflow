@@ -21,6 +21,7 @@ import {
   LogOut,
   PlusCircle,
   Code,
+  Webhook,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
@@ -41,6 +42,10 @@ const menuItems: { href: string; label: string; icon: React.ElementType; require
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
 ];
 
+const settingsMenuItems: { href: string; label: string; icon: React.ElementType; requiredRoles?: UserRole[] }[] = [
+  { href: '/settings/webhooks', label: 'Webhooks', icon: Webhook, requiredRoles: ['Admin', 'Desarrolladores'] },
+];
+
 export function AppSidebar({ currentUser }: AppSidebarProps) {
   const pathname = usePathname();
   const { logout } = useAuth();
@@ -52,11 +57,13 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     router.push('/login');
   };
 
-  const filteredMenuItems = menuItems.filter(item => {
-    if (!item.requiredRoles) return true; // No roles required, show to everyone
-    if (!currentUser) return false; // If no user, don't show role-restricted items
-    return item.requiredRoles.includes(currentUser.rol);
-  });
+  const filterItems = (items: typeof menuItems) => {
+      return items.filter(item => {
+        if (!item.requiredRoles) return true; // No roles required, show to everyone
+        if (!currentUser) return false; // If no user, don't show role-restricted items
+        return item.requiredRoles.includes(currentUser.rol);
+      });
+  }
 
   return (
     <Sidebar
@@ -73,7 +80,25 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
       </SidebarHeader>
       <SidebarContent className="flex-1 p-2">
         <SidebarMenu>
-          {filteredMenuItems.map((item) => (
+          {filterItems(menuItems).map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton
+                asChild
+                size="lg"
+                isActive={pathname.startsWith(item.href)}
+                tooltip={{ children: item.label, side: 'right' }}
+              >
+                <Link href={item.href}>
+                  <item.icon className="h-5 w-5" />
+                  <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+         <SidebarMenu className="mt-auto">
+          {filterItems(settingsMenuItems).length > 0 && <p className="text-xs text-sidebar-foreground/60 px-4 py-2 group-data-[collapsible=icon]:data-[state=collapsed]:hidden">Ajustes</p>}
+          {filterItems(settingsMenuItems).map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild
@@ -109,9 +134,9 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
          <SettingsPanel>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" tooltip={{ children: 'Ajustes', side: 'right' }}>
+                    <SidebarMenuButton size="lg" tooltip={{ children: 'Apariencia', side: 'right' }}>
                         <Settings className="h-5 w-5" />
-                        <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">Ajustes</span>
+                        <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">Apariencia</span>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>

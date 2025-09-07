@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { Order, User, InventoryItem, OrderStatus, OrderItem, OrderItemStatus } from '@/lib/types';
+import type { Order, User, InventoryItem, OrderStatus, OrderItem, OrderItemStatus, WebhookEvent } from '@/lib/types';
 import { KANBAN_COLUMNS, ITEM_STATUS_BADGE_MAP } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -22,96 +22,101 @@ interface OrderDetailsModalProps {
   onOrderItemsChange: (orderId: string, items: Order['items']) => void;
 }
 
-export function OrderDetailsModal({ children, order: initialOrder, users, inventory, onOrderStatusChange, onOrderItemsChange }: OrderDetailsModalProps) {
-  const [order, setOrder] = useState<Order>(initialOrder);
-  const [isCheckingStock, setIsCheckingStock] = useState(false);
-  const [isNotifying, setIsNotifying] = useState(false);
-  const { toast } = useToast();
-
-  const assignedUser = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
-  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
-
-  const handleStatusChange = (newStatus: OrderStatus) => {
-    onOrderStatusChange(order.id_pedido, newStatus);
-    setOrder(prev => ({...prev, estado_actual: newStatus}));
-  };
-
-  const checkStock = () => {
-    setIsCheckingStock(true);
-    setTimeout(() => { // Simulate API call
-      let allConfirmed = true;
-      const updatedItems = order.items.map(item => {
-        const stockItem = inventory.find(inv => inv.sku === item.sku);
-        let newStatus: OrderItemStatus;
-        if (!stockItem || stockItem.estado === 'DESCONTINUADO') {
-          newStatus = 'SIN_STOCK';
-          allConfirmed = false;
-        } else if (stockItem.stock_actual >= item.cantidad) {
-          newStatus = 'CONFIRMADO';
-        } else if (stockItem.stock_actual > 0) {
-          newStatus = 'BACKORDER'; // Partial stock could be a backorder
-          allConfirmed = false;
-        } else {
-          newStatus = 'SIN_STOCK';
-          allConfirmed = false;
-        }
-        return { ...item, estado_item: newStatus };
-      });
-
-      onOrderItemsChange(order.id_pedido, updatedItems);
-      setOrder(prev => ({...prev, items: updatedItems}));
-      setIsCheckingStock(false);
-      
-      toast({
-        title: allConfirmed ? "Stock Confirmado" : "Problemas de Stock Encontrados",
-        description: allConfirmed ? "Todos los artículos están disponibles en stock." : "Algunos artículos tienen problemas de stock. Ver detalles abajo.",
-        variant: allConfirmed ? "default" : "destructive",
-      });
-    }, 1000);
-  };
-  
-  // This function calls our secure proxy endpoint (/api/notify)
-  // which in turn calls the Make.com webhook.
-  const handleNotifyViaMake = async () => {
-    setIsNotifying(true);
-    toast({ title: 'Enviando notificación...', description: 'Disparando escenario en Make.com.' });
+// This function calls our secure proxy endpoint (/api/notify)
+// which in turn finds and calls the correct Make.com webhook.
+const triggerWebhookEvent = async (event: WebhookEvent, payload: any) => {
+    const { toast } = useToast();
+    toast({ title: 'Disparando evento...', description: `Iniciando flujo para: ${event}` });
 
     try {
         const response = await fetch('/api/notify', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                // The webhook URL is now read from the server's environment variables
-                payload: {
-                    orderId: order.id_pedido,
-                    clientName: order.cliente.nombres,
-                    total: order.pago.monto_total,
-                    status: order.estado_actual,
-                }
-            })
+            body: JSON.stringify({ event, payload })
         });
 
         if (!response.ok) {
-            const errorResult = await response.json().catch(() => ({ message: 'La respuesta del servidor no fue OK y no contenía JSON.' }));
+            const errorResult = await response.json().catch(() => ({ message: 'La respuesta del servidor no fue OK.' }));
             throw new Error(errorResult.message || 'Error en la respuesta del servidor.');
         }
 
         const result = await response.json();
 
         if (result.success) {
-            toast({ title: '¡Éxito!', description: 'El escenario en Make.com fue disparado correctamente.' });
+            toast({ title: '¡Éxito!', description: `El evento '${event}' se disparó correctamente. ${result.detail}` });
         } else {
-            throw new Error(result.message || 'El webhook de Make.com no aceptó la solicitud.');
+            throw new Error(result.message || 'El webhook no aceptó la solicitud.');
         }
-
+        return true;
     } catch (error: any) {
-        console.error("Error notifying via Make:", error);
+        console.error(`Error triggering webhook for event ${event}:`, error);
         toast({ title: 'Error de Notificación', description: error.message, variant: 'destructive' });
-    } finally {
-        setIsNotifying(false);
+        return false;
     }
+};
+
+
+export function OrderDetailsModal({ children, order: initialOrder, users, inventory, onOrderStatusChange, onOrderItemsChange }: OrderDetailsModalProps) {
+  const [order, setOrder] = useState<Order>(initialOrder);
+  const [isCheckingStock, setIsCheckingStock] = useState(false);
+  const { toast } = useToast();
+
+  const assignedUser = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
+  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
+
+  const handleStatusChange = async (newStatus: OrderStatus) => {
+    onOrderStatusChange(order.id_pedido, newStatus);
+    setOrder(prev => ({...prev, estado_actual: newStatus}));
+
+    // Trigger webhook for status change
+    await triggerWebhookEvent('ORDER_STATUS_CHANGED', {
+        orderId: order.id_pedido,
+        client: order.cliente,
+        newStatus: newStatus,
+        total: order.pago.monto_total,
+    });
   };
 
+  const handleStockCheck = async () => {
+    setIsCheckingStock(true);
+    let allConfirmed = true;
+    
+    // This part can remain as a simulation or be a real check
+    const updatedItems = order.items.map(item => {
+      const stockItem = inventory.find(inv => inv.sku === item.sku);
+      let newStatus: OrderItemStatus = item.estado_item;
+      if (item.estado_item === 'PENDIENTE') {
+          if (!stockItem || stockItem.estado === 'DESCONTINUADO') {
+            newStatus = 'SIN_STOCK';
+            allConfirmed = false;
+          } else if (stockItem.stock_actual >= item.cantidad) {
+            newStatus = 'CONFIRMADO';
+          } else {
+            newStatus = 'SIN_STOCK'; // Or 'BACKORDER' if you handle that
+            allConfirmed = false;
+          }
+      }
+      return { ...item, estado_item: newStatus };
+    });
+
+    onOrderItemsChange(order.id_pedido, updatedItems);
+    setOrder(prev => ({...prev, items: updatedItems}));
+    setIsCheckingStock(false);
+    
+    toast({
+      title: allConfirmed ? "Stock Confirmado" : "Problemas de Stock Encontrados",
+      description: allConfirmed ? "Todos los artículos están disponibles." : "Algunos artículos no tienen stock.",
+      variant: allConfirmed ? "default" : "destructive",
+    });
+
+    // Trigger webhook for stock confirmation
+    await triggerWebhookEvent('STOCK_CONFIRMED', {
+        orderId: order.id_pedido,
+        client: order.cliente,
+        items: updatedItems
+    });
+  };
+  
   const getStatusIcon = (status: OrderItemStatus) => {
     switch (status) {
       case 'CONFIRMADO': return <CheckCircle2 className="w-4 h-4 text-success" />;
@@ -158,7 +163,7 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
             <div>
                <h4 className="font-medium mb-3 text-primary">Acciones</h4>
                <div className="flex flex-wrap items-center gap-4">
-                <Button onClick={checkStock} disabled={isCheckingStock}>
+                <Button onClick={handleStockCheck} disabled={isCheckingStock}>
                   {isCheckingStock ? 'Verificando...' : 'Verificar Stock'}
                 </Button>
                  <Select onValueChange={(value: OrderStatus) => handleStatusChange(value)} value={order.estado_actual}>
@@ -171,10 +176,6 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
                         ))}
                     </SelectContent>
                 </Select>
-                 <Button variant="outline" onClick={handleNotifyViaMake} disabled={isNotifying}>
-                   <Send className="mr-2 h-4 w-4" />
-                  {isNotifying ? 'Notificando...' : 'Notificar Cliente'}
-                </Button>
                </div>
             </div>
           </div>

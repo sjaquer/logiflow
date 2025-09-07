@@ -144,3 +144,21 @@ export interface Filters {
   couriers: Courier[];
   dateRange: { from?: Date; to?: Date };
 }
+
+// --- WEBHOOKS ---
+export type WebhookEvent = 'ORDER_CREATED' | 'ORDER_STATUS_CHANGED' | 'STOCK_CONFIRMED' | 'ORDER_CANCELLED';
+export const WEBHOOK_EVENTS: {value: WebhookEvent, label: string}[] = [
+    { value: 'ORDER_CREATED', label: 'Pedido Creado' },
+    { value: 'ORDER_STATUS_CHANGED', label: 'Cambio de Estado de Pedido' },
+    { value: 'STOCK_CONFIRMED', label: 'Stock Confirmado' },
+    { value: 'ORDER_CANCELLED', label: 'Pedido Anulado' },
+];
+
+export interface Webhook {
+  id?: string;
+  name: string;
+  url: string;
+  event: WebhookEvent;
+  active: boolean;
+  createdAt: string;
+}

@@ -1,52 +1,52 @@
-
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
+import { getAdminDb } from '@/lib/firebase/firebase-admin';
+import type { Webhook, WebhookEvent } from '@/lib/types';
 
 const NotifyRequestSchema = z.object({
-  payload: z.record(z.any()), // Permite cualquier objeto JSON como payload
+  event: z.custom<WebhookEvent>(),
+  payload: z.record(z.any()),
 });
 
 /**
- * API Endpoint para actuar como proxy seguro y llamar a webhooks externos (ej. Make.com).
- * Esto evita exponer las URLs de los webhooks en el lado del cliente.
+ * API Endpoint to trigger webhooks based on application events.
+ * It reads webhook configurations from Firestore and calls them.
  */
 export async function POST(request: Request) {
   try {
-    const webhookUrl = process.env.MAKE_WEBHOOK_URL;
-
-    if (!webhookUrl) {
-      return NextResponse.json({ success: false, message: 'La URL del webhook no está configurada en el servidor.' }, { status: 500 });
-    }
-
+    const db = getAdminDb();
     const body = await request.json();
 
-    // 1. Validar la solicitud que llega desde nuestra propia app
     const parsedRequest = NotifyRequestSchema.safeParse(body);
     if (!parsedRequest.success) {
-      return NextResponse.json({ success: false, message: 'Solicitud inválida, se esperaba un "payload".', errors: parsedRequest.error.flatten() }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Solicitud inválida, se esperaba un "event" y "payload".', errors: parsedRequest.error.flatten() }, { status: 400 });
     }
 
-    const { payload } = parsedRequest.data;
+    const { event, payload } = parsedRequest.data;
 
-    // 2. Llamar al webhook externo (Make.com) de forma segura desde el servidor
-    const makeResponse = await fetch(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
+    // Find all active webhooks for the given event
+    const webhooksRef = db.collection('webhooks');
+    const snapshot = await webhooksRef.where('event', '==', event).where('active', '==', true).get();
+
+    if (snapshot.empty) {
+      return NextResponse.json({ success: true, message: 'Evento recibido, pero no hay webhooks activos configurados para este evento.', detail: `No webhooks found for event: ${event}` }, { status: 200 });
+    }
+
+    const webhookPromises = snapshot.docs.map(doc => {
+        const webhook = doc.data() as Webhook;
+        console.log(`Calling webhook: ${webhook.name} for event: ${event}`);
+        return fetch(webhook.url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
     });
 
-    // Make.com responde con "Accepted" (texto plano) y status 200 si el webhook fue recibido.
-    if (!makeResponse.ok) {
-        console.error('Error al llamar al webhook de Make.com:', makeResponse.statusText);
-        const responseBody = await makeResponse.text();
-        console.error('Respuesta de Make.com:', responseBody);
-        return NextResponse.json({ success: false, message: `El servicio externo devolvió un error: ${makeResponse.statusText}` }, { status: makeResponse.status });
-    }
+    await Promise.all(webhookPromises);
     
-    // 3. Responder a nuestra app que todo salió bien
-    return NextResponse.json({ success: true, message: 'Webhook disparado correctamente.' });
+    return NextResponse.json({ success: true, message: 'Webhooks disparados correctamente.', detail: `Called ${webhookPromises.length} webhook(s) for event: ${event}` });
 
-  } catch (error) {
+  } catch (error) => {
     console.error('Error en el endpoint de notificación:', error);
     return NextResponse.json({ success: false, message: 'Error interno del servidor.' }, { status: 500 });
   }
