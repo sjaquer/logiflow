@@ -70,6 +70,8 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
     }, 1000);
   };
   
+  // This function calls our secure proxy endpoint (/api/notify)
+  // which in turn calls the Make.com webhook.
   const handleNotifyViaMake = async () => {
     setIsNotifying(true);
     toast({ title: 'Enviando notificación...', description: 'Disparando escenario en Make.com.' });
@@ -79,7 +81,7 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                // El webhook URL ahora se lee del lado del servidor
+                // The webhook URL is now read from the server's environment variables
                 payload: {
                     orderId: order.id_pedido,
                     clientName: order.cliente.nombres,

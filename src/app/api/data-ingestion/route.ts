@@ -6,9 +6,8 @@ import type { Order, User, InventoryItem, PaymentMethod, Shop, Courier, OrderSta
 
 const db = getAdminDb();
 
-// --- Esquemas de Validación con Zod para cada colección ---
+// --- Schemas for incoming data from external sources (like Landing Pages) ---
 
-// Esquema para un nuevo cliente. DNI es el ID del documento.
 const ClientSchema = z.object({
   dni: z.string().min(8, 'El DNI es requerido y debe tener 8 dígitos.'),
   nombres: z.string().min(1, 'El nombre es requerido.'),
@@ -17,10 +16,9 @@ const ClientSchema = z.object({
   direccion: z.string().optional(),
   distrito: z.string().optional(),
   provincia: z.string().optional(),
-  source: z.string().default('make.com'), // Fuente por defecto
+  source: z.string().default('landing-page'),
 });
 
-// Esquema para un nuevo item de inventario. SKU es el ID del documento.
 const InventorySchema = z.object({
     sku: z.string().min(1, "SKU es requerido"),
     nombre: z.string().min(1, "Nombre es requerido"),
@@ -39,8 +37,6 @@ const InventorySchema = z.object({
     stock_minimo: z.number().default(5),
 });
 
-
-// Esquema para un nuevo pedido. Se generará un ID de documento automáticamente.
 const OrderSchema = z.object({
     tienda: z.object({
         id_tienda: z.string(),
@@ -71,20 +67,19 @@ const OrderSchema = z.object({
         courier: z.custom<Courier>(),
         costo_envio: z.number(),
     }),
-    // Otros campos pueden ser añadidos aquí con valores por defecto
 });
 
-// Esquema general para la solicitud al webhook
 const IngestionRequestSchema = z.object({
   collection: z.enum(['clients', 'inventory', 'orders']),
   payload: z.any(),
 });
 
 
-// --- Handler del API Endpoint ---
-
+/**
+ * API Endpoint for external data ingestion (e.g., from Landing Pages).
+ * This endpoint is the public "mailbox" for your application.
+ */
 export async function POST(request: Request) {
-  // 1. VERIFICAR LA AUTORIZACIÓN (API KEY)
   const authHeader = request.headers.get('Authorization');
   const apiKey = authHeader?.split('Bearer ')[1];
 
@@ -94,8 +89,6 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
-
-    // 2. VALIDAR EL CUERPO DE LA SOLICITUD
     const parsedRequest = IngestionRequestSchema.safeParse(body);
 
     if (!parsedRequest.success) {
@@ -107,24 +100,21 @@ export async function POST(request: Request) {
     let docId: string | undefined = undefined;
     let dataToSave: any;
 
-    // 3. VALIDAR EL PAYLOAD SEGÚN LA COLECCIÓN Y PREPARAR LOS DATOS
     switch (collection) {
       case 'clients':
         const parsedClient = ClientSchema.parse(payload);
-        docId = parsedClient.dni; // Usamos DNI como ID único
+        docId = parsedClient.dni;
         dataToSave = parsedClient;
         break;
       
       case 'inventory':
         const parsedInventory = InventorySchema.parse(payload);
-        docId = parsedInventory.sku; // Usamos SKU como ID único
+        docId = parsedInventory.sku;
         dataToSave = parsedInventory;
         break;
 
       case 'orders':
         const parsedOrder = OrderSchema.parse(payload);
-        // Para pedidos, no definimos docId para que Firestore lo genere automáticamente.
-        // Aquí completamos el objeto del pedido con valores por defecto y campos requeridos.
         
         dataToSave = {
             ...parsedOrder,
@@ -143,15 +133,15 @@ export async function POST(request: Request) {
                 link_seguimiento: null,
             },
             asignacion: {
-                id_usuario_actual: 'system_make_com',
-                nombre_usuario_actual: 'Sistema (Make.com)',
+                id_usuario_actual: 'system_landing_page',
+                nombre_usuario_actual: 'Sistema (Landing Page)',
             },
             historial: [{
                 fecha: new Date().toISOString(),
-                id_usuario: 'system_make_com',
-                nombre_usuario: 'Sistema (Make.com)',
+                id_usuario: 'system_landing_page',
+                nombre_usuario: 'Sistema (Landing Page)',
                 accion: 'Creación de Pedido',
-                detalle: 'Pedido creado desde servicio externo.'
+                detalle: 'Pedido creado desde servicio externo (LP).'
             }],
             fechas_clave: {
                 creacion: new Date().toISOString(),
@@ -163,30 +153,26 @@ export async function POST(request: Request) {
             },
             notas: {
                 nota_pedido: '',
-                observaciones_internas: 'Ingresado vía API.',
+                observaciones_internas: 'Ingresado vía API desde LP.',
                 motivo_anulacion: null,
             }
         } as Omit<Order, 'id_pedido'>;
         break;
         
       default:
-        // Este caso no debería ocurrir si la validación de 'collection' es correcta.
         return NextResponse.json({ message: 'Colección no soportada' }, { status: 400 });
     }
 
-    // 4. GUARDAR EN FIRESTORE
     const docRef = docId ? db.collection(collection).doc(docId) : db.collection(collection).doc();
     
-    // Para pedidos, necesitamos añadir el ID generado al propio documento.
     if (collection === 'orders') {
         dataToSave.id_pedido = docRef.id;
     }
 
-    await docRef.set(dataToSave, { merge: true }); // merge: true actualiza si ya existe, o crea si no.
+    await docRef.set(dataToSave, { merge: true });
 
     console.log(`Datos guardados en ${collection} con ID: ${docRef.id}`);
     
-    // 5. RESPONDER CON ÉXITO
     return NextResponse.json({ success: true, message: `Datos guardados en '${collection}'.`, id: docRef.id }, { status: 201 });
 
   } catch (error) {

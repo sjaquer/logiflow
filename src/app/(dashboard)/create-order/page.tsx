@@ -87,6 +87,8 @@ export default function CreateOrderPage() {
         return () => unsubs.forEach(unsub => unsub());
     }, [authUser]);
     
+    // This function sends customer data to our secure API endpoint,
+    // which then calls the Make.com webhook.
     const syncContactToKommo = async (clientData: CreateOrderFormValues['cliente']) => {
         toast({ title: 'Sincronizando con Kommo...', description: `Enviando cliente ${clientData.nombres} a Make.com` });
         try {
@@ -94,6 +96,7 @@ export default function CreateOrderPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    // The payload is what Make.com will receive
                     payload: {
                         dni: clientData.dni,
                         nombres: clientData.nombres,
