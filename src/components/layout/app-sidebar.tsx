@@ -21,7 +21,6 @@ import {
   LogOut,
   PlusCircle,
   Code,
-  Webhook,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
@@ -40,10 +39,6 @@ const menuItems: { href: string; label: string; icon: React.ElementType; require
   { href: '/create-order', label: 'Crear Pedido', icon: PlusCircle, requiredRoles: ['Call Center', 'Admin', 'Desarrolladores'] },
   { href: '/inventory', label: 'Inventario', icon: Box },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
-];
-
-const settingsMenuItems: { href: string; label: string; icon: React.ElementType; requiredRoles?: UserRole[] }[] = [
-  { href: '/settings/webhooks', label: 'Webhooks', icon: Webhook, requiredRoles: ['Admin', 'Desarrolladores'] },
 ];
 
 export function AppSidebar({ currentUser }: AppSidebarProps) {
@@ -81,24 +76,6 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
       <SidebarContent className="flex-1 p-2">
         <SidebarMenu>
           {filterItems(menuItems).map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton
-                asChild
-                size="lg"
-                isActive={pathname.startsWith(item.href)}
-                tooltip={{ children: item.label, side: 'right' }}
-              >
-                <Link href={item.href}>
-                  <item.icon className="h-5 w-5" />
-                  <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-         <SidebarMenu className="mt-auto">
-          {filterItems(settingsMenuItems).length > 0 && <p className="text-xs text-sidebar-foreground/60 px-4 py-2 group-data-[collapsible=icon]:data-[state=collapsed]:hidden">Ajustes</p>}
-          {filterItems(settingsMenuItems).map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
                 asChild

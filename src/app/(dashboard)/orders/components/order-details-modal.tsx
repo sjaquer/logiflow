@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import type { Order, User, InventoryItem, OrderStatus, OrderItem, OrderItemStatus, WebhookEvent } from '@/lib/types';
+import type { Order, User, InventoryItem, OrderStatus, OrderItem, OrderItemStatus } from '@/lib/types';
 import { KANBAN_COLUMNS, ITEM_STATUS_BADGE_MAP } from '@/lib/constants';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -22,40 +22,6 @@ interface OrderDetailsModalProps {
   onOrderItemsChange: (orderId: string, items: Order['items']) => void;
 }
 
-// This function calls our secure proxy endpoint (/api/notify)
-// which in turn finds and calls the correct Make.com webhook.
-const triggerWebhookEvent = async (event: WebhookEvent, payload: any) => {
-    const { toast } = useToast();
-    toast({ title: 'Disparando evento...', description: `Iniciando flujo para: ${event}` });
-
-    try {
-        const response = await fetch('/api/notify', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ event, payload })
-        });
-
-        if (!response.ok) {
-            const errorResult = await response.json().catch(() => ({ message: 'La respuesta del servidor no fue OK.' }));
-            throw new Error(errorResult.message || 'Error en la respuesta del servidor.');
-        }
-
-        const result = await response.json();
-
-        if (result.success) {
-            toast({ title: '¡Éxito!', description: `El evento '${event}' se disparó correctamente. ${result.detail}` });
-        } else {
-            throw new Error(result.message || 'El webhook no aceptó la solicitud.');
-        }
-        return true;
-    } catch (error: any) {
-        console.error(`Error triggering webhook for event ${event}:`, error);
-        toast({ title: 'Error de Notificación', description: error.message, variant: 'destructive' });
-        return false;
-    }
-};
-
-
 export function OrderDetailsModal({ children, order: initialOrder, users, inventory, onOrderStatusChange, onOrderItemsChange }: OrderDetailsModalProps) {
   const [order, setOrder] = useState<Order>(initialOrder);
   const [isCheckingStock, setIsCheckingStock] = useState(false);
@@ -64,17 +30,9 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
   const assignedUser = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
-  const handleStatusChange = async (newStatus: OrderStatus) => {
+  const handleStatusChange = (newStatus: OrderStatus) => {
     onOrderStatusChange(order.id_pedido, newStatus);
     setOrder(prev => ({...prev, estado_actual: newStatus}));
-
-    // Trigger webhook for status change
-    await triggerWebhookEvent('ORDER_STATUS_CHANGED', {
-        orderId: order.id_pedido,
-        client: order.cliente,
-        newStatus: newStatus,
-        total: order.pago.monto_total,
-    });
   };
 
   const handleStockCheck = async () => {
@@ -107,13 +65,6 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
       title: allConfirmed ? "Stock Confirmado" : "Problemas de Stock Encontrados",
       description: allConfirmed ? "Todos los artículos están disponibles." : "Algunos artículos no tienen stock.",
       variant: allConfirmed ? "default" : "destructive",
-    });
-
-    // Trigger webhook for stock confirmation
-    await triggerWebhookEvent('STOCK_CONFIRMED', {
-        orderId: order.id_pedido,
-        client: order.cliente,
-        items: updatedItems
     });
   };
   

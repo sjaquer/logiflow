@@ -10,6 +10,7 @@ import { useEffect, useState } from 'react';
 import type { User } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DevModeProvider } from '@/context/dev-mode-context';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -88,7 +89,9 @@ export default function DashboardLayout({
 }) {
   return (
     <SidebarProvider>
+      <DevModeProvider>
         <DashboardContent>{children}</DashboardContent>
+      </DevModeProvider>
     </SidebarProvider>
   );
 }

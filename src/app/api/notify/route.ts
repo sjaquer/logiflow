@@ -1,50 +1,62 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getAdminDb } from '@/lib/firebase/firebase-admin';
-import type { Webhook, WebhookEvent } from '@/lib/types';
 
 const NotifyRequestSchema = z.object({
-  event: z.custom<WebhookEvent>(),
   payload: z.record(z.any()),
 });
 
 /**
- * API Endpoint to trigger webhooks based on application events.
- * It reads webhook configurations from Firestore and calls them.
+ * API Endpoint to securely trigger a Make.com webhook from the client.
+ * It reads the webhook URL from environment variables and forwards the payload.
  */
 export async function POST(request: Request) {
+  const makeWebhookUrl = process.env.MAKE_WEBHOOK_URL;
+
+  if (!makeWebhookUrl) {
+    console.error('MAKE_WEBHOOK_URL environment variable is not set.');
+    return NextResponse.json({ success: false, message: 'La configuración del servidor para webhooks está incompleta.' }, { status: 500 });
+  }
+
   try {
-    const db = getAdminDb();
     const body = await request.json();
 
     const parsedRequest = NotifyRequestSchema.safeParse(body);
     if (!parsedRequest.success) {
-      return NextResponse.json({ success: false, message: 'Solicitud inválida, se esperaba un "event" y "payload".', errors: parsedRequest.error.flatten() }, { status: 400 });
+      return NextResponse.json({ success: false, message: 'Solicitud inválida, se esperaba un "payload".', errors: parsedRequest.error.flatten() }, { status: 400 });
     }
 
-    const { event, payload } = parsedRequest.data;
+    const { payload } = parsedRequest.data;
 
-    // Find all active webhooks for the given event
-    const webhooksRef = db.collection('webhooks');
-    const snapshot = await webhooksRef.where('event', '==', event).where('active', '==', true).get();
-
-    if (snapshot.empty) {
-      return NextResponse.json({ success: true, message: 'Evento recibido, pero no hay webhooks activos configurados para este evento.', detail: `No webhooks found for event: ${event}` }, { status: 200 });
-    }
-
-    const webhookPromises = snapshot.docs.map(doc => {
-        const webhook = doc.data() as Webhook;
-        console.log(`Calling webhook: ${webhook.name} for event: ${event}`);
-        return fetch(webhook.url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
+    // Call the Make.com webhook
+    const makeResponse = await fetch(makeWebhookUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
     });
 
-    await Promise.all(webhookPromises);
+    if (!makeResponse.ok) {
+        // Forward the error from Make.com if possible
+        const errorBody = await makeResponse.text();
+        console.error(`Error from Make.com webhook: ${makeResponse.status} ${errorBody}`);
+        return NextResponse.json({ success: false, message: `Error del webhook de Make.com: ${errorBody}` }, { status: makeResponse.status });
+    }
+
+    const responseText = await makeResponse.text();
+
+    // Make.com often returns "Accepted" as plain text for webhooks
+    if (responseText.toLowerCase() === 'accepted') {
+        return NextResponse.json({ success: true, message: 'Webhook disparado correctamente.', detail: 'Accepted' });
+    }
     
-    return NextResponse.json({ success: true, message: 'Webhooks disparados correctamente.', detail: `Called ${webhookPromises.length} webhook(s) for event: ${event}` });
+    // Try to parse as JSON if not plain text "Accepted"
+    try {
+        const responseJson = JSON.parse(responseText);
+        return NextResponse.json({ success: true, message: 'Webhook disparado correctamente.', detail: responseJson });
+    } catch {
+        // If it's not JSON and not "Accepted", return the text
+        return NextResponse.json({ success: true, message: 'Webhook disparado correctamente.', detail: responseText });
+    }
+
 
   } catch (error) => {
     console.error('Error en el endpoint de notificación:', error);
