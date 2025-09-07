@@ -28,16 +28,12 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const data = Object.fromEntries(formData.entries());
 
-    // Kommo sends data for different events. We're interested in 'leads[add]' or 'leads[status]'.
-    // Let's assume the event is for adding a new lead for simplicity.
     const leadDataKey = Object.keys(data).find(key => key.startsWith('leads[add][0]'));
     
     if (!leadDataKey) {
       return NextResponse.json({ success: false, message: 'No lead data found in webhook payload.' }, { status: 400 });
     }
 
-    // This is a simplified parser. Kommo's structure is complex.
-    // A robust solution would use a proper query string parsing library.
     const leadName = data['leads[add][0][name]'] as string;
     let clientDNI: string | null = null;
     let clientPhone: string | null = null;
