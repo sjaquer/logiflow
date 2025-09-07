@@ -5,105 +5,37 @@ import type { NextRequest } from 'next/server';
 
 const db = getAdminDb();
 
-// --- Kommo Field Names (Case-Sensitive) ---
-// You might need to adjust these if your custom fields in Kommo have different names.
-const KOMMO_FIELD_DNI = 'DNI';
-const KOMMO_FIELD_PHONE = 'Phone';
-const KOMMO_FIELD_EMAIL = 'Email';
-const KOMMO_FIELD_ADDRESS = 'Address';
-
-
 /**
  * API Endpoint to receive webhook data from Kommo.
  * This endpoint is the public "mailbox" for Kommo to send data to.
  */
 export async function POST(request: NextRequest) {
-  // Security check: API key now comes as a URL query parameter
-  const apiKeyFromUrl = request.nextUrl.searchParams.get('apiKey');
-  const serverApiKey = process.env.MAKE_API_KEY;
+    const serverApiKey = process.env.MAKE_API_KEY;
 
-  if (!serverApiKey) {
-      console.error("MAKE_API_KEY is not configured on the server.");
-      return NextResponse.json({ message: 'Error de configuración del servidor' }, { status: 500 });
-  }
-
-  if (!apiKeyFromUrl || apiKeyFromUrl !== serverApiKey) {
-    return NextResponse.json({ message: 'No autorizado' }, { status: 401 });
-  }
-
-  try {
-    const formData = await request.formData();
-    const data = Object.fromEntries(formData.entries());
-
-    const leadDataKey = Object.keys(data).find(key => key.startsWith('leads[add][0]'));
-    
-    if (!leadDataKey) {
-      return NextResponse.json({ success: false, message: 'No lead data found in webhook payload.' }, { status: 400 });
+    if (!serverApiKey) {
+        console.error("MAKE_API_KEY is not configured on the server.");
+        return NextResponse.json({ message: 'Error de configuración del servidor' }, { status: 500 });
     }
 
-    const leadName = data['leads[add][0][name]'] as string;
-    let clientDNI: string | null = null;
-    let clientPhone: string | null = null;
-    let clientEmail: string | null = null;
-    let clientAddress: string | null = null;
-
-    // Find custom fields by iterating through the data
-    for (const key in data) {
-      if (key.includes('[custom_fields]')) {
-        const fieldNameKey = key.replace(/values\[\d+\]\[value\]$/, 'name');
-        const fieldValue = data[key] as string;
-
-        if (data[fieldNameKey] === KOMMO_FIELD_DNI) {
-          clientDNI = fieldValue;
-        }
-        if (data[fieldNameKey] === KOMMO_FIELD_PHONE) {
-          clientPhone = fieldValue;
-        }
-         if (data[fieldNameKey] === KOMMO_FIELD_EMAIL) {
-          clientEmail = fieldValue;
-        }
-         if (data[fieldNameKey] === KOMMO_FIELD_ADDRESS) {
-          clientAddress = fieldValue;
-        }
-      }
-    }
-    
-    // Also check the main phone and email fields if they are not in custom fields
-    if (!clientPhone) {
-      const phoneKey = Object.keys(data).find(key => key.endsWith('[contacts][0][phone]'));
-      if (phoneKey) clientPhone = data[phoneKey] as string;
-    }
-     if (!clientEmail) {
-      const emailKey = Object.keys(data).find(key => key.endsWith('[contacts][0][email]'));
-      if (emailKey) clientEmail = data[emailKey] as string;
+    const apiKeyFromUrl = request.nextUrl.searchParams.get('apiKey');
+    if (!apiKeyFromUrl || apiKeyFromUrl !== serverApiKey) {
+        console.warn("Unauthorized webhook attempt. Ignoring.");
+        return NextResponse.json({ message: 'No autorizado' }, { status: 401 });
     }
 
+    try {
+        console.log("--- INCOMING WEBHOOK FROM KOMMO ---");
+        const formData = await request.formData();
+        const data = Object.fromEntries(formData.entries());
 
-    if (!clientDNI) {
-      return NextResponse.json({ success: false, message: `Custom field '${KOMMO_FIELD_DNI}' not found or empty in Kommo payload. Cannot create client.` }, { status: 400 });
+        // Log the entire received payload to Vercel logs
+        console.log("Received data:", JSON.stringify(data, null, 2));
+        
+        // Respond to Kommo immediately to confirm receipt
+        return NextResponse.json({ success: true, message: 'Webhook received and logged for debugging.' });
+
+    } catch (error) {
+        console.error('Error processing webhook for logging:', error);
+        return NextResponse.json({ success: false, message: 'Error processing webhook.' }, { status: 500 });
     }
-    
-    const dataToSave = {
-        dni: clientDNI,
-        nombres: leadName || 'Sin Nombre desde Kommo',
-        celular: clientPhone || '',
-        email: clientEmail || '',
-        direccion: clientAddress || 'No especificada',
-        distrito: '', // Kommo might not send this, can be enriched later
-        provincia: '', // Kommo might not send this, can be enriched later
-        source: 'kommo-webhook',
-    };
-
-    const docRef = db.collection('clients').doc(clientDNI);
-    await docRef.set(dataToSave, { merge: true });
-
-    console.log(`Cliente guardado/actualizado desde Kommo con DNI: ${clientDNI}`);
-    
-    // IMPORTANT: Kommo expects a 200 OK response to confirm receipt.
-    return NextResponse.json({ success: true, message: `Cliente procesado.`, id: docRef.id });
-
-  } catch (error) {
-    console.error(`Error procesando webhook de Kommo:`, error);
-    return NextResponse.json({ message: 'Error interno del servidor al procesar el webhook.' }, { status: 500 });
-  }
 }
