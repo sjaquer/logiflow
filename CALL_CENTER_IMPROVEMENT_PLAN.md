@@ -9,81 +9,48 @@
 ---
 
 ## 1. Resumen Ejecutivo
-
-Actualmente, nuestro equipo de Call Center opera utilizando un sistema manual que involucra la exportación de datos desde el CRM Kommo hacia Google Sheets, para luego procesar los pedidos. Este método, aunque funcional, es propenso a errores, genera retrasos y no aprovecha la información del inventario en tiempo real.
-
-Esta propuesta detalla un plan de desarrollo de **una semana** para integrar una nueva sección en nuestra aplicación LogiFlow. Esta sección permitirá a los agentes de Call Center gestionar llamadas, confirmar datos de clientes y crear pedidos directamente en el sistema, utilizando información de inventario actualizada al segundo. Una vez confirmado, el pedido actualizará automáticamente el estado del cliente en Kommo, manteniendo la integridad de nuestro embudo de ventas.
-
-**Beneficio Principal:** Reducir drásticamente el tiempo de gestión por cliente, eliminar errores de transcripción manual, asegurar la venta de productos con stock real y automatizar la actualización de nuestro CRM.
-
----
-
-## 2. El Flujo de Trabajo Propuesto
-
-El nuevo proceso será sencillo e intuitivo para el agente:
-
-1.  **Bandeja de Entrada de Llamadas:** El agente iniciará sesión en LogiFlow y verá una lista de clientes listos para ser contactados, traídos directamente desde una etapa específica de Kommo (ej. "Para Llamar").
-2.  **Gestión de la Llamada:** Al seleccionar un cliente, el agente verá toda su información (nombre, DNI, teléfono, dirección). Durante la llamada, podrá confirmar y corregir estos datos en el acto.
-3.  **Creación de Pedido Asistida:** En la misma pantalla, el agente tendrá acceso a nuestro catálogo completo de productos con **stock en tiempo real**. Podrá añadir artículos al carrito del cliente, asegurando que solo se vende lo que está disponible.
-4.  **Confirmación y Sincronización:** Al finalizar el pedido, el sistema hará dos cosas automáticamente:
-    *   Creará el pedido en LogiFlow para que el equipo de logística comience su preparación.
-    *   Enviará una señal a Kommo para mover al cliente a la siguiente etapa del embudo (ej. "Venta Confirmada"), cerrando el ciclo de venta de forma limpia.
-
-
-
----
-
+Actualmente, nuestro Call Center depende de un proceso manual basado en exportaciones desde Kommo hacia Google Sheets. Este método, aunque funcional, presenta varias limitaciones: duplicidad de trabajo, errores humanos en la transcripción de datos y demoras en la confirmación de pedidos.
+La propuesta consiste en integrar directamente la gestión de llamadas y creación de pedidos en LogiFlow, con conexión en tiempo real al inventario y sincronización automática con Kommo. De este modo, los agentes podrán trabajar en un único entorno digital, eliminando procesos manuales y garantizando que las ventas se realicen únicamente sobre productos disponibles.
+Principales beneficios esperados:
+•	Reducción significativa del tiempo de atención por cliente.
+•	Eliminación de errores derivados de la manipulación manual de datos.
+•	Mayor control sobre el inventario en tiempo real.
+•	Actualización automática del CRM, manteniendo un embudo de ventas confiable y limpio.
+## 2. Flujo de Trabajo Propuesto
+El nuevo flujo está diseñado para ser intuitivo, seguro y escalable:
+•	Recepción de clientes desde Kommo: Los leads en la etapa “Para Llamar” se mostrarán automáticamente en LogiFlow.
+•	Gestión de la llamada: El agente podrá acceder al perfil del cliente (datos personales, dirección, historial de interacción) y confirmar o corregir información en el acto.
+•	Creación de pedidos: En la misma interfaz, el agente dispondrá de un catálogo actualizado en tiempo real, con validación de stock. Podrá armar un pedido evitando comprometer productos agotados.
+•	Confirmación y sincronización: Una vez validado el pedido, LogiFlow lo registrará en el sistema logístico e inmediatamente actualizará el estado del cliente en Kommo, moviéndolo a la etapa “Venta Confirmada”.
+•	Este flujo elimina pasos intermedios, centraliza la información y garantiza trazabilidad de punta a punta.
 ## 3. Plan de Implementación (1 Semana)
-
-Hemos diseñado un plan de trabajo intensivo para entregar esta mejora en **5 días hábiles**.
-
-### **Día 1: La Base - Recepción de Leads**
-
-*   **Objetivo:** Hacer que los clientes "pendientes de llamar" de Kommo aparezcan automáticamente en LogiFlow.
-*   **Acciones Técnicas:**
-    1.  Configuraremos un nuevo Webhook en Kommo en la etapa del embudo "Para Llamar".
-    2.  Crearemos un nuevo *endpoint* (receptor de datos) en nuestra aplicación para recibir la información de estos clientes.
-    3.  Almacenaremos temporalmente esta lista de clientes en nuestra base de datos para que el equipo de Call Center pueda trabajar con ella.
-*   **Resultado del Día:** Una lista interna de clientes por llamar, invisible aún para los usuarios, pero lista para ser utilizada.
-
-### **Día 2: Construcción de la Interfaz del Agente**
-
-*   **Objetivo:** Crear la nueva pantalla donde los agentes verán su lista de tareas (clientes por llamar).
-*   **Acciones Técnicas:**
-    1.  Diseñaremos una nueva página en LogiFlow llamada `/call-center-queue`.
-    2.  Mostraremos la lista de clientes obtenida en el Día 1 en un formato de tabla o tarjetas, fácil de leer y usar.
-    3.  Añadiremos un botón en el menú lateral para que los agentes puedan acceder a esta nueva sección.
-*   **Resultado del Día:** Los agentes podrán ver una lista clara de a quién necesitan llamar.
-
-### **Día 3: El Corazón - Confirmación de Datos y Creación de Pedidos**
-
-*   **Objetivo:** Permitir que el agente, al hacer clic en un cliente, pueda editar sus datos y crear un nuevo pedido.
-*   **Acciones Técnicas:**
-    1.  Desarrollaremos el formulario de edición de datos del cliente.
-    2.  Integraremos la misma interfaz de "Crear Pedido" que ya existe, pero pre-cargada con la información del cliente seleccionado. Esto incluye el buscador de productos con inventario en tiempo real.
-*   **Resultado del Día:** Un agente podrá seleccionar un cliente, confirmar su dirección y añadir productos a un pedido.
-
-### **Día 4: La Conexión de Vuelta - Actualización de Kommo**
-
-*   **Objetivo:** Hacer que LogiFlow actualice automáticamente a Kommo una vez que el pedido se ha confirmado.
-*   **Acciones Técnicas:**
-    1.  Crearemos una nueva función que se comunique con la API de Kommo, esta vez para **actualizar un lead**.
-    2.  Esta función se activará al guardar un pedido desde la nueva interfaz. Su misión será mover el lead en el embudo de Kommo a la etapa "Venta Confirmada".
-*   **Resultado del Día:** El ciclo completo de sincronización estará terminado. Un pedido creado en LogiFlow se reflejará como un avance en el embudo de Kommo.
-
-### **Día 5: Pruebas y Despliegue Final**
-
-*   **Objetivo:** Realizar pruebas exhaustivas del flujo completo y entregar la funcionalidad al equipo.
-*   **Acciones Técnicas:**
-    1.  Realizaremos pruebas de extremo a extremo con leads de prueba en Kommo.
-    2.  Verificaremos que los datos se guardan correctamente, el inventario se descuenta y el estado en Kommo se actualiza.
-    3.  Desplegaremos la versión final de la aplicación y realizaremos una breve capacitación con el equipo de Call Center.
-*   **Resultado del Día:** ¡La nueva funcionalidad estará en producción y lista para ser utilizada!
-
----
-
+El plan técnico ha sido dividido en 5 etapas, cada una con objetivos claros, entregables concretos y dependencias bien definidas.
+•	Día 1: Integración inicial de leads (LISTO)
+o	Configuración de Webhook en Kommo para capturar leads en la etapa “Para Llamar”.
+o	Creación de un endpoint en LogiFlow para recibir los datos en tiempo real.
+o	Almacenamiento temporal en base de datos para garantizar persistencia y disponibilidad.
+o	Resultado: flujo automático de leads hacia LogiFlow, probado y operativo.
+•	Día 2: Construcción de interfaz de agentes (EN PROGRESO)
+o	Desarrollo de la página /call-center-queue en LogiFlow.
+o	Diseño de UI amigable con tabla de clientes y filtros de búsqueda.
+o	Integración con permisos de usuario para acceso exclusivo a agentes.
+o	Resultado esperado: los agentes visualizan de manera clara a quién deben llamar.
+•	Día 3: Edición de datos y creación de pedidos (PENDIENTE)
+o	Desarrollo de formulario dinámico para edición de datos del cliente.
+o	Integración del buscador de productos con inventario en tiempo real.
+o	Validaciones de datos obligatorios y control de stock.
+o	Resultado esperado: un agente podrá registrar un pedido completo en una sola vista.
+•	Día 4: Sincronización con Kommo (PENDIENTE)
+o	Implementación de un módulo de comunicación bidireccional con la API de Kommo.
+o	Actualización automática del lead al confirmar un pedido (ej. mover a “Venta Confirmada”).
+o	Manejo de errores y reintentos para garantizar confiabilidad de la sincronización.
+o	Resultado esperado: cualquier pedido confirmado en LogiFlow se reflejará en tiempo real en Kommo.
+•	Día 5: Pruebas y despliegue final (PENDIENTE)
+o	Ejecución de pruebas end-to-end con datos de prueba y escenarios reales.
+o	Validación de inventario, actualización de embudos y consistencia de pedidos.
+o	Despliegue en producción con sesión de capacitación breve para agentes.
+o	Resultado esperado: sistema en producción, estable y validado por usuarios finales.
 ## 4. Conclusión
-
-Esta mejora estratégica representa una inversión de bajo riesgo con un alto retorno en eficiencia, precisión y satisfacción tanto para nuestros empleados como para nuestros clientes. Estamos seguros de que esta herramienta potenciará significativamente la capacidad de nuestro equipo de Call Center.
-
-Quedo a su disposición para cualquier consulta.
+La implementación de este sistema integrado no solo representa una mejora operativa, sino una evolución estratégica en la gestión del Call Center. La automatización de procesos críticos reducirá costos operativos, incrementará la productividad del equipo y mejorará la experiencia del cliente final al garantizar un servicio más ágil y confiable.
+Además, el proyecto está diseñado para ser escalable: en el futuro, podrá extenderse con métricas de desempeño en tiempo real, grabación de llamadas vinculada a leads o integración con sistemas de facturación.
+Con una inversión de solo una semana de desarrollo, se obtendrá una herramienta robusta que transformará la forma en que gestionamos las ventas y la relación con nuestros clientes.

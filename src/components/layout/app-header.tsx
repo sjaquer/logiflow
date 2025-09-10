@@ -49,6 +49,8 @@ export function AppHeader({ user }: AppHeaderProps) {
         return 'Inventario';
       case pathname.startsWith('/reports'):
         return 'Reportes';
+      case pathname.startsWith('/call-center-queue'):
+        return 'Cola de Llamadas de Call Center';
       default:
         return 'Dashboard';
     }

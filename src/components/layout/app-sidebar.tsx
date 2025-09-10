@@ -22,6 +22,7 @@ import {
   PlusCircle,
   Code,
   Users,
+  Phone,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
@@ -37,6 +38,7 @@ interface AppSidebarProps {
 
 const menuItems: { href: string; label: string; icon: React.ElementType; requiredRoles?: UserRole[] }[] = [
   { href: '/orders', label: 'Pedidos', icon: LayoutDashboard },
+  { href: '/call-center-queue', label: 'Call Center', icon: Phone, requiredRoles: ['Call Center', 'Admin', 'Desarrolladores'] },
   { href: '/create-order', label: 'Crear Pedido', icon: PlusCircle, requiredRoles: ['Call Center', 'Admin', 'Desarrolladores'] },
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/inventory', label: 'Inventario', icon: Box },
