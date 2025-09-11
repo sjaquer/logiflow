@@ -42,7 +42,7 @@ export function AppHeader({ user }: AppHeaderProps) {
       case pathname.startsWith('/orders'):
         return 'Pedidos';
       case pathname.startsWith('/create-order'):
-        return 'Crear Pedido';
+        return 'Procesar Pedido';
       case pathname.startsWith('/clients'):
         return 'Clientes';
       case pathname.startsWith('/inventory'):

@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
@@ -157,8 +156,8 @@ function CreateOrderPageContent() {
                 fecha: new Date().toISOString(),
                 id_usuario: currentUser.id_usuario,
                 nombre_usuario: currentUser.nombre,
-                accion: 'Creación de Pedido',
-                detalle: `Pedido creado por ${currentUser.rol}.`
+                accion: 'Pedido Confirmado',
+                detalle: `Pedido confirmado y procesado por ${currentUser.rol}.`
             }],
             fechas_clave: {
                 creacion: new Date().toISOString(),
@@ -193,12 +192,12 @@ function CreateOrderPageContent() {
             const docRef = await addDoc(orderCollectionRef, newOrder);
             await setDoc(doc(db, 'orders', docRef.id), { id_pedido: docRef.id }, { merge: true });
             
-            toast({ title: "¡Éxito!", description: `Pedido ${docRef.id} creado correctamente.` });
+            toast({ title: "¡Éxito!", description: `Pedido ${docRef.id} confirmado y guardado.` });
             form.reset();
 
         } catch (error) {
-            console.error("Error creating order:", error);
-            toast({ title: "Error", description: "No se pudo crear el pedido.", variant: "destructive" });
+            console.error("Error processing order:", error);
+            toast({ title: "Error", description: "No se pudo procesar el pedido.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
@@ -221,8 +220,8 @@ function CreateOrderPageContent() {
         <div className="flex-1 space-y-6 p-4 md:p-6 lg:p-8">
              <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Crear Nuevo Pedido</h1>
-                    <p className="text-muted-foreground">Completa los siguientes pasos para registrar un nuevo pedido en el sistema.</p>
+                    <h1 className="text-3xl font-bold tracking-tight">Procesar Pedido</h1>
+                    <p className="text-muted-foreground">Confirma los datos del cliente, verifica los productos y guarda el pedido.</p>
                 </div>
              </div>
             <Form {...form}>
@@ -235,7 +234,7 @@ function CreateOrderPageContent() {
                         <Button type="submit" size="lg" disabled={isSubmitting}>
                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                            <Save className="mr-2 h-4 w-4"/>
-                            Guardar Pedido
+                            Guardar Pedido Confirmado
                         </Button>
                     </div>
                 </form>
