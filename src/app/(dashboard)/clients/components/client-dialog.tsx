@@ -10,6 +10,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { Loader2 } from 'lucide-react';
 import type { Client } from '@/lib/types';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 const clientSchema = z.object({
   dni: z.string().length(8, 'El DNI debe tener 8 dígitos.'),
@@ -74,92 +75,94 @@ export function ClientDialog({ isOpen, onOpenChange, onSave, client }: ClientDia
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{client ? 'Editar Cliente' : 'Añadir Nuevo Cliente'}</DialogTitle>
           <DialogDescription>
             Completa los detalles del cliente. Haz clic en guardar para aplicar los cambios.
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="dni"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>DNI</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="12345678" disabled={!!client} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="nombres"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nombre Completo</FormLabel>
-                  <FormControl><Input {...field} placeholder="Juan Pérez" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="celular"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Celular</FormLabel>
-                  <FormControl><Input {...field} placeholder="987654321" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Email (Opcional)</FormLabel>
-                  <FormControl><Input {...field} placeholder="cliente@email.com" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="direccion"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Dirección (Opcional)</FormLabel>
-                  <FormControl><Input {...field} placeholder="Av. Siempre Viva 123" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-              control={form.control}
-              name="distrito"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Distrito (Opcional)</FormLabel>
-                  <FormControl><Input {...field} placeholder="Miraflores" /></FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <DialogFooter>
-              <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Guardar Cliente
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+        <ScrollArea className="max-h-[70vh] p-1">
+            <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-4">
+                <FormField
+                control={form.control}
+                name="dni"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>DNI</FormLabel>
+                    <FormControl>
+                        <Input {...field} placeholder="12345678" disabled={!!client} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="nombres"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Nombre Completo</FormLabel>
+                    <FormControl><Input {...field} placeholder="Juan Pérez" /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="celular"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Celular</FormLabel>
+                    <FormControl><Input {...field} placeholder="987654321" /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="email"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Email (Opcional)</FormLabel>
+                    <FormControl><Input {...field} placeholder="cliente@email.com" /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="direccion"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Dirección (Opcional)</FormLabel>
+                    <FormControl><Input {...field} placeholder="Av. Siempre Viva 123" /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="distrito"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Distrito (Opcional)</FormLabel>
+                    <FormControl><Input {...field} placeholder="Miraflores" /></FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                 <DialogFooter className="pt-4">
+                    <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                        {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Guardar Cliente
+                    </Button>
+                </DialogFooter>
+            </form>
+            </Form>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
