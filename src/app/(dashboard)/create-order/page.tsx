@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
@@ -217,7 +218,7 @@ function CreateOrderPageContent() {
     }
 
     return (
-        <div className="flex-1 p-4 md:p-6 lg:p-8">
+        <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
              <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Procesar Pedido</h1>
@@ -230,7 +231,7 @@ function CreateOrderPageContent() {
                 </Button>
              </div>
             <Form {...form}>
-                <form className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <form className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
                          <ItemsForm form={form} inventory={inventory} />
                     </div>

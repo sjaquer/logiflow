@@ -1,3 +1,4 @@
+
 'use client';
 import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -12,6 +13,7 @@ import { es } from 'date-fns/locale';
 import { CheckCircle2, Package, User as UserIcon, Calendar, MapPin, Truck, CreditCard, ShoppingBag, Hash, CircleHelp, AlertCircle, XCircle, Send } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface OrderDetailsModalProps {
   children: React.ReactNode;
@@ -86,83 +88,85 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
             Detalles del Pedido <Badge variant="outline">{order.id_pedido}</Badge>
           </DialogTitle>
         </DialogHeader>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 py-4 max-h-[70vh] overflow-y-auto">
-          <div className="md:col-span-2 space-y-6">
-            <div>
-              <h4 className="font-medium mb-2 text-primary">Artículos</h4>
-              <div className="space-y-2">
-                {order.items.map(item => {
-                  const inventoryItem = inventory.find(i => i.sku === item.sku);
-                  return (
-                    <div key={item.sku} className="flex justify-between items-center p-2 rounded-md bg-muted/50">
-                      <div>
-                        <p className="font-medium">{inventoryItem?.nombre || 'Artículo Desconocido'}</p>
-                        <p className="text-sm text-muted-foreground">SKU: {inventoryItem?.sku} &bull; Cant: {item.cantidad}</p>
+        <ScrollArea className="max-h-[70vh]">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 p-1">
+            <div className="md:col-span-2 space-y-6">
+              <div>
+                <h4 className="font-medium mb-2 text-primary">Artículos</h4>
+                <div className="space-y-2">
+                  {order.items.map(item => {
+                    const inventoryItem = inventory.find(i => i.sku === item.sku);
+                    return (
+                      <div key={item.sku} className="flex justify-between items-center p-2 rounded-md bg-muted/50">
+                        <div>
+                          <p className="font-medium">{inventoryItem?.nombre || 'Artículo Desconocido'}</p>
+                          <p className="text-sm text-muted-foreground">SKU: {inventoryItem?.sku} &bull; Cant: {item.cantidad}</p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(item.estado_item)}
+                          <Badge variant={ITEM_STATUS_BADGE_MAP[item.estado_item]} className="capitalize text-xs w-24 justify-center">
+                            {item.estado_item.replace('_', ' ').toLowerCase()}
+                          </Badge>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(item.estado_item)}
-                        <Badge variant={ITEM_STATUS_BADGE_MAP[item.estado_item]} className="capitalize text-xs w-24 justify-center">
-                          {item.estado_item.replace('_', ' ').toLowerCase()}
-                        </Badge>
-                      </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              </div>
+              <Separator />
+              <div>
+                <h4 className="font-medium mb-3 text-primary">Acciones</h4>
+                <div className="flex flex-wrap items-center gap-4">
+                  <Button onClick={handleStockCheck} disabled={isCheckingStock}>
+                    {isCheckingStock ? 'Verificando...' : 'Verificar Stock'}
+                  </Button>
+                  <Select onValueChange={(value: OrderStatus) => handleStatusChange(value)} value={order.estado_actual}>
+                      <SelectTrigger className="w-auto md:w-[200px]">
+                          <SelectValue placeholder="Cambiar Estado" />
+                      </SelectTrigger>
+                      <SelectContent>
+                          {KANBAN_COLUMNS.map(col => (
+                              <SelectItem key={col.id} value={col.id}>{col.title}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
-            <Separator />
-            <div>
-               <h4 className="font-medium mb-3 text-primary">Acciones</h4>
-               <div className="flex flex-wrap items-center gap-4">
-                <Button onClick={handleStockCheck} disabled={isCheckingStock}>
-                  {isCheckingStock ? 'Verificando...' : 'Verificar Stock'}
-                </Button>
-                 <Select onValueChange={(value: OrderStatus) => handleStatusChange(value)} value={order.estado_actual}>
-                    <SelectTrigger className="w-[200px]">
-                        <SelectValue placeholder="Cambiar Estado" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {KANBAN_COLUMNS.map(col => (
-                            <SelectItem key={col.id} value={col.id}>{col.title}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-               </div>
-            </div>
-          </div>
-          <div className="space-y-4 bg-muted/50 p-4 rounded-lg">
-            <h4 className="font-medium text-primary border-b pb-2">Resumen</h4>
-            <div className="space-y-3 text-sm">
-                <div className="flex items-center gap-3"><UserIcon className="w-4 h-4 text-muted-foreground" /> <span>{order.cliente.nombres}</span></div>
-                <div className="flex items-start gap-3"><MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" /> <span>{order.envio.direccion}</span></div>
-                <div className="flex items-center gap-3"><ShoppingBag className="w-4 h-4 text-muted-foreground" /> <span>{order.tienda.nombre}</span></div>
-                <Separator />
-                <div className="flex items-center gap-3"><Calendar className="w-4 h-4 text-muted-foreground" /> <span>{format(new Date(order.fechas_clave.creacion), 'd MMM, yyyy HH:mm', { locale: es })}</span></div>
-                <div className="flex items-center gap-3"><Truck className="w-4 h-4 text-muted-foreground" /> <span>{order.envio.courier}</span></div>
-                <div className="flex items-center gap-3"><CreditCard className="w-4 h-4 text-muted-foreground" /> <span>{order.pago.metodo_pago_previsto}</span></div>
-                {order.envio.nro_guia && <div className="flex items-center gap-3"><Hash className="w-4 h-4 text-muted-foreground" /> <span>{order.envio.nro_guia}</span></div>}
-                <Separator />
-                {assignedUser && (
-                  <div className="flex items-center gap-3">
-                    <Avatar className="h-7 w-7">
-                        <AvatarImage src={assignedUser.avatar} />
-                        <AvatarFallback>{getInitials(assignedUser.nombre)}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex flex-col">
-                        <span className="text-muted-foreground text-xs">Asignado a</span>
-                        <span className="font-medium">{assignedUser.nombre}</span>
+            <div className="space-y-4 bg-muted/50 p-4 rounded-lg">
+              <h4 className="font-medium text-primary border-b pb-2">Resumen</h4>
+              <div className="space-y-3 text-sm">
+                  <div className="flex items-center gap-3"><UserIcon className="w-4 h-4 text-muted-foreground" /> <span>{order.cliente.nombres}</span></div>
+                  <div className="flex items-start gap-3"><MapPin className="w-4 h-4 mt-0.5 text-muted-foreground" /> <span>{order.envio.direccion}</span></div>
+                  <div className="flex items-center gap-3"><ShoppingBag className="w-4 h-4 text-muted-foreground" /> <span>{order.tienda.nombre}</span></div>
+                  <Separator />
+                  <div className="flex items-center gap-3"><Calendar className="w-4 h-4 text-muted-foreground" /> <span>{format(new Date(order.fechas_clave.creacion), 'd MMM, yyyy HH:mm', { locale: es })}</span></div>
+                  <div className="flex items-center gap-3"><Truck className="w-4 h-4 text-muted-foreground" /> <span>{order.envio.courier}</span></div>
+                  <div className="flex items-center gap-3"><CreditCard className="w-4 h-4 text-muted-foreground" /> <span>{order.pago.metodo_pago_previsto}</span></div>
+                  {order.envio.nro_guia && <div className="flex items-center gap-3"><Hash className="w-4 h-4 text-muted-foreground" /> <span>{order.envio.nro_guia}</span></div>}
+                  <Separator />
+                  {assignedUser && (
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-7 w-7">
+                          <AvatarImage src={assignedUser.avatar} />
+                          <AvatarFallback>{getInitials(assignedUser.nombre)}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col">
+                          <span className="text-muted-foreground text-xs">Asignado a</span>
+                          <span className="font-medium">{assignedUser.nombre}</span>
+                      </div>
                     </div>
+                  )}
+                  <Separator />
+                  <div className="flex justify-between items-center text-base font-bold">
+                      <span>Total</span>
+                      <span>S/ {order.pago.monto_total.toFixed(2)}</span>
                   </div>
-                )}
-                <Separator />
-                <div className="flex justify-between items-center text-base font-bold">
-                    <span>Total</span>
-                    <span>S/ {order.pago.monto_total.toFixed(2)}</span>
-                </div>
+              </div>
             </div>
           </div>
-        </div>
-        <DialogFooter>
+        </ScrollArea>
+        <DialogFooter className="mt-4">
           <Button variant="outline">Imprimir Factura</Button>
         </DialogFooter>
       </DialogContent>
