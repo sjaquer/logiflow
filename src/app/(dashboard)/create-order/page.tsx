@@ -217,25 +217,26 @@ function CreateOrderPageContent() {
     }
 
     return (
-        <div className="flex-1 space-y-6 p-4 md:p-6 lg:p-8">
-             <div className="flex items-center justify-between">
+        <div className="flex-1 p-4 md:p-6 lg:p-8">
+             <div className="flex items-center justify-between mb-8">
                 <div>
                     <h1 className="text-3xl font-bold tracking-tight">Procesar Pedido</h1>
                     <p className="text-muted-foreground">Confirma los datos del cliente, verifica los productos y guarda el pedido.</p>
                 </div>
+                <Button type="submit" size="lg" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Save className="mr-2 h-4 w-4"/>
+                    Guardar Pedido Confirmado
+                </Button>
              </div>
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    <ClientForm form={form} clients={clients} />
-                    <ItemsForm form={form} inventory={inventory} />
-                    <PaymentForm form={form} />
-                    
-                    <div className="flex justify-end">
-                        <Button type="submit" size="lg" disabled={isSubmitting}>
-                           {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                           <Save className="mr-2 h-4 w-4"/>
-                            Guardar Pedido Confirmado
-                        </Button>
+                <form className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-8">
+                         <ItemsForm form={form} inventory={inventory} />
+                    </div>
+                    <div className="lg:col-span-1 space-y-8">
+                        <ClientForm form={form} clients={clients} />
+                        <PaymentForm form={form} />
                     </div>
                 </form>
             </Form>

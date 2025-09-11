@@ -22,13 +22,13 @@ export function PaymentForm({ form }: PaymentFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>3. Pago y Resumen</CardTitle>
+        <CardTitle>Pago y Resumen</CardTitle>
         <CardDescription>
-          Define los detalles finales del pago y confirma el pedido.
+          Define los detalles finales del pago.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div className="space-y-6">
+      <CardContent className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
            <FormField
               control={form.control}
               name="pago.metodo_pago_previsto"
@@ -63,17 +63,17 @@ export function PaymentForm({ form }: PaymentFormProps) {
                 )}
             />
         </div>
-        <div className="bg-muted/50 p-6 rounded-lg space-y-4">
-            <h4 className="font-medium text-lg border-b pb-2">Resumen del Pedido</h4>
+        <div className="bg-muted/50 p-4 rounded-lg space-y-2">
+            <h4 className="font-medium text-md border-b pb-2 mb-2">Resumen del Pedido</h4>
             <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal de productos:</span>
+                <span className="text-muted-foreground">Subtotal:</span>
                 <span className="font-medium">S/ {subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Costo de envío:</span>
                 <span className="font-medium">S/ {shippingCost.toFixed(2)}</span>
             </div>
-            <div className="flex justify-between text-lg font-bold border-t pt-2">
+            <div className="flex justify-between text-lg font-bold border-t pt-2 mt-2">
                 <span>Total a Pagar:</span>
                 <span>S/ {total.toFixed(2)}</span>
             </div>

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { COURIERS, SHOPS } from '@/lib/constants';
 import type { CreateOrderFormValues, Client } from '../types';
+import { Textarea } from '@/components/ui/textarea';
 
 interface ClientFormProps {
   form: ReturnType<typeof useForm<CreateOrderFormValues>>;
@@ -24,21 +25,21 @@ export function ClientForm({ form, clients }: ClientFormProps) {
     if (client) {
         form.setValue('cliente.nombres', client.nombres);
         form.setValue('cliente.celular', client.celular);
-        form.setValue('envio.direccion', client.direccion);
-        form.setValue('envio.distrito', client.distrito);
-        form.setValue('envio.provincia', client.provincia);
+        form.setValue('envio.direccion', client.direccion || '');
+        form.setValue('envio.distrito', client.distrito || '');
+        form.setValue('envio.provincia', client.provincia || 'Lima');
     }
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>1. Información del Cliente y Envío</CardTitle>
+        <CardTitle>Cliente y Envío</CardTitle>
         <CardDescription>
-          Busca un cliente existente por DNI o ingresa los datos de uno nuevo.
+          Busca o ingresa los datos del cliente.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <CardContent className="space-y-6">
         <FormField
             control={form.control}
             name="cliente.dni"
@@ -111,7 +112,7 @@ export function ClientForm({ form, clients }: ClientFormProps) {
             control={form.control}
             name="envio.direccion"
             render={({ field }) => (
-                <FormItem className="md:col-span-2">
+                <FormItem>
                     <FormLabel>Dirección de Entrega</FormLabel>
                     <FormControl><Input {...field} placeholder="Av. Siempre Viva 123" /></FormControl>
                     <FormMessage />
@@ -177,9 +178,9 @@ export function ClientForm({ form, clients }: ClientFormProps) {
             control={form.control}
             name="notas.nota_pedido"
             render={({ field }) => (
-                <FormItem className="md:col-span-2">
+                <FormItem>
                     <FormLabel>Horario de Entrega / Notas del Cliente</FormLabel>
-                    <FormControl><Input {...field} placeholder="Ej: Entregar de 2pm a 5pm, dejar en portería." /></FormControl>
+                    <FormControl><Textarea {...field} placeholder="Ej: Entregar de 2pm a 5pm, dejar en portería." /></FormControl>
                     <FormMessage />
                 </FormItem>
             )}

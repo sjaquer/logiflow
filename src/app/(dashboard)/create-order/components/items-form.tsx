@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -73,14 +72,14 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
 
 
   return (
-    <Card>
+    <Card className="h-full flex flex-col">
       <CardHeader>
-        <CardTitle>2. Artículos del Pedido</CardTitle>
+        <CardTitle>Artículos del Pedido</CardTitle>
         <CardDescription>Busca y agrega los productos que el cliente desea comprar.</CardDescription>
       </CardHeader>
-      <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <CardContent className="flex-grow grid grid-cols-1 md:grid-cols-2 gap-8">
         {/* Search Section */}
-        <div className="space-y-4">
+        <div className="space-y-4 flex flex-col">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -90,7 +89,7 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="h-[300px] overflow-y-auto border rounded-md">
+          <div className="flex-grow h-[300px] overflow-y-auto border rounded-md">
              <Table>
                 <TableHeader>
                     <TableRow>
@@ -126,9 +125,9 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
         </div>
 
         {/* Cart Section */}
-        <div className="space-y-4">
-          <h4 className="font-medium text-lg">Carrito de Compras</h4>
-          <div className="h-[300px] overflow-y-auto border rounded-md p-2 space-y-2">
+        <div className="space-y-4 flex flex-col">
+          <h4 className="font-medium">Carrito de Compras</h4>
+          <div className="flex-grow h-[300px] overflow-y-auto border rounded-md p-2 space-y-2">
             {fields.length > 0 ? (
                 fields.map((field, index) => (
                     <div key={field.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
