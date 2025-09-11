@@ -1,6 +1,8 @@
+
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
+import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form } from '@/components/ui/form';
@@ -55,9 +57,11 @@ const createOrderSchema = z.object({
 
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
-export default function CreateOrderPage() {
+function CreateOrderPageContent() {
     const { user: authUser } = useAuth();
     const { toast } = useToast();
+    const searchParams = useSearchParams();
+
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
@@ -74,6 +78,24 @@ export default function CreateOrderPage() {
         },
     });
 
+    // Function to pre-fill form with client data
+    const prefillForm = useCallback((dni: string) => {
+        const clientToEdit = clients.find(c => c.dni === dni);
+        if (clientToEdit) {
+            form.setValue('cliente.dni', clientToEdit.dni);
+            form.setValue('cliente.nombres', clientToEdit.nombres);
+            form.setValue('cliente.celular', clientToEdit.celular);
+            if (clientToEdit.direccion) form.setValue('envio.direccion', clientToEdit.direccion);
+            if (clientToEdit.distrito) form.setValue('envio.distrito', clientToEdit.distrito);
+            if (clientToEdit.provincia) form.setValue('envio.provincia', clientToEdit.provincia);
+             toast({
+                title: 'Cliente Precargado',
+                description: `Datos de ${clientToEdit.nombres} listos para confirmar.`,
+            });
+        }
+    }, [clients, form, toast]);
+
+
     useEffect(() => {
         const unsubs: (() => void)[] = [];
         if (authUser) {
@@ -83,9 +105,22 @@ export default function CreateOrderPage() {
           }));
         }
         unsubs.push(listenToCollection<InventoryItem>('inventory', setInventory));
-        unsubs.push(listenToCollection<Client>('clients', setClients));
+        
+        const unsubClients = listenToCollection<Client>('clients', (clientsData) => {
+            setClients(clientsData);
+        });
+        unsubs.push(unsubClients);
+
         return () => unsubs.forEach(unsub => unsub());
     }, [authUser]);
+
+    // Effect to pre-fill form when clients data is loaded and DNI param exists
+    useEffect(() => {
+        const dniFromParam = searchParams.get('dni');
+        if (dniFromParam && clients.length > 0) {
+            prefillForm(dniFromParam);
+        }
+    }, [searchParams, clients, prefillForm]);
 
     const onSubmit = async (data: CreateOrderFormValues) => {
         if (!currentUser) {
@@ -141,7 +176,7 @@ export default function CreateOrderPage() {
         };
 
         try {
-            // Save new client or update existing one
+            // Save/Update client, and update their call status
             const clientRef = doc(db, 'clients', data.cliente.dni);
             await setDoc(clientRef, { 
                 dni: data.cliente.dni,
@@ -150,6 +185,7 @@ export default function CreateOrderPage() {
                 direccion: data.envio.direccion,
                 distrito: data.envio.distrito,
                 provincia: data.envio.provincia,
+                estado_llamada: 'VENTA_CONFIRMADA', // Update call status
              }, { merge: true });
 
             // Save the new order
@@ -205,5 +241,14 @@ export default function CreateOrderPage() {
                 </form>
             </Form>
         </div>
+    );
+}
+
+// We wrap the component that uses `useSearchParams` with a `Suspense` boundary
+export default function CreateOrderPage() {
+    return (
+        <React.Suspense fallback={<div>Cargando...</div>}>
+            <CreateOrderPageContent />
+        </React.Suspense>
     );
 }

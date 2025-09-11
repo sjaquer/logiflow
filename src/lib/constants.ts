@@ -1,4 +1,5 @@
-import type { OrderStatus, OrderItemStatus, Shop, Courier, PaymentMethod } from './types';
+
+import type { OrderStatus, OrderItemStatus, Shop, Courier, PaymentMethod, CallStatus } from './types';
 
 export const KANBAN_COLUMNS: { id: OrderStatus; title: string }[] = [
   { id: 'PENDIENTE', title: 'Pendiente' },
@@ -26,6 +27,16 @@ export const ITEM_STATUS_BADGE_MAP: Record<OrderItemStatus, 'default' | 'success
     SIN_STOCK: 'destructive',
     BACKORDER: 'secondary',
 }
+
+export const CALL_STATUS_BADGE_MAP: Record<CallStatus, 'default' | 'success' | 'destructive' | 'secondary' | 'accent' | 'outline'> = {
+    NUEVO: 'accent',
+    CONTACTADO: 'default',
+    NO_CONTESTA: 'secondary',
+    NUMERO_EQUIVOCADO: 'destructive',
+    EN_SEGUIMIENTO: 'outline',
+    VENTA_CONFIRMADA: 'success',
+    HIBERNACION: 'secondary',
+};
 
 export const SHOPS: Shop[] = ['Blumi', 'Cumbre', 'Dearel', 'Trazto'];
 export const COURIERS: Courier[] = ['URBANO', 'SHALOM', 'OLVA', 'INTERNO'];

@@ -1,13 +1,13 @@
 
 'use client';
 import { useState, useEffect, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import type { Client, User, UserRole } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Phone, Search } from 'lucide-react';
@@ -17,6 +17,7 @@ const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
 export default function CallCenterQueuePage() {
   const { user: authUser } = useAuth();
+  const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [leads, setLeads] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,9 +37,10 @@ export default function CallCenterQueuePage() {
   useEffect(() => {
     // We listen to the 'clients' collection, assuming leads from Kommo are stored there.
     const unsubscribe = listenToCollection<Client>('clients', (data) => {
-      // Here you might add logic to filter only clients that are "leads to be called"
-      // For now, we'll show all of them as an example.
-      setLeads(data);
+      // Filter clients that should be in the call queue.
+      // For now, we show those that don't have a 'Venta Confirmada' status.
+      const queueLeads = data.filter(client => client.estado_llamada !== 'VENTA_CONFIRMADA');
+      setLeads(queueLeads);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -51,13 +53,12 @@ export default function CallCenterQueuePage() {
     );
   }, [leads, searchQuery]);
 
-  const handleCallClient = (client: Client) => {
-    // This will later redirect to the order creation/client update page
+  const handleProcessClient = (client: Client) => {
     toast({
-      title: 'Iniciando llamada (Simulación)',
-      description: `Llamando a ${client.nombres}...`,
+      title: 'Redirigiendo...',
+      description: `Abriendo el formulario de pedido para ${client.nombres}.`,
     });
-    // Example: router.push(`/call-center-queue/${client.id}`)
+    router.push(`/create-order?dni=${client.dni}`);
   };
   
    if (!currentUser) {
@@ -139,7 +140,7 @@ export default function CallCenterQueuePage() {
           <div className="overflow-x-auto">
             <QueueTable
               leads={filteredLeads}
-              onCall={handleCallClient}
+              onProcess={handleProcessClient}
             />
           </div>
         </CardContent>

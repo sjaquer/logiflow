@@ -1,6 +1,4 @@
 
-
-
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
 export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo' | 'Transferencia Bancaria';
@@ -137,6 +135,8 @@ export interface User {
   avatar?: string;
 }
 
+export type CallStatus = 'NUEVO' | 'CONTACTADO' | 'NO_CONTESTA' | 'NUMERO_EQUIVOCADO' | 'EN_SEGUIMIENTO' | 'VENTA_CONFIRMADA' | 'HIBERNACION';
+
 export interface Client {
     id: string; // Document ID from Firestore
     dni: string;
@@ -149,6 +149,9 @@ export interface Client {
     kommo_lead_id?: string;
     kommo_contact_id?: number;
     last_updated_from_kommo?: string;
+    estado_llamada?: CallStatus;
+    intentos_llamada?: number;
+    notas_agente?: string;
 }
 
 
