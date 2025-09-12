@@ -2,7 +2,7 @@
 'use client';
 import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { getCollectionData } from '@/lib/firebase/firestore-client';
+import { getCollectionData, getDocumentData } from '@/lib/firebase/firestore-client';
 import type { InventoryItem } from '@/lib/types';
 import { CreateOrderForm } from './components/create-order-form';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -18,6 +18,7 @@ function CreateOrderPageContent() {
 
     useEffect(() => {
         async function fetchData() {
+            setLoading(true);
             try {
                 const inventoryData = await getCollectionData<InventoryItem>('inventory');
                 const clientsData = await getCollectionData<Client>('clients');
@@ -26,7 +27,7 @@ function CreateOrderPageContent() {
                 setClients(clientsData);
 
                 if (clientId) {
-                    const foundClient = clientsData.find(c => c.id === clientId);
+                    const foundClient = await getDocumentData<Client>('clients', clientId);
                     setInitialClient(foundClient || null);
                 }
             } catch (error) {
