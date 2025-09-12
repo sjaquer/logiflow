@@ -30,21 +30,20 @@ export async function POST(request: Request) {
   try {
     if (contentType.includes('application/json')) {
         data = await request.json();
-        console.log("Received JSON data, likely from Shopify.");
+        console.info("Received JSON data, likely from Shopify.");
         sourceType = 'shopify'; 
     } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
         const formData = await request.formData();
         data = Object.fromEntries(formData.entries());
-        console.log("Received form-data, likely from Kommo.");
+        console.info("Received form-data, likely from Kommo.");
         if (data['leads[status][0][id]']) {
           sourceType = 'kommo';
         }
     } else {
-        // Fallback for unexpected content types
         const rawBody = await request.text();
         console.warn(`Unexpected content-type: ${contentType}. Trying to parse as JSON.`);
         data = JSON.parse(rawBody);
-        sourceType = 'shopify'; // Assume Shopify if it parses as JSON
+        sourceType = 'shopify'; 
     }
   } catch (error: any) {
     console.error("Failed to parse incoming webhook body:", error.message);
@@ -53,17 +52,35 @@ export async function POST(request: Request) {
 
   try {
     if (sourceType === 'shopify' && data.id) {
-        // --- SHOPIFY DEBUGGING LOGIC ---
-        console.log("--- RAW SHOPIFY PAYLOAD RECEIVED ---");
-        console.log(JSON.stringify(data, null, 2));
+        // --- SHOPIFY ORDER CREATION LOGIC ---
+        console.info("Processing Shopify order...");
 
-        // For debugging, we return the received JSON directly.
-        // This allows you to see the exact structure in the Shopify webhook test response.
-        return NextResponse.json({ 
-            success: true, 
-            message: 'DEBUG MODE: Shopify payload received and returned for inspection.',
-            data: data 
-        });
+        const shippingAddress = data.shipping_address || {};
+        const billingAddress = data.billing_address || {};
+        const customer = data.customer || {};
+
+        // Prioritize DNI from shipping_address.address2, then billing_address.address2
+        let clientDNI = shippingAddress.address2 || billingAddress.address2 || `NEEDS-DNI-${data.id}`;
+
+        const clientData = {
+            nombres: shippingAddress.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
+            celular: shippingAddress.phone || data.phone || customer.phone || '',
+            email: data.email || customer.email || '',
+            direccion: shippingAddress.address1 || '',
+            distrito: shippingAddress.city || '',
+            provincia: shippingAddress.province || '',
+            estado_llamada: 'NUEVO' as const,
+            source: 'shopify',
+            shopify_order_id: data.id,
+            last_updated_from_kommo: new Date().toISOString(), // Use a generic timestamp
+        };
+
+        // The document ID will be the DNI
+        const docRef = db.collection('clients').doc(clientDNI);
+        await docRef.set({ ...clientData, dni: clientDNI }, { merge: true });
+        
+        console.log(`Successfully processed Shopify order and saved client: ${clientDNI}`);
+        return NextResponse.json({ success: true, message: 'Shopify order processed.', id: docRef.id });
 
     } else if (sourceType === 'kommo') {
         // --- KOMMO LEAD UPDATE LOGIC ---
@@ -118,6 +135,7 @@ export async function POST(request: Request) {
           distrito: clientDistrict || '',
           provincia: 'Lima',
           estado_llamada: 'NUEVO' as const,
+          source: 'kommo',
           kommo_lead_id: leadId,
           kommo_contact_id: contactId,
           last_updated_from_kommo: new Date().toISOString(),

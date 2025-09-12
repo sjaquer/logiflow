@@ -6,6 +6,9 @@ import type { Client, User, UserRole } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
+import { doc, deleteDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/firebase';
+
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -68,6 +71,26 @@ export default function CallCenterQueuePage() {
       description: `Abriendo el formulario de pedido para ${client.nombres}.`,
     });
     router.push(`/create-order?dni=${client.dni}`);
+  };
+
+  const handleDeleteLead = async (clientId: string) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este lead? Esta acción es permanente.')) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, 'clients', clientId));
+      toast({
+        title: 'Lead Eliminado',
+        description: 'El lead ha sido eliminado de la cola.',
+      });
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      toast({
+        title: 'Error',
+        description: 'No se pudo eliminar el lead.',
+        variant: 'destructive',
+      });
+    }
   };
   
    if (!currentUser && loading) {
@@ -133,6 +156,7 @@ export default function CallCenterQueuePage() {
             <QueueTable
               leads={filteredLeads}
               onProcess={handleProcessClient}
+              onDelete={handleDeleteLead}
             />
           </div>
         </CardContent>

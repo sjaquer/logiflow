@@ -2,7 +2,7 @@
 'use client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PhoneForwarded } from 'lucide-react';
+import { PhoneForwarded, Trash2 } from 'lucide-react';
 import type { Client } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -13,9 +13,10 @@ import { CALL_STATUS_BADGE_MAP } from '@/lib/constants';
 interface QueueTableProps {
   leads: Client[];
   onProcess: (client: Client) => void;
+  onDelete: (clientId: string) => void;
 }
 
-export function QueueTable({ leads, onProcess }: QueueTableProps) {
+export function QueueTable({ leads, onProcess, onDelete }: QueueTableProps) {
   return (
     <Table>
       <TableHeader>
@@ -45,10 +46,13 @@ export function QueueTable({ leads, onProcess }: QueueTableProps) {
                     : 'N/A'
                 }
             </TableCell>
-            <TableCell className="text-right">
+            <TableCell className="text-right space-x-2">
               <Button size="sm" onClick={() => onProcess(lead)}>
                 <PhoneForwarded className="mr-2 h-4 w-4" />
-                Procesar Pedido
+                Procesar
+              </Button>
+               <Button variant="outline" size="icon" className="text-destructive" onClick={() => onDelete(lead.id)}>
+                <Trash2 className="h-4 w-4" />
               </Button>
             </TableCell>
           </TableRow>
