@@ -25,62 +25,45 @@ export async function POST(request: Request) {
 
   let data: Record<string, any>;
   let sourceType: 'shopify' | 'kommo' | 'unknown' = 'unknown';
+  const contentType = request.headers.get('content-type') || '';
 
   try {
-    const contentType = request.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
         data = await request.json();
         console.log("Received JSON data, likely from Shopify.");
-        sourceType = 'shopify'; // Assume JSON is from Shopify for now
-    } else {
+        sourceType = 'shopify'; 
+    } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
         const formData = await request.formData();
         data = Object.fromEntries(formData.entries());
         console.log("Received form-data, likely from Kommo.");
-        // Check for Kommo-specific fields to confirm source
         if (data['leads[status][0][id]']) {
           sourceType = 'kommo';
         }
+    } else {
+        // Fallback for unexpected content types
+        const rawBody = await request.text();
+        console.warn(`Unexpected content-type: ${contentType}. Trying to parse as JSON.`);
+        data = JSON.parse(rawBody);
+        sourceType = 'shopify'; // Assume Shopify if it parses as JSON
     }
-  } catch (error) {
-    console.error("Failed to parse incoming webhook body:", error);
-    return NextResponse.json({ message: 'Invalid webhook payload format.' }, { status: 400 });
+  } catch (error: any) {
+    console.error("Failed to parse incoming webhook body:", error.message);
+    return NextResponse.json({ message: 'Invalid webhook payload format.', error: error.message }, { status: 400 });
   }
 
   try {
     if (sourceType === 'shopify' && data.id) {
-        // --- SHOPIFY ORDER CREATION LOGIC ---
-        console.log(`Processing Shopify Order ID: ${data.id}`);
+        // --- SHOPIFY DEBUGGING LOGIC ---
+        console.log("--- RAW SHOPIFY PAYLOAD RECEIVED ---");
+        console.log(JSON.stringify(data, null, 2));
 
-        const customer = data.customer;
-        const address = data.shipping_address || customer?.default_address;
-
-        if (!address || !customer) {
-            console.warn(`Shopify Order ${data.id} is missing customer or shipping address.`);
-            return NextResponse.json({ success: false, message: 'Missing customer or address info.' }, { status: 400 });
-        }
-        
-        // Shopify often doesn't have a dedicated DNI field. A common practice is to use address2.
-        // Fallback to a placeholder if not found, so the agent can fill it in.
-        const clientDNI = address.address2 || `NE-${Date.now()}`; 
-        
-        const clientData = {
-            dni: clientDNI,
-            nombres: `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
-            celular: address.phone || customer.phone || '',
-            email: customer.email || '',
-            direccion: address.address1 || '',
-            distrito: address.city || '',
-            provincia: address.province || 'Lima',
-            estado_llamada: 'NUEVO',
-            shopify_order_id: data.id,
-            last_updated_from_kommo: new Date().toISOString(), // Generic timestamp
-        };
-
-        const docRef = db.collection('clients').doc(clientData.dni);
-        await docRef.set(clientData, { merge: true });
-        
-        console.log(`Successfully processed Shopify order and saved client: ${clientData.dni}`);
-        return NextResponse.json({ success: true, message: 'Shopify order processed.', id: docRef.id });
+        // For debugging, we return the received JSON directly.
+        // This allows you to see the exact structure in the Shopify webhook test response.
+        return NextResponse.json({ 
+            success: true, 
+            message: 'DEBUG MODE: Shopify payload received and returned for inspection.',
+            data: data 
+        });
 
     } else if (sourceType === 'kommo') {
         // --- KOMMO LEAD UPDATE LOGIC ---
@@ -134,7 +117,7 @@ export async function POST(request: Request) {
           direccion: clientAddress || '',
           distrito: clientDistrict || '',
           provincia: 'Lima',
-          estado_llamada: 'NUEVO',
+          estado_llamada: 'NUEVO' as const,
           kommo_lead_id: leadId,
           kommo_contact_id: contactId,
           last_updated_from_kommo: new Date().toISOString(),
