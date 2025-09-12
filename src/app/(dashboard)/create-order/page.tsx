@@ -1,41 +1,47 @@
 
 'use client';
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { listenToCollection } from '@/lib/firebase/firestore-client';
-import type { InventoryItem, Client } from './types';
+import { getCollectionData } from '@/lib/firebase/firestore-client';
+import type { InventoryItem } from '@/lib/types';
 import { CreateOrderForm } from './components/create-order-form';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Client } from '../clients/page'; // Adjusted import
 
 function CreateOrderPageContent() {
     const searchParams = useSearchParams();
     const clientId = searchParams.get('clientId');
-    const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
-    const [clients, setClients] = React.useState<Client[]>([]);
-    const [loading, setLoading] = React.useState(true);
+    const [inventory, setInventory] = useState<InventoryItem[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [initialClient, setInitialClient] = useState<Client | null>(null);
 
-    React.useEffect(() => {
-        const unsubs: (() => void)[] = [];
-        unsubs.push(listenToCollection<InventoryItem>('inventory', (data) => {
-            setInventory(data);
-        }));
-        unsubs.push(listenToCollection<Client>('clients', (data) => {
-            setClients(data);
-        }));
-        
-        // This helps to remove the skeleton state once data is likely loaded
-        const timer = setTimeout(() => setLoading(false), 1500);
-        unsubs.push(() => clearTimeout(timer));
+    useEffect(() => {
+        async function fetchData() {
+            setLoading(true);
+            try {
+                const [inventoryData, clientsData] = await Promise.all([
+                    getCollectionData<InventoryItem>('inventory'),
+                    getCollectionData<Client>('clients')
+                ]);
+                setInventory(inventoryData);
+                setClients(clientsData);
 
-        return () => unsubs.forEach(unsub => unsub());
-    }, []);
+                if (clientId) {
+                    const foundClient = clientsData.find(c => c.id === clientId) || null;
+                    setInitialClient(foundClient);
+                }
+            } catch (error) {
+                console.error("Error fetching initial data for order creation:", error);
+            } finally {
+                setLoading(false);
+            }
+        }
+        fetchData();
+    }, [clientId]);
 
-    const initialClient = React.useMemo(() => {
-        if (!clientId || clients.length === 0) return null;
-        return clients.find(c => c.id === clientId) || null;
-    }, [clientId, clients]);
 
-    if (loading && clientId) {
+    if (loading) {
         return (
              <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
                  <div className="flex items-center justify-between mb-8">
