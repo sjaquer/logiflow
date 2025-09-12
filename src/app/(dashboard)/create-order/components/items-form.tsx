@@ -117,7 +117,7 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
                             </TableCell>
                             <TableCell className="text-right">{item.stock_actual}</TableCell>
                             <TableCell className="text-right">
-                                <Button size="sm" onClick={() => addProductToOrder(item)}>Agregar</Button>
+                                <Button type="button" size="sm" onClick={() => addProductToOrder(item)}>Agregar</Button>
                             </TableCell>
                         </TableRow>
                     ))
