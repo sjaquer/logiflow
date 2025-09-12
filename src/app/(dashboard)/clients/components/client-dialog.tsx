@@ -46,31 +46,39 @@ export function ClientDialog({ isOpen, onOpenChange, onSave, client }: ClientDia
   });
 
   useEffect(() => {
-    if (client) {
-      form.reset({
-        dni: client.dni,
-        nombres: client.nombres,
-        celular: client.celular,
-        email: client.email || '',
-        direccion: client.direccion || '',
-        distrito: client.distrito || '',
-        provincia: client.provincia || 'Lima',
-      });
-    } else {
-      form.reset({
-        dni: '',
-        nombres: '',
-        celular: '',
-        email: '',
-        direccion: '',
-        distrito: '',
-        provincia: 'Lima',
-      });
+    if (isOpen) {
+        if (client) {
+          form.reset({
+            dni: client.dni,
+            nombres: client.nombres,
+            celular: client.celular,
+            email: client.email || '',
+            direccion: client.direccion || '',
+            distrito: client.distrito || '',
+            provincia: client.provincia || 'Lima',
+          });
+        } else {
+          form.reset({
+            dni: '',
+            nombres: '',
+            celular: '',
+            email: '',
+            direccion: '',
+            distrito: '',
+            provincia: 'Lima',
+          });
+        }
     }
   }, [client, isOpen, form]);
   
   const onSubmit = (data: ClientFormValues) => {
     onSave(data);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+      if (event.key === 'Enter') {
+          event.preventDefault();
+      }
   };
 
   return (
@@ -84,7 +92,7 @@ export function ClientDialog({ isOpen, onOpenChange, onSave, client }: ClientDia
         </DialogHeader>
         <ScrollArea className="max-h-[70vh] p-1">
             <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="space-y-4 px-4">
                 <FormField
                 control={form.control}
                 name="dni"

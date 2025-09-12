@@ -66,7 +66,12 @@ export default function WebhooksPage() {
         active: webhook.active,
       });
     } else {
-      form.reset();
+      form.reset({
+        name: '',
+        url: '',
+        event: 'ORDER_CREATED',
+        active: true,
+      });
     }
     setIsDialogOpen(true);
   };
@@ -95,11 +100,16 @@ export default function WebhooksPage() {
         toast({ title: 'Éxito', description: 'Webhook creado correctamente.' });
       }
       setIsDialogOpen(false);
-      form.reset();
     } catch (error) {
       console.error('Error saving webhook:', error);
       toast({ title: 'Error', description: 'No se pudo guardar el webhook.', variant: 'destructive' });
     }
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+      if (event.key === 'Enter') {
+          event.preventDefault();
+      }
   };
 
   return (
@@ -180,7 +190,7 @@ export default function WebhooksPage() {
                   </DialogDescription>
               </DialogHeader>
               <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                  <form onSubmit={form.handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="space-y-4 py-4">
                       <FormField
                           control={form.control}
                           name="name"

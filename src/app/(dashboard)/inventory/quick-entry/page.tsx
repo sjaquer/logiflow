@@ -184,6 +184,12 @@ export default function QuickEntryPage() {
     const currentAjuste = form.getValues(`items.${index}.ajuste`);
     form.setValue(`items.${index}.ajuste`, currentAjuste + amount);
   };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+      if (event.key === 'Enter') {
+          event.preventDefault();
+      }
+  };
   
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8">
@@ -232,7 +238,7 @@ export default function QuickEntryPage() {
             <CardDescription>Productos añadidos listos para editar. Los cambios se guardarán en lote.</CardDescription>
           </CardHeader>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(processBatchUpdate)} className="flex flex-col flex-grow">
+            <form onSubmit={form.handleSubmit(processBatchUpdate)} onKeyDown={handleKeyDown} className="flex flex-col flex-grow">
               <CardContent className="flex-grow space-y-4 overflow-y-auto">
                 {fields.length === 0 ? (
                   <div className="flex flex-col items-center justify-center text-center text-muted-foreground h-full rounded-md border border-dashed p-8">

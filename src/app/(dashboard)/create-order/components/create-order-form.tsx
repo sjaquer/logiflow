@@ -61,8 +61,6 @@ interface CreateOrderFormProps {
     initialClient: Client | null;
 }
 
-// This component now receives all data as props and manages the form state.
-// It is stable and will not re-fetch data or re-initialize unnecessarily.
 export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrderFormProps) {
     const { user: authUser } = useAuth();
     const { toast } = useToast();
@@ -73,31 +71,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
     const form = useForm<CreateOrderFormValues>({
         resolver: zodResolver(createOrderSchema),
-        // Set default values based on the initialClient prop
-        defaultValues: initialClient ? {
-            cliente: {
-                dni: initialClient.dni || '',
-                nombres: initialClient.nombres,
-                celular: initialClient.celular,
-            },
-            envio: {
-                direccion: initialClient.direccion || '',
-                distrito: initialClient.distrito || '',
-                provincia: initialClient.provincia || 'Lima',
-                costo_envio: 0,
-                courier: undefined,
-            },
-            tienda: initialClient.tienda_origen,
-            items: initialClient.shopify_items || [],
-            pago: {
-                subtotal: initialClient.shopify_items?.reduce((acc, item) => acc + item.subtotal, 0) || 0,
-                monto_total: 0,
-                metodo_pago_previsto: undefined,
-            },
-            notas: {
-                nota_pedido: '',
-            },
-        } : {
+        defaultValues: {
             cliente: { dni: '', nombres: '', celular: '' },
             items: [],
             pago: { subtotal: 0, monto_total: 0 },
@@ -105,6 +79,40 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             notas: { nota_pedido: '' }
         },
     });
+
+    useEffect(() => {
+        if (initialClient) {
+            form.reset({
+                cliente: {
+                    dni: initialClient.dni || '',
+                    nombres: initialClient.nombres,
+                    celular: initialClient.celular,
+                },
+                envio: {
+                    direccion: initialClient.direccion || '',
+                    distrito: initialClient.distrito || '',
+                    provincia: initialClient.provincia || 'Lima',
+                    costo_envio: 0,
+                    courier: undefined,
+                },
+                tienda: initialClient.tienda_origen,
+                items: initialClient.shopify_items || [],
+                pago: {
+                    subtotal: initialClient.shopify_items?.reduce((acc, item) => acc + item.subtotal, 0) || 0,
+                    monto_total: 0,
+                    metodo_pago_previsto: undefined,
+                },
+                notas: {
+                    nota_pedido: '',
+                },
+            });
+             toast({
+                title: 'Cliente Precargado',
+                description: `Datos de ${initialClient.nombres} listos para confirmar.`,
+            });
+        }
+    }, [initialClient, form, toast]);
+
 
     useEffect(() => {
         async function fetchCurrentUser() {
@@ -117,17 +125,6 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         fetchCurrentUser();
     }, [authUser]);
     
-    // Toast to confirm data is pre-filled, runs only once.
-    useEffect(() => {
-        if (initialClient) {
-             toast({
-                title: 'Cliente Precargado',
-                description: `Datos de ${initialClient.nombres} listos para confirmar.`,
-            });
-        }
-    }, [initialClient, toast]);
-
-
     const handleSaveDraft = async () => {
         setIsSavingDraft(true);
         const data = form.getValues();
@@ -247,6 +244,12 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             setIsSubmitting(false);
         }
     };
+
+    const handleKeyDown = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter' && (event.target as HTMLElement).tagName.toLowerCase() !== 'textarea') {
+            event.preventDefault();
+        }
+    };
     
     if (currentUser && !ALLOWED_ROLES.includes(currentUser.rol)) {
         return (
@@ -282,7 +285,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                 </div>
              </div>
             <Form {...form}>
-                <form className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <form onKeyDown={handleKeyDown} className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
                      <div className="lg:col-span-2 space-y-8">
                          <ItemsForm form={form} inventory={inventory} />
                     </div>
