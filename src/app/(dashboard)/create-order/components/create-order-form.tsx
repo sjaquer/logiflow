@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
@@ -42,8 +43,8 @@ const createOrderSchema = z.object({
     }),
     envio: z.object({
         direccion: z.string().min(1, "Dirección es requerida"),
-        distrito: z.string().min(1, "Distrito es requerido"),
         provincia: z.string().min(1, "Provincia es requerida"),
+        distrito: z.string().min(1, "Distrito es requerido"),
         courier: z.custom<Courier>().optional(),
         agencia_shalom: z.string().optional(),
         costo_envio: z.number().min(0),
@@ -75,7 +76,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             cliente: { dni: '', nombres: '', celular: '' },
             items: [],
             pago: { subtotal: 0, monto_total: 0 },
-            envio: { direccion: '', distrito: '', provincia: 'Lima', costo_envio: 0 },
+            envio: { direccion: '', provincia: 'Lima', distrito: '', costo_envio: 0 },
             notas: { nota_pedido: '' }
         },
     });
@@ -90,8 +91,8 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                 },
                 envio: {
                     direccion: initialClient.direccion || '',
-                    distrito: initialClient.distrito || '',
                     provincia: initialClient.provincia || 'Lima',
+                    distrito: initialClient.distrito || '',
                     costo_envio: 0,
                     courier: undefined,
                 },
@@ -245,10 +246,14 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         }
     };
 
-    const handleKeyDown = (event: React.KeyboardEvent) => {
-        if (event.key === 'Enter' && (event.target as HTMLElement).tagName.toLowerCase() !== 'textarea') {
-            event.preventDefault();
+    const handleKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+      if (event.key === 'Enter') {
+        const target = event.target as HTMLElement;
+        // Don't prevent default on Textarea, or submit buttons
+        if (target.tagName.toLowerCase() !== 'textarea' && target.getAttribute('type') !== 'submit') {
+          event.preventDefault();
         }
+      }
     };
     
     if (currentUser && !ALLOWED_ROLES.includes(currentUser.rol)) {

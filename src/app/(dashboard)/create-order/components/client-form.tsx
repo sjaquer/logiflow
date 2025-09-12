@@ -1,3 +1,4 @@
+
 'use client';
 import { useForm, useWatch } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { COURIERS, SHOPS } from '@/lib/constants';
 import type { CreateOrderFormValues, Client } from '../types';
 import { Textarea } from '@/components/ui/textarea';
+import { provinces, getDistrictsByProvince } from '@/lib/ubigeo';
+import { Combobox } from '@/components/ui/combobox';
+import { useEffect, useState } from 'react';
 
 interface ClientFormProps {
   form: ReturnType<typeof useForm<CreateOrderFormValues>>;
@@ -19,15 +23,30 @@ export function ClientForm({ form, clients }: ClientFormProps) {
     control: form.control,
     name: 'envio.courier',
   });
+
+  const selectedProvince = useWatch({
+    control: form.control,
+    name: 'envio.provincia'
+  });
   
+  const [districts, setDistricts] = useState<string[]>([]);
+  
+  useEffect(() => {
+    if (selectedProvince) {
+      setDistricts(getDistrictsByProvince(selectedProvince) || []);
+    } else {
+      setDistricts([]);
+    }
+  }, [selectedProvince]);
+
   const handleClientChange = (dni: string) => {
     const client = clients.find(c => c.dni === dni);
     if (client) {
         form.setValue('cliente.nombres', client.nombres);
         form.setValue('cliente.celular', client.celular);
         form.setValue('envio.direccion', client.direccion || '');
-        form.setValue('envio.distrito', client.distrito || '');
         form.setValue('envio.provincia', client.provincia || 'Lima');
+        form.setValue('envio.distrito', client.distrito || '');
     }
   }
 
@@ -121,24 +140,42 @@ export function ClientForm({ form, clients }: ClientFormProps) {
         />
         <FormField
             control={form.control}
-            name="envio.distrito"
+            name="envio.provincia"
             render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Distrito</FormLabel>
-                    <FormControl><Input {...field} placeholder="Miraflores" /></FormControl>
-                    <FormMessage />
-                </FormItem>
+              <FormItem className="flex flex-col">
+                <FormLabel>Provincia</FormLabel>
+                <Combobox
+                  options={provinces.map(p => ({ label: p, value: p }))}
+                  value={field.value}
+                  onChange={(value) => {
+                     field.onChange(value);
+                     form.setValue('envio.distrito', ''); // Reset district on province change
+                  }}
+                  placeholder="Selecciona una provincia..."
+                  searchPlaceholder="Buscar provincia..."
+                  notFoundText="Provincia no encontrada."
+                />
+                <FormMessage />
+              </FormItem>
             )}
         />
         <FormField
             control={form.control}
-            name="envio.provincia"
+            name="envio.distrito"
             render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Provincia</FormLabel>
-                    <FormControl><Input {...field} placeholder="Lima" /></FormControl>
-                    <FormMessage />
-                </FormItem>
+              <FormItem className="flex flex-col">
+                <FormLabel>Distrito</FormLabel>
+                <Combobox
+                  options={districts.map(d => ({ label: d, value: d }))}
+                  value={field.value}
+                  onChange={field.onChange}
+                  placeholder="Selecciona un distrito..."
+                  searchPlaceholder="Buscar distrito..."
+                  notFoundText="Distrito no encontrado."
+                  disabled={!selectedProvince}
+                />
+                <FormMessage />
+              </FormItem>
             )}
         />
         <FormField

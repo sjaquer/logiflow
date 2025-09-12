@@ -1,6 +1,6 @@
+
 'use client';
 import React, { Suspense, useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import { getCollectionData, getDocumentData } from '@/lib/firebase/firestore-client';
 import type { InventoryItem } from '@/lib/types';
 import { CreateOrderForm } from './components/create-order-form';
@@ -62,7 +62,7 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
                         <Skeleton className="h-96 w-full" />
                     </div>
                     <div className="lg:col-span-1 space-y-8">
-                        <Skeleton className="h-[450px] w-full" />
+                        <Skeleton className="h-[550px] w-full" />
                         <Skeleton className="h-64 w-full" />
                     </div>
                 </div>
@@ -89,39 +89,39 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
     );
 }
 
-// Wrapper to get searchParams safely.
-function CreateOrderPageWrapper() {
-    const searchParams = useSearchParams();
-    const clientId = searchParams.get('clientId');
-    
-    return <CreateOrderPageContent clientId={clientId} />;
-}
+// This is the main page component exported.
+// It receives searchParams from Next.js on the server.
+export default function CreateOrderPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
+  const clientId = typeof searchParams.clientId === 'string' ? searchParams.clientId : null;
 
-
-export default function CreateOrderPage() {
-    return (
-        // The Suspense boundary is crucial for this pattern to work correctly.
-        <Suspense fallback={
-             <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
-                 <div className="flex items-center justify-between mb-8">
-                    <Skeleton className="h-10 w-1/4" />
-                    <div className="flex gap-4">
-                        <Skeleton className="h-11 w-40" />
-                        <Skeleton className="h-11 w-52" />
-                    </div>
-                 </div>
-                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
-                        <Skeleton className="h-96 w-full" />
-                    </div>
-                    <div className="lg:col-span-1 space-y-8">
-                        <Skeleton className="h-[450px] w-full" />
-                        <Skeleton className="h-64 w-full" />
-                    </div>
+  return (
+    // The Suspense boundary is crucial for this pattern to work correctly.
+    <Suspense fallback={
+        <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
+            <div className="flex items-center justify-between mb-8">
+                <Skeleton className="h-10 w-1/4" />
+                <div className="flex gap-4">
+                    <Skeleton className="h-11 w-40" />
+                    <Skeleton className="h-11 w-52" />
                 </div>
             </div>
-        }>
-            <CreateOrderPageWrapper />
-        </Suspense>
-    );
+            <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <div className="lg:col-span-2 space-y-8">
+                    <Skeleton className="h-96 w-full" />
+                </div>
+                <div className="lg:col-span-1 space-y-8">
+                    <Skeleton className="h-[550px] w-full" />
+                    <Skeleton className="h-64 w-full" />
+                </div>
+            </div>
+        </div>
+    }>
+        <CreateOrderPageContent clientId={clientId} />
+    </Suspense>
+  );
 }
+
