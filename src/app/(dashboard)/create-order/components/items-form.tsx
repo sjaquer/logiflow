@@ -1,5 +1,5 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -34,6 +34,16 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
       name: 'items',
   });
 
+  // CRITICAL FIX: The subtotal calculation and `setValue` call must be inside a `useEffect`
+  // hook. Calling `setValue` directly in the component body causes an infinite re-render loop
+  // that resets the form state.
+  useEffect(() => {
+    const subtotal = itemsInCart.reduce((acc, item) => acc + item.subtotal, 0);
+    if (form.getValues('pago.subtotal') !== subtotal) {
+        form.setValue('pago.subtotal', subtotal, { shouldDirty: true });
+    }
+  }, [itemsInCart, form]);
+
   const addProductToOrder = (item: InventoryItem) => {
     const existingItemIndex = fields.findIndex((field) => field.sku === item.sku);
     if (existingItemIndex !== -1) {
@@ -66,10 +76,6 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
       });
     }
   };
-  
-  const subtotal = itemsInCart.reduce((acc, item) => acc + item.subtotal, 0);
-  form.setValue('pago.subtotal', subtotal);
-
 
   return (
     <Card className="h-full flex flex-col">
