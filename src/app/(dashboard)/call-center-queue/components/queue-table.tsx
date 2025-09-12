@@ -33,7 +33,7 @@ export function QueueTable({ leads, onProcess }: QueueTableProps) {
           <TableRow key={lead.id}>
             <TableCell>
                  <Badge variant={CALL_STATUS_BADGE_MAP[lead.estado_llamada || 'NUEVO']} className="capitalize">
-                    { (lead.estado_llamada || 'NUEVO').replace('_', ' ').toLowerCase() }
+                    { (lead.estado_llamada || 'NUEVO').replace(/_/g, ' ').toLowerCase() }
                 </Badge>
             </TableCell>
             <TableCell className="font-medium">{lead.dni}</TableCell>

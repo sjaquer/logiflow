@@ -35,11 +35,20 @@ export default function CallCenterQueuePage() {
   }, [authUser]);
 
   useEffect(() => {
-    // We listen to the 'clients' collection, assuming leads from Kommo are stored there.
+    // We listen to the 'clients' collection, which will be populated by webhooks
+    // from Kommo, Shopify, etc.
     const unsubscribe = listenToCollection<Client>('clients', (data) => {
       // Filter clients that should be in the call queue.
-      // For now, we show those that don't have a 'Venta Confirmada' status.
+      // We only show clients whose call status is NOT 'VENTA_CONFIRMADA'.
       const queueLeads = data.filter(client => client.estado_llamada !== 'VENTA_CONFIRMADA');
+      
+      // Sort leads to show the newest ones first
+      queueLeads.sort((a, b) => {
+        const dateA = a.last_updated_from_kommo ? new Date(a.last_updated_from_kommo).getTime() : 0;
+        const dateB = b.last_updated_from_kommo ? new Date(b.last_updated_from_kommo).getTime() : 0;
+        return dateB - dateA;
+      });
+
       setLeads(queueLeads);
       setLoading(false);
     });
@@ -49,7 +58,7 @@ export default function CallCenterQueuePage() {
   const filteredLeads = useMemo(() => {
     return leads.filter(lead =>
       lead.nombres.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      lead.dni.toLowerCase().includes(searchQuery.toLowerCase())
+      (lead.dni && lead.dni.toLowerCase().includes(searchQuery.toLowerCase()))
     );
   }, [leads, searchQuery]);
 
@@ -61,7 +70,7 @@ export default function CallCenterQueuePage() {
     router.push(`/create-order?dni=${client.dni}`);
   };
   
-   if (!currentUser) {
+   if (!currentUser && loading) {
     return (
        <div className="p-4 md:p-6 lg:p-8">
         <Card>
@@ -77,7 +86,7 @@ export default function CallCenterQueuePage() {
     );
   }
   
-  if (!ALLOWED_ROLES.includes(currentUser.rol)) {
+  if (currentUser && !ALLOWED_ROLES.includes(currentUser.rol)) {
     return (
         <div className="flex-1 flex items-center justify-center p-8">
              <Card className="w-full max-w-md text-center">
@@ -92,23 +101,6 @@ export default function CallCenterQueuePage() {
              </Card>
         </div>
     )
-  }
-
-
-  if (loading) {
-    return (
-      <div className="p-4 md:p-6 lg:p-8">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-1/3" />
-            <Skeleton className="h-4 w-2/3" />
-          </CardHeader>
-          <CardContent>
-            <Skeleton className="h-96 w-full" />
-          </CardContent>
-        </Card>
-      </div>
-    );
   }
 
   return (

@@ -40,4 +40,4 @@ export const CALL_STATUS_BADGE_MAP: Record<CallStatus, 'default' | 'success' | '
 
 export const SHOPS: Shop[] = ['Blumi', 'Cumbre', 'Dearel', 'Trazto'];
 export const COURIERS: Courier[] = ['URBANO', 'SHALOM', 'OLVA', 'INTERNO'];
-export const PAYMENT_METHODS: PaymentMethod[] = ['Tarjeta de Crédito', 'Transferencia Bancaria', 'Efectivo', 'YAPE', 'PLIN'];
+export const PAYMENT_METHODS: PaymentMethod[] = ['YAPE', 'PLIN', 'Transferencia Bancaria', 'Efectivo', 'Tarjeta de Crédito'];
