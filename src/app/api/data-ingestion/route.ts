@@ -2,8 +2,24 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/firebase-admin';
 import { getContactDetails, getLeadDetails } from '@/lib/kommo';
+import type { OrderItem, Shop } from '@/lib/types';
 
 const db = getAdminDb();
+
+function formatPhoneNumber(phone: string | null | undefined): string {
+    if (!phone) return '';
+    // Remove non-numeric characters, except for a leading '+'
+    let cleaned = phone.replace(/[^\d+]/g, '');
+    
+    // Handle common Peruvian formats
+    if (cleaned.startsWith('+51') && cleaned.length > 3) {
+      cleaned = '+51 ' + cleaned.substring(3);
+    } else if (cleaned.startsWith('51') && cleaned.length > 2 && phone.length > 9) { // Avoid '51' being part of a normal number
+      cleaned = '+51 ' + cleaned.substring(2);
+    }
+    
+    return cleaned;
+}
 
 /**
  * API Endpoint to receive webhook data from various sources like Kommo or Shopify.
@@ -63,12 +79,23 @@ export async function POST(request: Request) {
         const shippingAddress = data.shipping_address || {};
         const customer = data.customer || {};
 
-        // DNI will be filled manually. We'll use a placeholder as the document ID.
-        let clientDNI = `NEEDS-DNI-${data.id}`;
+        // DNI field will be left blank to be filled by the Call Center agent.
+        const clientDNI = '';
+
+        // Extract items from the order
+        const shopifyItems: Omit<OrderItem, 'estado_item'>[] = data.line_items.map((item: any) => ({
+          sku: item.sku || 'N/A',
+          nombre: item.title,
+          variante: item.variant_title || '',
+          cantidad: item.quantity,
+          precio_unitario: parseFloat(item.price),
+          subtotal: parseFloat(item.price) * item.quantity,
+        }));
 
         const clientData = {
+            dni: clientDNI,
             nombres: shippingAddress.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
-            celular: shippingAddress.phone || data.phone || customer.phone || '',
+            celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
             email: data.email || customer.email || '',
             direccion: shippingAddress.address1 || '',
             distrito: shippingAddress.city || '',
@@ -77,13 +104,16 @@ export async function POST(request: Request) {
             source: 'shopify',
             shopify_order_id: data.id,
             last_updated_from_kommo: new Date().toISOString(), // Use a generic timestamp
+            shopify_items: shopifyItems,
+            // Shopify doesn't have a clear shop name field in the order payload. 
+            // We can assign a default or have a mapping based on another field if available.
+            tienda_origen: 'Trazto' as Shop, 
         };
 
-        // The document ID will be the temporary placeholder DNI
-        const docRef = db.collection('clients').doc(clientDNI);
-        await docRef.set({ ...clientData, dni: clientDNI }, { merge: true });
+        // We use addDoc to get an auto-generated ID, which is more robust
+        const docRef = await db.collection('clients').add(clientData);
         
-        console.log(`Successfully processed Shopify order and saved client with temporary ID: ${clientDNI}`);
+        console.log(`Successfully processed Shopify order and saved client with ID: ${docRef.id}`);
         return NextResponse.json({ success: true, message: 'Shopify order processed.', id: docRef.id });
 
     } else if (sourceType === 'kommo') {
@@ -125,6 +155,7 @@ export async function POST(request: Request) {
           }
         }
         
+        // For Kommo, DNI is expected.
         if (!clientDNI) {
           console.warn("Kommo webhook processing stopped: DNI not found in contact's custom fields.");
           return NextResponse.json({ success: false, message: 'DNI not found in custom fields.' }, { status: 400 });
@@ -133,7 +164,7 @@ export async function POST(request: Request) {
         const clientData = {
           dni: clientDNI,
           nombres: clientName || '',
-          celular: clientPhone || '',
+          celular: formatPhoneNumber(clientPhone),
           email: clientEmail || '',
           direccion: clientAddress || '',
           distrito: clientDistrict || '',
@@ -145,6 +176,7 @@ export async function POST(request: Request) {
           last_updated_from_kommo: new Date().toISOString(),
         };
 
+        // For Kommo, we use DNI as the document ID to upsert data
         const docRef = db.collection('clients').doc(clientDNI);
         await docRef.set(clientData, { merge: true });
         

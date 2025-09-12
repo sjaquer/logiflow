@@ -70,7 +70,8 @@ export default function CallCenterQueuePage() {
       title: 'Redirigiendo...',
       description: `Abriendo el formulario de pedido para ${client.nombres}.`,
     });
-    router.push(`/create-order?dni=${client.dni}`);
+    // Pass client ID to prefill form, as DNI might be empty
+    router.push(`/create-order?clientId=${client.id}`);
   };
 
   const handleDeleteLead = async (clientId: string) => {

@@ -1,4 +1,5 @@
 
+
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
 export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo' | 'Transferencia Bancaria';
@@ -29,7 +30,7 @@ export interface Order {
   cliente: {
     id_cliente?: string; // Made optional for new clients
     nombres: string;
-    dni: string | null;
+    dni: string;
     celular: string;
   };
   items: OrderItem[];
@@ -146,6 +147,10 @@ export interface Client {
     direccion?: string;
     distrito?: string;
     provincia?: string;
+    source?: 'shopify' | 'kommo' | 'manual';
+    tienda_origen?: Shop;
+    shopify_order_id?: number | string;
+    shopify_items?: Omit<OrderItem, 'estado_item'>[];
     kommo_lead_id?: string;
     kommo_contact_id?: number;
     last_updated_from_kommo?: string;

@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +13,7 @@ import { useAuth } from '@/context/auth-context';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import type { InventoryItem, Order, User, Shop, PaymentMethod, Courier, UserRole } from '@/lib/types';
+import type { InventoryItem, Order, User, Shop, PaymentMethod, Courier, UserRole, OrderItem } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from './types';
 import { SHOPS } from '@/lib/constants';
 
@@ -78,9 +78,8 @@ function CreateOrderPageContent() {
         },
     });
 
-    // Function to pre-fill form with client data
-    const prefillForm = useCallback((dni: string) => {
-        const clientToEdit = clients.find(c => c.dni === dni);
+    const prefillForm = useCallback((clientId: string) => {
+        const clientToEdit = clients.find(c => c.id === clientId);
         if (clientToEdit) {
             form.setValue('cliente.dni', clientToEdit.dni);
             form.setValue('cliente.nombres', clientToEdit.nombres);
@@ -88,7 +87,22 @@ function CreateOrderPageContent() {
             if (clientToEdit.direccion) form.setValue('envio.direccion', clientToEdit.direccion);
             if (clientToEdit.distrito) form.setValue('envio.distrito', clientToEdit.distrito);
             if (clientToEdit.provincia) form.setValue('envio.provincia', clientToEdit.provincia);
-             toast({
+
+            // Pre-fill shop if it comes from the client data
+            if(clientToEdit.tienda_origen) {
+              form.setValue('tienda', clientToEdit.tienda_origen);
+            }
+
+            // Pre-fill cart if items exist
+            if (clientToEdit.shopify_items && clientToEdit.shopify_items.length > 0) {
+              const itemsToAppend = clientToEdit.shopify_items.map(item => ({
+                ...item,
+                estado_item: 'PENDIENTE' as const
+              }));
+              form.setValue('items', itemsToAppend as Order['items']);
+            }
+             
+            toast({
                 title: 'Cliente Precargado',
                 description: `Datos de ${clientToEdit.nombres} listos para confirmar.`,
             });
@@ -116,9 +130,10 @@ function CreateOrderPageContent() {
 
     // Effect to pre-fill form when clients data is loaded and DNI param exists
     useEffect(() => {
-        const dniFromParam = searchParams.get('dni');
-        if (dniFromParam && clients.length > 0) {
-            prefillForm(dniFromParam);
+        // use client ID from URL instead of DNI to handle new clients
+        const clientIdFromParam = searchParams.get('clientId'); 
+        if (clientIdFromParam && clients.length > 0) {
+            prefillForm(clientIdFromParam);
         }
     }, [searchParams, clients, prefillForm]);
 
@@ -176,8 +191,12 @@ function CreateOrderPageContent() {
         };
 
         try {
+            // Find client by DNI to get its document ID
+            const clientInDb = clients.find(c => c.nombres === data.cliente.nombres && c.celular === data.cliente.celular);
+            if (!clientInDb) throw new Error("Could not find the original client record to update.");
+
             // Save/Update client, and update their call status
-            const clientRef = doc(db, 'clients', data.cliente.dni);
+            const clientRef = doc(db, 'clients', clientInDb.id);
             await setDoc(clientRef, { 
                 dni: data.cliente.dni,
                 nombres: data.cliente.nombres,
@@ -248,8 +267,8 @@ function CreateOrderPageContent() {
 // We wrap the component that uses `useSearchParams` with a `Suspense` boundary
 export default function CreateOrderPage() {
     return (
-        <React.Suspense fallback={<div>Cargando...</div>}>
+        <Suspense fallback={<div>Cargando...</div>}>
             <CreateOrderPageContent />
-        </React.Suspense>
+        </Suspense>
     );
 }
