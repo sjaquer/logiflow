@@ -1,272 +1,76 @@
 
 'use client';
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
-import { useForm } from 'react-hook-form';
+import React, { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Form } from '@/components/ui/form';
-import { Button } from '@/components/ui/button';
-import { Loader2, Save } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/context/auth-context';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
-import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
-import { db } from '@/lib/firebase/firebase';
-import type { InventoryItem, Order, User, Shop, PaymentMethod, Courier, UserRole } from '@/lib/types';
-import type { CreateOrderFormValues, Client } from './types';
-import { SHOPS } from '@/lib/constants';
-
-
-import { ClientForm } from './components/client-form';
-import { ItemsForm } from './components/items-form';
-import { PaymentForm } from './components/payment-form';
-
-const createOrderSchema = z.object({
-    tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }),
-    cliente: z.object({
-        dni: z.string().max(8, "DNI debe tener 8 dígitos").optional(),
-        nombres: z.string().min(3, "Nombre es requerido"),
-        celular: z.string().min(9, "Celular es requerido"),
-    }),
-    items: z.array(z.object({
-        sku: z.string(),
-        nombre: z.string(),
-        variante: z.string(),
-        cantidad: z.number().min(1),
-        precio_unitario: z.number(),
-        subtotal: z.number(),
-        estado_item: z.literal('PENDIENTE'),
-    })).min(1, "Debes agregar al menos un producto."),
-    pago: z.object({
-        subtotal: z.number(),
-        monto_total: z.number(),
-        metodo_pago_previsto: z.custom<PaymentMethod>(),
-    }),
-    envio: z.object({
-        direccion: z.string().min(1, "Dirección es requerida"),
-        distrito: z.string().min(1, "Distrito es requerido"),
-        provincia: z.string().min(1, "Provincia es requerida"),
-        courier: z.custom<Courier>(),
-        agencia_shalom: z.string().optional(),
-        costo_envio: z.number().min(0),
-    }),
-    notas: z.object({
-        nota_pedido: z.string().optional(),
-    })
-});
-
-const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
+import type { InventoryItem, Client } from './types';
+import { CreateOrderForm } from './components/create-order-form';
+import { Skeleton } from '@/components/ui/skeleton';
 
 function CreateOrderPageContent() {
-    const { user: authUser } = useAuth();
-    const { toast } = useToast();
     const searchParams = useSearchParams();
+    const clientId = searchParams.get('clientId');
+    const [inventory, setInventory] = React.useState<InventoryItem[]>([]);
+    const [clients, setClients] = React.useState<Client[]>([]);
+    const [loading, setLoading] = React.useState(true);
 
-    const [currentUser, setCurrentUser] = useState<User | null>(null);
-    const [inventory, setInventory] = useState<InventoryItem[]>([]);
-    const [clients, setClients] = useState<Client[]>([]);
-    const [isSubmitting, setIsSubmitting] = useState(false);
-
-    const form = useForm<CreateOrderFormValues>({
-        resolver: zodResolver(createOrderSchema),
-        defaultValues: {
-            cliente: { dni: '', nombres: '', celular: '' },
-            items: [],
-            pago: { subtotal: 0, monto_total: 0 },
-            envio: { direccion: '', distrito: '', provincia: 'Lima', costo_envio: 0 },
-            notas: { nota_pedido: '' }
-        },
-    });
-
-    const prefillForm = useCallback((clientId: string) => {
-        const clientToEdit = clients.find(c => c.id === clientId);
-        if (clientToEdit) {
-            form.setValue('cliente.dni', clientToEdit.dni);
-            form.setValue('cliente.nombres', clientToEdit.nombres);
-            form.setValue('cliente.celular', clientToEdit.celular);
-            if (clientToEdit.direccion) form.setValue('envio.direccion', clientToEdit.direccion);
-            if (clientToEdit.distrito) form.setValue('envio.distrito', clientToEdit.distrito);
-            if (clientToEdit.provincia) form.setValue('envio.provincia', clientToEdit.provincia);
-
-            if(clientToEdit.tienda_origen) {
-              form.setValue('tienda', clientToEdit.tienda_origen);
-            }
-            
-            // This is the key change: load shopify items into the cart
-            if (clientToEdit.shopify_items && clientToEdit.shopify_items.length > 0) {
-              form.setValue('items', clientToEdit.shopify_items);
-            }
-             
-            toast({
-                title: 'Cliente Precargado',
-                description: `Datos de ${clientToEdit.nombres} listos para confirmar.`,
-            });
-        }
-    }, [clients, form, toast]);
-
-
-    useEffect(() => {
+    React.useEffect(() => {
         const unsubs: (() => void)[] = [];
-        if (authUser) {
-          unsubs.push(listenToCollection<User>('users', (users) => {
-            const foundUser = users.find(u => u.email === authUser.email);
-            setCurrentUser(foundUser || null);
-          }));
-        }
-        unsubs.push(listenToCollection<InventoryItem>('inventory', setInventory));
+        unsubs.push(listenToCollection<InventoryItem>('inventory', (data) => {
+            setInventory(data);
+        }));
+        unsubs.push(listenToCollection<Client>('clients', (data) => {
+            setClients(data);
+        }));
         
-        const unsubClients = listenToCollection<Client>('clients', (clientsData) => {
-            setClients(clientsData);
-        });
-        unsubs.push(unsubClients);
+        // This helps to remove the skeleton state once data is likely loaded
+        const timer = setTimeout(() => setLoading(false), 1500);
+        unsubs.push(() => clearTimeout(timer));
 
         return () => unsubs.forEach(unsub => unsub());
-    }, [authUser]);
+    }, []);
 
-    useEffect(() => {
-        const clientIdFromParam = searchParams.get('clientId'); 
-        if (clientIdFromParam && clients.length > 0) {
-            prefillForm(clientIdFromParam);
-        }
-    }, [searchParams, clients, prefillForm]);
+    const initialClient = React.useMemo(() => {
+        if (!clientId || clients.length === 0) return null;
+        return clients.find(c => c.id === clientId) || null;
+    }, [clientId, clients]);
 
-    const onSubmit = async (data: CreateOrderFormValues) => {
-        if (!currentUser) {
-            toast({ title: "Error", description: "No se pudo identificar al usuario. Por favor, re-inicia sesión.", variant: "destructive"});
-            return;
-        }
-        
-        if (!data.cliente.dni || data.cliente.dni.length !== 8) {
-             toast({ title: "DNI Requerido", description: "El DNI del cliente es obligatorio y debe tener 8 dígitos.", variant: "destructive"});
-             return;
-        }
-
-        setIsSubmitting(true);
-
-        const newOrder: Omit<Order, 'id_pedido'> = {
-            id_interno: `INT-${Date.now()}`,
-            tienda: { id_tienda: data.tienda, nombre: data.tienda },
-            estado_actual: 'PENDIENTE',
-            cliente: {
-                ...data.cliente,
-                dni: data.cliente.dni, // Ensure DNI is included
-            },
-            items: data.items,
-            pago: {
-                monto_total: data.pago.monto_total,
-                monto_pendiente: data.pago.monto_total,
-                metodo_pago_previsto: data.pago.metodo_pago_previsto,
-                estado_pago: 'PENDIENTE',
-                comprobante_url: null,
-                fecha_pago: null,
-            },
-            envio: {
-                ...data.envio,
-                tipo: data.envio.provincia.toLowerCase() === 'lima' ? 'LIMA' : 'PROVINCIA',
-                nro_guia: null,
-                link_seguimiento: null,
-            },
-            asignacion: {
-                id_usuario_actual: currentUser.id_usuario,
-                nombre_usuario_actual: currentUser.nombre,
-            },
-            historial: [{
-                fecha: new Date().toISOString(),
-                id_usuario: currentUser.id_usuario,
-                nombre_usuario: currentUser.nombre,
-                accion: 'Pedido Confirmado',
-                detalle: `Pedido confirmado y procesado por ${currentUser.rol}.`
-            }],
-            fechas_clave: {
-                creacion: new Date().toISOString(),
-                preparacion: null,
-                despacho: null,
-                entrega_estimada: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days from now
-                entrega_real: null,
-                anulacion: null,
-            },
-            notas: {
-                ...data.notas,
-                observaciones_internas: '',
-                motivo_anulacion: null,
-            }
-        };
-
-        try {
-            const clientInDb = clients.find(c => c.nombres === data.cliente.nombres && c.celular === data.cliente.celular);
-            if (!clientInDb) throw new Error("Could not find the original client record to update.");
-
-            const clientRef = doc(db, 'clients', clientInDb.id);
-            await setDoc(clientRef, { 
-                dni: data.cliente.dni,
-                nombres: data.cliente.nombres,
-                celular: data.cliente.celular,
-                direccion: data.envio.direccion,
-                distrito: data.envio.distrito,
-                provincia: data.envio.provincia,
-                estado_llamada: 'VENTA_CONFIRMADA',
-             }, { merge: true });
-
-            const orderCollectionRef = collection(db, 'orders');
-            const docRef = await addDoc(orderCollectionRef, newOrder);
-            await setDoc(doc(db, 'orders', docRef.id), { id_pedido: docRef.id }, { merge: true });
-            
-            toast({ title: "¡Éxito!", description: `Pedido ${docRef.id} confirmado y guardado.` });
-            form.reset();
-
-        } catch (error) {
-            console.error("Error processing order:", error);
-            toast({ title: "Error", description: "No se pudo procesar el pedido.", variant: "destructive" });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-    
-    if (currentUser && !ALLOWED_ROLES.includes(currentUser.rol)) {
+    if (loading && clientId) {
         return (
-            <div className="flex-1 flex items-center justify-center">
-                 <div className="text-center">
-                    <h3 className="text-lg font-semibold">Acceso Denegado</h3>
-                    <p className="text-sm text-muted-foreground">
-                        Esta sección es exclusiva para usuarios autorizados.
-                    </p>
+             <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
+                 <div className="flex items-center justify-between mb-8">
+                    <Skeleton className="h-10 w-1/4" />
+                    <Skeleton className="h-11 w-52" />
+                 </div>
+                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-8">
+                        <Skeleton className="h-96 w-full" />
+                    </div>
+                    <div className="lg:col-span-1 space-y-8">
+                        <Skeleton className="h-96 w-full" />
+                        <Skeleton className="h-48 w-full" />
+                    </div>
                 </div>
             </div>
         )
     }
 
     return (
-        <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
-             <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Procesar Pedido</h1>
-                    <p className="text-muted-foreground">Confirma los datos del cliente, verifica los productos y guarda el pedido.</p>
-                </div>
-                <Button type="submit" size="lg" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <Save className="mr-2 h-4 w-4"/>
-                    Guardar Pedido Confirmado
-                </Button>
-             </div>
-            <Form {...form}>
-                <form className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                     <div className="lg:col-span-2 space-y-8">
-                         <ItemsForm form={form} inventory={inventory} />
-                    </div>
-                    <div className="lg:col-span-1 space-y-8">
-                        <ClientForm form={form} clients={clients} />
-                        <PaymentForm form={form} />
-                    </div>
-                </form>
-            </Form>
-        </div>
+       <CreateOrderForm 
+          inventory={inventory} 
+          clients={clients}
+          initialClient={initialClient}
+       />
     );
 }
 
 export default function CreateOrderPage() {
     return (
-        <Suspense fallback={<div>Cargando...</div>}>
+        <Suspense fallback={
+             <div className="flex-1 flex items-center justify-center">
+                <p>Cargando...</p>
+            </div>
+        }>
             <CreateOrderPageContent />
         </Suspense>
     );
