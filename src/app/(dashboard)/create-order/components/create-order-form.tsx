@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
@@ -11,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { collection, addDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import { listenToCollection } from '@/lib/firebase/firestore-client';
+import { getCollectionData } from '@/lib/firebase/firestore-client';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, CallStatus } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from '../types';
 import { SHOPS } from '@/lib/constants';
@@ -83,6 +82,8 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
     const prefillForm = useCallback((clientToFill: Client | null) => {
         if (clientToFill) {
+            const itemsFromShopify = clientToFill.shopify_items || [];
+            
             form.reset({
                 cliente: {
                     dni: clientToFill.dni || '',
@@ -97,9 +98,9 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                     courier: undefined,
                 },
                 tienda: clientToFill.tienda_origen,
-                items: clientToFill.shopify_items || [],
+                items: itemsFromShopify,
                 pago: {
-                    subtotal: (clientToFill.shopify_items || []).reduce((acc, item) => acc + item.subtotal, 0),
+                    subtotal: itemsFromShopify.reduce((acc, item) => acc + item.subtotal, 0),
                     monto_total: 0,
                     metodo_pago_previsto: undefined,
                 },
@@ -117,13 +118,14 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
 
     useEffect(() => {
-        if (authUser) {
-          const unsubUser = listenToCollection<User>('users', (users) => {
-            const foundUser = users.find(u => u.email === authUser.email);
-            setCurrentUser(foundUser || null);
-          });
-          return () => unsubUser();
+        async function fetchCurrentUser() {
+            if (authUser) {
+                const usersData = await getCollectionData<User>('users');
+                const foundUser = usersData.find(u => u.email === authUser.email);
+                setCurrentUser(foundUser || null);
+            }
         }
+        fetchCurrentUser();
     }, [authUser]);
 
     useEffect(() => {

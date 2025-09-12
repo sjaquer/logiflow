@@ -1,4 +1,3 @@
-
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -76,13 +75,11 @@ export default function CallCenterQueuePage() {
         return;
     }
     
-    // Prevent taking a lead already assigned to someone else
     if (client.id_agente_asignado && client.id_agente_asignado !== currentUser.id_usuario) {
         toast({ title: 'Lead Asignado', description: `${client.nombre_agente_asignado} ya está trabajando en este lead.`, variant: 'destructive'});
         return;
     }
 
-    // Assign agent and timestamp if lead is new or unassigned
     if (client.estado_llamada === 'NUEVO' || !client.id_agente_asignado) {
         const clientRef = doc(db, 'clients', client.id);
         const updateData: any = {
@@ -91,7 +88,6 @@ export default function CallCenterQueuePage() {
             nombre_agente_asignado: currentUser.nombre,
             avatar_agente_asignado: currentUser.avatar || '',
         };
-        // Set first interaction timestamp only if it doesn't exist
         if (!client.first_interaction_at) {
           updateData.first_interaction_at = new Date().toISOString();
         }
@@ -104,6 +100,7 @@ export default function CallCenterQueuePage() {
         });
     }
     
+    // Correct Navigation: Pass only the client ID
     router.push(`/create-order?clientId=${client.id}`);
   }, [currentUser, router, toast]);
 

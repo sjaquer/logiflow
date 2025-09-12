@@ -1,4 +1,3 @@
-
 'use client';
 import React, { Suspense, useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -27,7 +26,7 @@ function CreateOrderPageContent() {
                 setInventory(inventoryData);
                 setClients(clientsData);
 
-                // Fetch the specific client to be processed
+                // Fetch the specific client to be processed using its ID from the URL
                 if (clientId) {
                     const clientDoc = await getDocumentData<Client>('clients', clientId);
                     setInitialClient(clientDoc);
