@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect, useCallback, Suspense } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,9 +13,10 @@ import { useAuth } from '@/context/auth-context';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import type { InventoryItem, Order, User, Shop, PaymentMethod, Courier, UserRole, OrderItem } from '@/lib/types';
+import type { InventoryItem, Order, User, Shop, PaymentMethod, Courier, UserRole } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from './types';
 import { SHOPS } from '@/lib/constants';
+import { Suspense } from 'react';
 
 import { ClientForm } from './components/client-form';
 import { ItemsForm } from './components/items-form';
@@ -88,12 +89,10 @@ function CreateOrderPageContent() {
             if (clientToEdit.distrito) form.setValue('envio.distrito', clientToEdit.distrito);
             if (clientToEdit.provincia) form.setValue('envio.provincia', clientToEdit.provincia);
 
-            // Pre-fill shop if it comes from the client data
             if(clientToEdit.tienda_origen) {
               form.setValue('tienda', clientToEdit.tienda_origen);
             }
 
-            // Pre-fill cart if items exist
             if (clientToEdit.shopify_items && clientToEdit.shopify_items.length > 0) {
               const itemsToAppend = clientToEdit.shopify_items.map(item => ({
                 ...item,
@@ -128,9 +127,7 @@ function CreateOrderPageContent() {
         return () => unsubs.forEach(unsub => unsub());
     }, [authUser]);
 
-    // Effect to pre-fill form when clients data is loaded and DNI param exists
     useEffect(() => {
-        // use client ID from URL instead of DNI to handle new clients
         const clientIdFromParam = searchParams.get('clientId'); 
         if (clientIdFromParam && clients.length > 0) {
             prefillForm(clientIdFromParam);
@@ -152,7 +149,7 @@ function CreateOrderPageContent() {
             items: data.items,
             pago: {
                 monto_total: data.pago.monto_total,
-                monto_pendiente: data.pago.monto_total, // Initially, full amount is pending
+                monto_pendiente: data.pago.monto_total,
                 metodo_pago_previsto: data.pago.metodo_pago_previsto,
                 estado_pago: 'PENDIENTE',
                 comprobante_url: null,
@@ -191,11 +188,9 @@ function CreateOrderPageContent() {
         };
 
         try {
-            // Find client by DNI to get its document ID
             const clientInDb = clients.find(c => c.nombres === data.cliente.nombres && c.celular === data.cliente.celular);
             if (!clientInDb) throw new Error("Could not find the original client record to update.");
 
-            // Save/Update client, and update their call status
             const clientRef = doc(db, 'clients', clientInDb.id);
             await setDoc(clientRef, { 
                 dni: data.cliente.dni,
@@ -204,10 +199,9 @@ function CreateOrderPageContent() {
                 direccion: data.envio.direccion,
                 distrito: data.envio.distrito,
                 provincia: data.envio.provincia,
-                estado_llamada: 'VENTA_CONFIRMADA', // Update call status
+                estado_llamada: 'VENTA_CONFIRMADA',
              }, { merge: true });
 
-            // Save the new order
             const orderCollectionRef = collection(db, 'orders');
             const docRef = await addDoc(orderCollectionRef, newOrder);
             await setDoc(doc(db, 'orders', docRef.id), { id_pedido: docRef.id }, { merge: true });
@@ -264,7 +258,6 @@ function CreateOrderPageContent() {
     );
 }
 
-// We wrap the component that uses `useSearchParams` with a `Suspense` boundary
 export default function CreateOrderPage() {
     return (
         <Suspense fallback={<div>Cargando...</div>}>
