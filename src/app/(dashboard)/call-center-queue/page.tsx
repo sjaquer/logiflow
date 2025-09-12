@@ -59,9 +59,11 @@ export default function CallCenterQueuePage() {
 
   const filteredLeads = useMemo(() => {
     return leads.filter(lead => {
-        const matchesSearch = lead.nombres.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (lead.dni && lead.dni.toLowerCase().includes(searchQuery.toLowerCase()));
-        
+        const searchInput = searchQuery.toLowerCase();
+        const matchesSearch = lead.nombres.toLowerCase().includes(searchInput) ||
+          (lead.celular && lead.celular.includes(searchInput)) ||
+          (lead.nombre_agente_asignado && lead.nombre_agente_asignado.toLowerCase().includes(searchInput));
+
         const matchesStatus = statusFilter === 'TODOS' || lead.estado_llamada === statusFilter;
         
         return matchesSearch && matchesStatus;
@@ -73,17 +75,29 @@ export default function CallCenterQueuePage() {
         toast({ title: 'Error', description: 'No se pudo identificar al usuario.', variant: 'destructive' });
         return;
     }
+    
+    // Prevent taking a lead already assigned to someone else
+    if (client.id_agente_asignado && client.id_agente_asignado !== currentUser.id_usuario) {
+        toast({ title: 'Lead Asignado', description: `${client.nombre_agente_asignado} ya está trabajando en este lead.`, variant: 'destructive'});
+        return;
+    }
 
-    // Assign agent and timestamp if lead is new
-    if (client.estado_llamada === 'NUEVO') {
+    // Assign agent and timestamp if lead is new or unassigned
+    if (client.estado_llamada === 'NUEVO' || !client.id_agente_asignado) {
         const clientRef = doc(db, 'clients', client.id);
-        await updateDoc(clientRef, {
+        const updateData: any = {
             estado_llamada: 'CONTACTADO',
             id_agente_asignado: currentUser.id_usuario,
             nombre_agente_asignado: currentUser.nombre,
             avatar_agente_asignado: currentUser.avatar || '',
-            first_interaction_at: new Date().toISOString(), // Set first interaction timestamp
-        });
+        };
+        // Set first interaction timestamp only if it doesn't exist
+        if (!client.first_interaction_at) {
+          updateData.first_interaction_at = new Date().toISOString();
+        }
+
+        await updateDoc(clientRef, updateData);
+
         toast({
           title: 'Lead Asignado',
           description: `Ahora estás a cargo de ${client.nombres}.`,
@@ -111,6 +125,29 @@ export default function CallCenterQueuePage() {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleStatusChange = async (clientId: string, status: CallStatus) => {
+      const clientRef = doc(db, 'clients', clientId);
+      try {
+          await updateDoc(clientRef, {
+              estado_llamada: status,
+              id_agente_asignado: null, // Release agent
+              nombre_agente_asignado: null,
+              avatar_agente_asignado: null,
+          });
+           toast({
+              title: 'Estado Actualizado',
+              description: `El lead ha sido marcado como "${status.replace(/_/g, ' ').toLowerCase()}".`,
+           });
+      } catch (error) {
+          console.error("Error updating lead status:", error);
+          toast({
+              title: 'Error',
+              description: 'No se pudo actualizar el estado del lead.',
+              variant: 'destructive',
+          });
+      }
   };
   
    if (!currentUser && loading) {
@@ -165,7 +202,7 @@ export default function CallCenterQueuePage() {
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre o DNI..."
+                placeholder="Buscar por nombre, celular o agente..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -190,6 +227,8 @@ export default function CallCenterQueuePage() {
               leads={filteredLeads}
               onProcess={handleProcessClient}
               onDelete={handleDeleteLead}
+              onStatusChange={handleStatusChange}
+              currentUserId={currentUser?.id_usuario}
             />
           </div>
         </CardContent>

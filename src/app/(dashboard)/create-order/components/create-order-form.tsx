@@ -6,13 +6,12 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save } from 'lucide-react';
+import { Loader2, Save, SaveAll } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { collection, addDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem } from '@/lib/types';
+import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, CallStatus } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from '../types';
 import { SHOPS } from '@/lib/constants';
 
@@ -21,7 +20,7 @@ import { ItemsForm } from './items-form';
 import { PaymentForm } from './payment-form';
 
 const createOrderSchema = z.object({
-    tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }),
+    tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }).optional(),
     cliente: z.object({
         dni: z.string().length(8, "DNI debe tener 8 dígitos"),
         nombres: z.string().min(3, "Nombre es requerido"),
@@ -39,13 +38,13 @@ const createOrderSchema = z.object({
     pago: z.object({
         subtotal: z.number(),
         monto_total: z.number(),
-        metodo_pago_previsto: z.custom<PaymentMethod>(),
+        metodo_pago_previsto: z.custom<PaymentMethod>().optional(),
     }),
     envio: z.object({
         direccion: z.string().min(1, "Dirección es requerida"),
         distrito: z.string().min(1, "Distrito es requerido"),
         provincia: z.string().min(1, "Provincia es requerida"),
-        courier: z.custom<Courier>(),
+        courier: z.custom<Courier>().optional(),
         agencia_shalom: z.string().optional(),
         costo_envio: z.number().min(0),
     }),
@@ -68,6 +67,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSavingDraft, setIsSavingDraft] = useState(false);
 
     const form = useForm<CreateOrderFormValues>({
         resolver: zodResolver(createOrderSchema),
@@ -129,6 +129,41 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         prefillForm(initialClient);
     }, [initialClient, prefillForm]);
 
+    const handleSaveDraft = async () => {
+        setIsSavingDraft(true);
+        const data = form.getValues();
+
+        if (!initialClient?.id) {
+            toast({ title: "Error", description: "No se puede guardar el borrador sin un cliente de origen.", variant: "destructive" });
+            setIsSavingDraft(false);
+            return;
+        }
+        
+        try {
+            const clientRef = doc(db, 'clients', initialClient.id);
+            await updateDoc(clientRef, {
+                dni: data.cliente.dni,
+                nombres: data.cliente.nombres,
+                celular: data.cliente.celular,
+                direccion: data.envio.direccion,
+                distrito: data.envio.distrito,
+                provincia: data.envio.provincia,
+                estado_llamada: 'EN_SEGUIMIENTO',
+                shopify_items: data.items, // Guardar el carrito actual
+                id_agente_asignado: null, // Liberar agente para que otro pueda tomarlo
+                nombre_agente_asignado: null,
+                avatar_agente_asignado: null,
+            });
+            toast({ title: "Borrador Guardado", description: "El progreso se ha guardado. El lead está disponible en la cola." });
+        } catch (error) {
+            console.error("Error saving draft:", error);
+            toast({ title: "Error", description: "No se pudo guardar el borrador.", variant: "destructive" });
+        } finally {
+            setIsSavingDraft(false);
+        }
+    };
+
+
     const onSubmit = async (data: CreateOrderFormValues) => {
         if (!currentUser) {
             toast({ title: "Error", description: "No se pudo identificar al usuario. Por favor, re-inicia sesión.", variant: "destructive"});
@@ -144,7 +179,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
         const newOrder: Omit<Order, 'id_pedido'> = {
             id_interno: `INT-${Date.now()}`,
-            tienda: { id_tienda: data.tienda, nombre: data.tienda },
+            tienda: { id_tienda: data.tienda || 'Trazto', nombre: data.tienda || 'Trazto' },
             estado_actual: 'PENDIENTE',
             cliente: {
                 ...data.cliente,
@@ -154,7 +189,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             pago: {
                 monto_total: data.pago.monto_total,
                 monto_pendiente: data.pago.monto_total,
-                metodo_pago_previsto: data.pago.metodo_pago_previsto,
+                metodo_pago_previsto: data.pago.metodo_pago_previsto!,
                 estado_pago: 'PENDIENTE',
                 comprobante_url: null,
                 fecha_pago: null,
@@ -196,12 +231,6 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
             const clientRef = doc(db, 'clients', initialClient.id);
             await updateDoc(clientRef, { 
-                dni: data.cliente.dni,
-                nombres: data.cliente.nombres,
-                celular: data.cliente.celular,
-                direccion: data.envio.direccion,
-                distrito: data.envio.distrito,
-                provincia: data.envio.provincia,
                 estado_llamada: 'VENTA_CONFIRMADA',
              });
 
@@ -240,11 +269,18 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                     <h1 className="text-3xl font-bold tracking-tight">Procesar Pedido</h1>
                     <p className="text-muted-foreground">Confirma los datos del cliente, verifica los productos y guarda el pedido.</p>
                 </div>
-                <Button type="submit" size="lg" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <Save className="mr-2 h-4 w-4"/>
-                    Guardar Pedido Confirmado
-                </Button>
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="lg" disabled={isSavingDraft} onClick={handleSaveDraft}>
+                       {isSavingDraft && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                       <SaveAll className="mr-2 h-4 w-4"/>
+                       Guardar Borrador
+                    </Button>
+                    <Button type="submit" size="lg" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Save className="mr-2 h-4 w-4"/>
+                        Guardar Pedido Confirmado
+                    </Button>
+                </div>
              </div>
             <Form {...form}>
                 <form className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">

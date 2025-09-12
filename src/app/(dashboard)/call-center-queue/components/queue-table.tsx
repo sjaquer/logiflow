@@ -2,8 +2,8 @@
 'use client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PhoneForwarded, Trash2 } from 'lucide-react';
-import type { Client } from '@/lib/types';
+import { PhoneForwarded, Trash2, MoreVertical, PhoneOff, AlertTriangle } from 'lucide-react';
+import type { Client, CallStatus } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
@@ -11,14 +11,17 @@ import { CALL_STATUS_BADGE_MAP } from '@/lib/constants';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface QueueTableProps {
   leads: Client[];
   onProcess: (client: Client) => void;
   onDelete: (clientId: string) => void;
+  onStatusChange: (clientId: string, status: CallStatus) => void;
+  currentUserId: string | undefined;
 }
 
-export function QueueTable({ leads, onProcess, onDelete }: QueueTableProps) {
+export function QueueTable({ leads, onProcess, onDelete, onStatusChange, currentUserId }: QueueTableProps) {
   const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
   const getWaitingTime = (lead: Client) => {
@@ -57,8 +60,11 @@ export function QueueTable({ leads, onProcess, onDelete }: QueueTableProps) {
       <TableBody>
         {leads.length > 0 ? leads.map((lead) => {
           const waitingTime = getWaitingTime(lead);
+          const isAssigned = !!lead.id_agente_asignado;
+          const isAssignedToOther = isAssigned && lead.id_agente_asignado !== currentUserId;
+
           return (
-            <TableRow key={lead.id}>
+            <TableRow key={lead.id} className={cn(isAssignedToOther && "bg-muted/30 opacity-70")}>
               <TableCell>
                   {lead.estado_llamada && (
                       <Badge variant={CALL_STATUS_BADGE_MAP[lead.estado_llamada]} className="capitalize w-28 justify-center">
@@ -97,13 +103,33 @@ export function QueueTable({ leads, onProcess, onDelete }: QueueTableProps) {
                   }
               </TableCell>
               <TableCell className="text-right space-x-2">
-                <Button size="sm" onClick={() => onProcess(lead)} disabled={!!lead.id_agente_asignado && lead.estado_llamada === 'CONTACTADO'}>
+                <Button size="sm" onClick={() => onProcess(lead)} disabled={isAssignedToOther}>
                   <PhoneForwarded className="mr-2 h-4 w-4" />
                   {lead.estado_llamada === 'NUEVO' ? 'Procesar' : 'Continuar'}
                 </Button>
-                <Button variant="outline" size="icon" className="text-destructive" onClick={() => onDelete(lead.id)}>
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NO_CONTESTA')}>
+                            <PhoneOff className="mr-2 h-4 w-4" />
+                            <span>Marcar como No Contesta</span>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NUMERO_EQUIVOCADO')}>
+                            <AlertTriangle className="mr-2 h-4 w-4" />
+                             <span>Número Equivocado</span>
+                        </DropdownMenuItem>
+                         <DropdownMenuItem onClick={() => onDelete(lead.id)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            <span>Eliminar Lead</span>
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
               </TableCell>
             </TableRow>
           )
