@@ -46,9 +46,28 @@ export function ClientForm({ form, clients }: ClientFormProps) {
         form.setValue('cliente.celular', client.celular);
         form.setValue('envio.direccion', client.direccion || '');
         form.setValue('envio.provincia', client.provincia || 'Lima');
-        form.setValue('envio.distrito', client.distrito || '');
+        // Ensure district is updated after province is set
+        setTimeout(() => {
+            form.setValue('envio.distrito', client.distrito || '');
+        }, 0);
     }
   }
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const form = (event.target as HTMLElement).closest('form');
+      if (!form) return;
+      
+      const focusable = Array.from(form.querySelectorAll<HTMLElement>('input, button, select, textarea'));
+      const index = focusable.indexOf(event.target as HTMLElement);
+
+      if (index > -1 && index < focusable.length - 1) {
+        const nextElement = focusable[index + 1];
+        nextElement?.focus();
+      }
+    }
+  };
 
   return (
     <Card>
@@ -70,6 +89,7 @@ export function ClientForm({ form, clients }: ClientFormProps) {
                             {...field} 
                             placeholder="Buscar o ingresar DNI..." 
                             list="client-dnis"
+                            onKeyDown={handleKeyDown}
                             onChange={(e) => {
                                 field.onChange(e);
                                 handleClientChange(e.target.value);
@@ -89,7 +109,7 @@ export function ClientForm({ form, clients }: ClientFormProps) {
             render={({ field }) => (
                 <FormItem>
                     <FormLabel>Nombre Completo</FormLabel>
-                    <FormControl><Input {...field} placeholder="Nombre del cliente" /></FormControl>
+                    <FormControl><Input {...field} placeholder="Nombre del cliente" onKeyDown={handleKeyDown} /></FormControl>
                     <FormMessage />
                 </FormItem>
             )}
@@ -100,7 +120,7 @@ export function ClientForm({ form, clients }: ClientFormProps) {
             render={({ field }) => (
                 <FormItem>
                     <FormLabel>Celular</FormLabel>
-                    <FormControl><Input {...field} placeholder="987654321" /></FormControl>
+                    <FormControl><Input {...field} placeholder="987654321" onKeyDown={handleKeyDown} /></FormControl>
                     <FormMessage />
                 </FormItem>
             )}
@@ -113,7 +133,7 @@ export function ClientForm({ form, clients }: ClientFormProps) {
                   <FormLabel>Tienda de Origen</FormLabel>
                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger onKeyDown={handleKeyDown}>
                             <SelectValue placeholder="Selecciona una tienda" />
                           </SelectTrigger>
                         </FormControl>
@@ -133,7 +153,7 @@ export function ClientForm({ form, clients }: ClientFormProps) {
             render={({ field }) => (
                 <FormItem>
                     <FormLabel>Dirección de Entrega</FormLabel>
-                    <FormControl><Input {...field} placeholder="Av. Siempre Viva 123" /></FormControl>
+                    <FormControl><Input {...field} placeholder="Av. Siempre Viva 123" onKeyDown={handleKeyDown}/></FormControl>
                     <FormMessage />
                 </FormItem>
             )}
@@ -186,7 +206,7 @@ export function ClientForm({ form, clients }: ClientFormProps) {
                     <FormLabel>Courier</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
-                          <SelectTrigger>
+                          <SelectTrigger onKeyDown={handleKeyDown}>
                             <SelectValue placeholder="Selecciona un courier" />
                           </SelectTrigger>
                         </FormControl>
@@ -205,7 +225,7 @@ export function ClientForm({ form, clients }: ClientFormProps) {
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Agencia Shalom</FormLabel>
-                        <FormControl><Input {...field} placeholder="Agencia de recojo" /></FormControl>
+                        <FormControl><Input {...field} placeholder="Agencia de recojo" onKeyDown={handleKeyDown}/></FormControl>
                         <FormMessage />
                     </FormItem>
                 )}

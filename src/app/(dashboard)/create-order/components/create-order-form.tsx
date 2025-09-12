@@ -80,7 +80,8 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             notas: { nota_pedido: '' }
         },
     });
-
+    
+    // This useEffect is now responsible for populating the form when a client is pre-loaded
     useEffect(() => {
         if (initialClient) {
             form.reset({
@@ -249,9 +250,18 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
     const handleKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
       if (event.key === 'Enter') {
         const target = event.target as HTMLElement;
-        // Don't prevent default on Textarea, or submit buttons
         if (target.tagName.toLowerCase() !== 'textarea' && target.getAttribute('type') !== 'submit') {
-          event.preventDefault();
+            event.preventDefault();
+            const form = (event.target as HTMLElement).closest('form');
+            if (!form) return;
+            
+            const focusable = Array.from(form.querySelectorAll<HTMLElement>('input, button, select, textarea, [role=combobox]'));
+            const index = focusable.indexOf(target);
+
+            if (index > -1 && index < focusable.length - 1) {
+              const nextElement = focusable[index + 1];
+              nextElement?.focus();
+            }
         }
       }
     };
