@@ -6,30 +6,28 @@ import { getCollectionData } from '@/lib/firebase/firestore-client';
 import type { InventoryItem } from '@/lib/types';
 import { CreateOrderForm } from './components/create-order-form';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { Client } from '../clients/page'; // Adjusted import
+import type { Client } from './types';
 
 function CreateOrderPageContent() {
     const searchParams = useSearchParams();
     const clientId = searchParams.get('clientId');
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
-    const [loading, setLoading] = useState(true);
     const [initialClient, setInitialClient] = useState<Client | null>(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         async function fetchData() {
-            setLoading(true);
             try {
-                const [inventoryData, clientsData] = await Promise.all([
-                    getCollectionData<InventoryItem>('inventory'),
-                    getCollectionData<Client>('clients')
-                ]);
+                const inventoryData = await getCollectionData<InventoryItem>('inventory');
+                const clientsData = await getCollectionData<Client>('clients');
+                
                 setInventory(inventoryData);
                 setClients(clientsData);
 
                 if (clientId) {
-                    const foundClient = clientsData.find(c => c.id === clientId) || null;
-                    setInitialClient(foundClient);
+                    const foundClient = clientsData.find(c => c.id === clientId);
+                    setInitialClient(foundClient || null);
                 }
             } catch (error) {
                 console.error("Error fetching initial data for order creation:", error);

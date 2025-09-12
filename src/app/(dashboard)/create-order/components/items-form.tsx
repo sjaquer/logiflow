@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
@@ -32,13 +33,15 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
   const itemsInCart = useWatch({
       control: form.control,
       name: 'items',
-  });
+  }) || [];
 
-  // CRITICAL FIX: The subtotal calculation and `setValue` call must be inside a `useEffect`
-  // hook. Calling `setValue` directly in the component body causes an infinite re-render loop
-  // that resets the form state.
+  // This useEffect hook is critical. It calculates the subtotal whenever the
+  // items in the cart change and updates the form state. This prevents an
+  // infinite re-render loop that would be caused by calling setValue directly
+  // in the component body.
   useEffect(() => {
     const subtotal = itemsInCart.reduce((acc, item) => acc + item.subtotal, 0);
+    // Only update if the value is different to avoid unnecessary re-renders.
     if (form.getValues('pago.subtotal') !== subtotal) {
         form.setValue('pago.subtotal', subtotal, { shouldDirty: true });
     }

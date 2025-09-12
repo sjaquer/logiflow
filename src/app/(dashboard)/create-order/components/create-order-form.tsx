@@ -82,7 +82,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
     const prefillForm = useCallback((clientToEdit: Client | null) => {
         if (clientToEdit) {
-            form.reset({ // Use reset to populate the entire form at once
+            form.reset({
                 cliente: {
                     dni: clientToEdit.dni || '',
                     nombres: clientToEdit.nombres,
@@ -92,14 +92,14 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                     direccion: clientToEdit.direccion || '',
                     distrito: clientToEdit.distrito || '',
                     provincia: clientToEdit.provincia || 'Lima',
-                    costo_envio: 0, // Reset shipping cost
-                    courier: undefined, // Reset courier
+                    costo_envio: 0,
+                    courier: undefined,
                 },
                 tienda: clientToEdit.tienda_origen,
                 items: clientToEdit.shopify_items || [],
                 pago: {
                     subtotal: (clientToEdit.shopify_items || []).reduce((acc, item) => acc + item.subtotal, 0),
-                    monto_total: 0, // Will be recalculated
+                    monto_total: 0,
                     metodo_pago_previsto: undefined,
                 },
                 notas: {
@@ -262,4 +262,3 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         </div>
     );
 }
-
