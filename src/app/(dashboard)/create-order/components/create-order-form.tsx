@@ -11,6 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { collection, addDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
+import { listenToCollection } from '@/lib/firebase/firestore-client';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, CallStatus } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from '../types';
 import { SHOPS } from '@/lib/constants';
@@ -270,12 +271,12 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                     <p className="text-muted-foreground">Confirma los datos del cliente, verifica los productos y guarda el pedido.</p>
                 </div>
                 <div className="flex items-center gap-4">
-                    <Button variant="outline" size="lg" disabled={isSavingDraft} onClick={handleSaveDraft}>
+                    <Button variant="outline" size="lg" disabled={isSavingDraft || isSubmitting} onClick={handleSaveDraft}>
                        {isSavingDraft && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                        <SaveAll className="mr-2 h-4 w-4"/>
                        Guardar Borrador
                     </Button>
-                    <Button type="submit" size="lg" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
+                    <Button type="submit" size="lg" disabled={isSubmitting || isSavingDraft} onClick={form.handleSubmit(onSubmit)}>
                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         <Save className="mr-2 h-4 w-4"/>
                         Guardar Pedido Confirmado
