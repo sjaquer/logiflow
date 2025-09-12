@@ -61,6 +61,8 @@ interface CreateOrderFormProps {
     initialClient: Client | null;
 }
 
+// This component now receives all data as props and manages the form state.
+// It is stable and will not re-fetch data or re-initialize unnecessarily.
 export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrderFormProps) {
     const { user: authUser } = useAuth();
     const { toast } = useToast();
@@ -71,7 +73,31 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
     const form = useForm<CreateOrderFormValues>({
         resolver: zodResolver(createOrderSchema),
-        defaultValues: {
+        // Set default values based on the initialClient prop
+        defaultValues: initialClient ? {
+            cliente: {
+                dni: initialClient.dni || '',
+                nombres: initialClient.nombres,
+                celular: initialClient.celular,
+            },
+            envio: {
+                direccion: initialClient.direccion || '',
+                distrito: initialClient.distrito || '',
+                provincia: initialClient.provincia || 'Lima',
+                costo_envio: 0,
+                courier: undefined,
+            },
+            tienda: initialClient.tienda_origen,
+            items: initialClient.shopify_items || [],
+            pago: {
+                subtotal: initialClient.shopify_items?.reduce((acc, item) => acc + item.subtotal, 0) || 0,
+                monto_total: 0,
+                metodo_pago_previsto: undefined,
+            },
+            notas: {
+                nota_pedido: '',
+            },
+        } : {
             cliente: { dni: '', nombres: '', celular: '' },
             items: [],
             pago: { subtotal: 0, monto_total: 0 },
@@ -79,43 +105,6 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             notas: { nota_pedido: '' }
         },
     });
-
-    const prefillForm = useCallback((clientToFill: Client | null) => {
-        if (clientToFill) {
-            const itemsFromShopify = clientToFill.shopify_items || [];
-            
-            form.reset({
-                cliente: {
-                    dni: clientToFill.dni || '',
-                    nombres: clientToFill.nombres,
-                    celular: clientToFill.celular,
-                },
-                envio: {
-                    direccion: clientToFill.direccion || '',
-                    distrito: clientToFill.distrito || '',
-                    provincia: clientToFill.provincia || 'Lima',
-                    costo_envio: 0,
-                    courier: undefined,
-                },
-                tienda: clientToFill.tienda_origen,
-                items: itemsFromShopify,
-                pago: {
-                    subtotal: itemsFromShopify.reduce((acc, item) => acc + item.subtotal, 0),
-                    monto_total: 0,
-                    metodo_pago_previsto: undefined,
-                },
-                notas: {
-                    nota_pedido: '',
-                },
-            });
-            
-            toast({
-                title: 'Cliente Precargado',
-                description: `Datos de ${clientToFill.nombres} listos para confirmar.`,
-            });
-        }
-    }, [form, toast]);
-
 
     useEffect(() => {
         async function fetchCurrentUser() {
@@ -127,10 +116,17 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         }
         fetchCurrentUser();
     }, [authUser]);
-
+    
+    // Toast to confirm data is pre-filled, runs only once.
     useEffect(() => {
-        prefillForm(initialClient);
-    }, [initialClient, prefillForm]);
+        if (initialClient) {
+             toast({
+                title: 'Cliente Precargado',
+                description: `Datos de ${initialClient.nombres} listos para confirmar.`,
+            });
+        }
+    }, [initialClient, toast]);
+
 
     const handleSaveDraft = async () => {
         setIsSavingDraft(true);

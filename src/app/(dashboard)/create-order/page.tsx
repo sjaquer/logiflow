@@ -7,15 +7,18 @@ import { CreateOrderForm } from './components/create-order-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client } from './types';
 
+// This component is now responsible for fetching ALL data.
 function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [initialClient, setInitialClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         async function fetchData() {
             setLoading(true);
+            setError(null);
             try {
                 // Fetch static data once
                 const inventoryData = await getCollectionData<InventoryItem>('inventory');
@@ -27,10 +30,15 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
                 // Fetch the specific client to be processed using its ID from the URL
                 if (clientId) {
                     const clientDoc = await getDocumentData<Client>('clients', clientId);
-                    setInitialClient(clientDoc);
+                     if (clientDoc) {
+                        setInitialClient(clientDoc);
+                    } else {
+                        setError(`No se encontró ningún cliente con el ID: ${clientId}`);
+                    }
                 }
-            } catch (error) {
-                console.error("Error fetching initial data for order creation:", error);
+            } catch (err) {
+                console.error("Error fetching initial data for order creation:", err);
+                setError("Error al cargar los datos necesarios para crear el pedido.");
             } finally {
                 setLoading(false);
             }
@@ -44,21 +52,34 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
              <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
                  <div className="flex items-center justify-between mb-8">
                     <Skeleton className="h-10 w-1/4" />
-                    <Skeleton className="h-11 w-52" />
+                    <div className="flex gap-4">
+                        <Skeleton className="h-11 w-40" />
+                        <Skeleton className="h-11 w-52" />
+                    </div>
                  </div>
                  <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2 space-y-8">
                         <Skeleton className="h-96 w-full" />
                     </div>
                     <div className="lg:col-span-1 space-y-8">
-                        <Skeleton className="h-96 w-full" />
-                        <Skeleton className="h-48 w-full" />
+                        <Skeleton className="h-[450px] w-full" />
+                        <Skeleton className="h-64 w-full" />
                     </div>
                 </div>
             </div>
         )
     }
 
+    if (error) {
+        return (
+            <div className="flex items-center justify-center h-full p-8 text-center text-destructive">
+                <p>{error}</p>
+            </div>
+        );
+    }
+    
+    // The CreateOrderForm is only rendered once all data is available.
+    // It receives the data as stable props.
     return (
        <CreateOrderForm 
           inventory={inventory} 
@@ -68,7 +89,7 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
     );
 }
 
-
+// Wrapper to get searchParams safely.
 function CreateOrderPageWrapper() {
     const searchParams = useSearchParams();
     const clientId = searchParams.get('clientId');
@@ -79,21 +100,23 @@ function CreateOrderPageWrapper() {
 
 export default function CreateOrderPage() {
     return (
+        // The Suspense boundary is crucial for this pattern to work correctly.
         <Suspense fallback={
-             <div className="flex-1 flex items-center justify-center">
-                 <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
-                     <div className="flex items-center justify-between mb-8">
-                        <Skeleton className="h-10 w-1/4" />
+             <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
+                 <div className="flex items-center justify-between mb-8">
+                    <Skeleton className="h-10 w-1/4" />
+                    <div className="flex gap-4">
+                        <Skeleton className="h-11 w-40" />
                         <Skeleton className="h-11 w-52" />
-                     </div>
-                     <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 space-y-8">
-                            <Skeleton className="h-96 w-full" />
-                        </div>
-                        <div className="lg:col-span-1 space-y-8">
-                            <Skeleton className="h-96 w-full" />
-                            <Skeleton className="h-48 w-full" />
-                        </div>
+                    </div>
+                 </div>
+                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-8">
+                        <Skeleton className="h-96 w-full" />
+                    </div>
+                    <div className="lg:col-span-1 space-y-8">
+                        <Skeleton className="h-[450px] w-full" />
+                        <Skeleton className="h-64 w-full" />
                     </div>
                 </div>
             </div>
