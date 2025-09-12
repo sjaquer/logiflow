@@ -7,9 +7,7 @@ import { CreateOrderForm } from './components/create-order-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client } from './types';
 
-function CreateOrderPageContent() {
-    const searchParams = useSearchParams();
-    const clientId = searchParams.get('clientId');
+function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [initialClient, setInitialClient] = useState<Client | null>(null);
@@ -70,14 +68,37 @@ function CreateOrderPageContent() {
     );
 }
 
+
+function CreateOrderPageWrapper() {
+    const searchParams = useSearchParams();
+    const clientId = searchParams.get('clientId');
+    
+    return <CreateOrderPageContent clientId={clientId} />;
+}
+
+
 export default function CreateOrderPage() {
     return (
         <Suspense fallback={
              <div className="flex-1 flex items-center justify-center">
-                <p>Cargando...</p>
+                 <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
+                     <div className="flex items-center justify-between mb-8">
+                        <Skeleton className="h-10 w-1/4" />
+                        <Skeleton className="h-11 w-52" />
+                     </div>
+                     <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        <div className="lg:col-span-2 space-y-8">
+                            <Skeleton className="h-96 w-full" />
+                        </div>
+                        <div className="lg:col-span-1 space-y-8">
+                            <Skeleton className="h-96 w-full" />
+                            <Skeleton className="h-48 w-full" />
+                        </div>
+                    </div>
+                </div>
             </div>
         }>
-            <CreateOrderPageContent />
+            <CreateOrderPageWrapper />
         </Suspense>
     );
 }
