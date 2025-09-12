@@ -37,9 +37,11 @@ export function QueueTable({ leads, onProcess, onDelete }: QueueTableProps) {
         {leads.length > 0 ? leads.map((lead) => (
           <TableRow key={lead.id}>
             <TableCell>
-                 <Badge variant={CALL_STATUS_BADGE_MAP[lead.estado_llamada]} className="capitalize w-28 justify-center">
-                    {lead.estado_llamada.replace(/_/g, ' ').toLowerCase()}
-                </Badge>
+                 {lead.estado_llamada && (
+                    <Badge variant={CALL_STATUS_BADGE_MAP[lead.estado_llamada]} className="capitalize w-28 justify-center">
+                        {lead.estado_llamada.replace(/_/g, ' ').toLowerCase()}
+                    </Badge>
+                 )}
             </TableCell>
             <TableCell className="font-medium">{lead.dni || 'N/A'}</TableCell>
             <TableCell>{lead.nombres}</TableCell>
