@@ -20,15 +20,17 @@ function CreateOrderPageContent() {
         async function fetchData() {
             setLoading(true);
             try {
+                // Fetch static data once
                 const inventoryData = await getCollectionData<InventoryItem>('inventory');
                 const clientsData = await getCollectionData<Client>('clients');
                 
                 setInventory(inventoryData);
                 setClients(clientsData);
 
+                // Fetch the specific client to be processed
                 if (clientId) {
-                    const foundClient = await getDocumentData<Client>('clients', clientId);
-                    setInitialClient(foundClient || null);
+                    const clientDoc = await getDocumentData<Client>('clients', clientId);
+                    setInitialClient(clientDoc);
                 }
             } catch (error) {
                 console.error("Error fetching initial data for order creation:", error);

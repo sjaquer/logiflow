@@ -10,7 +10,7 @@ import { Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
-import { collection, addDoc, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from '../types';
@@ -23,7 +23,7 @@ import { PaymentForm } from './payment-form';
 const createOrderSchema = z.object({
     tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }),
     cliente: z.object({
-        dni: z.string().max(8, "DNI debe tener 8 dígitos").optional(),
+        dni: z.string().length(8, "DNI debe tener 8 dígitos"),
         nombres: z.string().min(3, "Nombre es requerido"),
         celular: z.string().min(9, "Celular es requerido"),
     }),
@@ -80,25 +80,25 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         },
     });
 
-    const prefillForm = useCallback((clientToEdit: Client | null) => {
-        if (clientToEdit) {
+    const prefillForm = useCallback((clientToFill: Client | null) => {
+        if (clientToFill) {
             form.reset({
                 cliente: {
-                    dni: clientToEdit.dni || '',
-                    nombres: clientToEdit.nombres,
-                    celular: clientToEdit.celular,
+                    dni: clientToFill.dni || '',
+                    nombres: clientToFill.nombres,
+                    celular: clientToFill.celular,
                 },
                 envio: {
-                    direccion: clientToEdit.direccion || '',
-                    distrito: clientToEdit.distrito || '',
-                    provincia: clientToEdit.provincia || 'Lima',
+                    direccion: clientToFill.direccion || '',
+                    distrito: clientToFill.distrito || '',
+                    provincia: clientToFill.provincia || 'Lima',
                     costo_envio: 0,
                     courier: undefined,
                 },
-                tienda: clientToEdit.tienda_origen,
-                items: clientToEdit.shopify_items || [],
+                tienda: clientToFill.tienda_origen,
+                items: clientToFill.shopify_items || [],
                 pago: {
-                    subtotal: (clientToEdit.shopify_items || []).reduce((acc, item) => acc + item.subtotal, 0),
+                    subtotal: (clientToFill.shopify_items || []).reduce((acc, item) => acc + item.subtotal, 0),
                     monto_total: 0,
                     metodo_pago_previsto: undefined,
                 },
@@ -109,7 +109,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             
             toast({
                 title: 'Cliente Precargado',
-                description: `Datos de ${clientToEdit.nombres} listos para confirmar.`,
+                description: `Datos de ${clientToFill.nombres} listos para confirmar.`,
             });
         }
     }, [form, toast]);
@@ -126,9 +126,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
     }, [authUser]);
 
     useEffect(() => {
-        if (initialClient) {
-            prefillForm(initialClient);
-        }
+        prefillForm(initialClient);
     }, [initialClient, prefillForm]);
 
     const onSubmit = async (data: CreateOrderFormValues) => {
@@ -197,7 +195,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             if (!initialClient?.id) throw new Error("Could not find the original client record to update.");
 
             const clientRef = doc(db, 'clients', initialClient.id);
-            await setDoc(clientRef, { 
+            await updateDoc(clientRef, { 
                 dni: data.cliente.dni,
                 nombres: data.cliente.nombres,
                 celular: data.cliente.celular,
@@ -205,7 +203,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                 distrito: data.envio.distrito,
                 provincia: data.envio.provincia,
                 estado_llamada: 'VENTA_CONFIRMADA',
-             }, { merge: true });
+             });
 
             const orderCollectionRef = collection(db, 'orders');
             const docRef = await addDoc(orderCollectionRef, newOrder);

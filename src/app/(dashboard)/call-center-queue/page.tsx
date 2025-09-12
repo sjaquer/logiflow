@@ -1,12 +1,12 @@
 
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Client, User, UserRole } from '@/lib/types';
+import type { Client, User, UserRole, CallStatus } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 
 
@@ -15,8 +15,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Phone, Search } from 'lucide-react';
 import { QueueTable } from './components/queue-table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { CALL_STATUS_BADGE_MAP } from '@/lib/constants';
+
 
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
+
+const STATUS_FILTERS: CallStatus[] = ['NUEVO', 'CONTACTADO', 'NO_CONTESTA', 'EN_SEGUIMIENTO', 'NUMERO_EQUIVOCADO'];
 
 export default function CallCenterQueuePage() {
   const { user: authUser } = useAuth();
@@ -25,6 +30,7 @@ export default function CallCenterQueuePage() {
   const [leads, setLeads] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<CallStatus | 'TODOS'>('TODOS');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -38,14 +44,9 @@ export default function CallCenterQueuePage() {
   }, [authUser]);
 
   useEffect(() => {
-    // We listen to the 'clients' collection, which will be populated by webhooks
-    // from Kommo, Shopify, etc.
     const unsubscribe = listenToCollection<Client>('clients', (data) => {
-      // Filter clients that should be in the call queue.
-      // We only show clients whose call status is NOT 'VENTA_CONFIRMADA'.
-      const queueLeads = data.filter(client => client.estado_llamada !== 'VENTA_CONFIRMADA');
+      const queueLeads = data.filter(client => client.estado_llamada !== 'VENTA_CONFIRMADA' && client.estado_llamada !== 'HIBERNACION');
       
-      // Sort leads to show the newest ones first
       queueLeads.sort((a, b) => {
         const dateA = a.last_updated_from_kommo ? new Date(a.last_updated_from_kommo).getTime() : 0;
         const dateB = b.last_updated_from_kommo ? new Date(b.last_updated_from_kommo).getTime() : 0;
@@ -59,20 +60,39 @@ export default function CallCenterQueuePage() {
   }, []);
 
   const filteredLeads = useMemo(() => {
-    return leads.filter(lead =>
-      lead.nombres.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (lead.dni && lead.dni.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-  }, [leads, searchQuery]);
-
-  const handleProcessClient = (client: Client) => {
-    toast({
-      title: 'Redirigiendo...',
-      description: `Abriendo el formulario de pedido para ${client.nombres}.`,
+    return leads.filter(lead => {
+        const matchesSearch = lead.nombres.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (lead.dni && lead.dni.toLowerCase().includes(searchQuery.toLowerCase()));
+        
+        const matchesStatus = statusFilter === 'TODOS' || lead.estado_llamada === statusFilter;
+        
+        return matchesSearch && matchesStatus;
     });
-    // Pass client ID to prefill form, as DNI might be empty
+  }, [leads, searchQuery, statusFilter]);
+
+  const handleProcessClient = useCallback(async (client: Client) => {
+    if (!currentUser) {
+        toast({ title: 'Error', description: 'No se pudo identificar al usuario.', variant: 'destructive' });
+        return;
+    }
+
+    // Assign agent if lead is new
+    if (client.estado_llamada === 'NUEVO') {
+        const clientRef = doc(db, 'clients', client.id);
+        await updateDoc(clientRef, {
+            estado_llamada: 'CONTACTADO',
+            id_agente_asignado: currentUser.id_usuario,
+            nombre_agente_asignado: currentUser.nombre,
+            avatar_agente_asignado: currentUser.avatar || '',
+        });
+        toast({
+          title: 'Lead Asignado',
+          description: `Ahora estás a cargo de ${client.nombres}.`,
+        });
+    }
+    
     router.push(`/create-order?clientId=${client.id}`);
-  };
+  }, [currentUser, router, toast]);
 
   const handleDeleteLead = async (clientId: string) => {
     if (!confirm('¿Estás seguro de que quieres eliminar este lead? Esta acción es permanente.')) {
@@ -142,8 +162,8 @@ export default function CallCenterQueuePage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="mb-4">
-            <div className="relative">
+          <div className="flex flex-col sm:flex-row gap-4 mb-4">
+            <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre o DNI..."
@@ -152,6 +172,19 @@ export default function CallCenterQueuePage() {
                 className="pl-9"
               />
             </div>
+            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Filtrar por estado" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODOS">Todos los Estados</SelectItem>
+                {STATUS_FILTERS.map(status => (
+                  <SelectItem key={status} value={status}>
+                    <span className="capitalize">{status.replace(/_/g, ' ').toLowerCase()}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           <div className="overflow-x-auto">
             <QueueTable

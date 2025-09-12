@@ -8,25 +8,16 @@ const db = getAdminDb();
 
 function formatPhoneNumber(phone: string | null | undefined): string {
     if (!phone) return '';
-    // Remove non-numeric characters, except for a leading '+'
     let cleaned = phone.replace(/[^\d+]/g, '');
-    
-    // Handle common Peruvian formats
-    if (cleaned.startsWith('+51') && cleaned.length > 3) {
+    if (cleaned.startsWith('+51')) {
       cleaned = cleaned.substring(3).trim();
-    } else if (cleaned.startsWith('51') && cleaned.length > 2 && phone.length > 9) { // Avoid '51' being part of a normal number
+    } else if (cleaned.startsWith('51') && cleaned.length > 2 && phone.length > 9) {
       cleaned = cleaned.substring(2).trim();
     }
-    
     return cleaned;
 }
 
-/**
- * API Endpoint to receive webhook data from various sources like Kommo or Shopify.
- * It intelligently handles different content types (JSON or form-data).
- */
 export async function POST(request: Request) {
-  // 1. Validate incoming request security
   const serverApiKey = process.env.MAKE_API_KEY;
   if (!serverApiKey) {
     console.error("MAKE_API_KEY is not configured in environment variables.");
@@ -73,14 +64,13 @@ export async function POST(request: Request) {
 
   try {
     if (sourceType === 'shopify' && data.id) {
-        // --- SHOPIFY ORDER CREATION LOGIC ---
         console.info("--- RAW SHOPIFY PAYLOAD RECEIVED ---");
         console.info(JSON.stringify(data, null, 2));
 
         const shippingAddress = data.shipping_address || {};
+        const billingAddress = data.billing_address || {};
         const customer = data.customer || {};
 
-        // Extract items from the order and format them for the form
         const shopifyItems: OrderItem[] = data.line_items.map((item: any) => ({
           sku: item.sku || 'N/A',
           nombre: item.title,
@@ -88,11 +78,11 @@ export async function POST(request: Request) {
           cantidad: item.quantity,
           precio_unitario: parseFloat(item.price),
           subtotal: parseFloat(item.price) * item.quantity,
-          estado_item: 'PENDIENTE', // Set default status for the form
+          estado_item: 'PENDIENTE',
         }));
 
         const clientData = {
-            dni: '', // DNI will be filled manually by the agent
+            dni: '',
             nombres: shippingAddress.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
             celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
             email: data.email || customer.email || '',
@@ -104,7 +94,7 @@ export async function POST(request: Request) {
             shopify_order_id: data.id,
             last_updated_from_kommo: new Date().toISOString(),
             shopify_items: shopifyItems,
-            tienda_origen: 'Trazto' as Shop, // Assign a default or map from data if possible
+            tienda_origen: (data.source_name === 'web' ? 'Trazto' : data.source_name) as Shop,
         };
 
         const docRef = await db.collection('clients').add(clientData);
@@ -113,7 +103,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: true, message: 'Shopify order processed.', id: docRef.id });
 
     } else if (sourceType === 'kommo') {
-        // --- KOMMO LEAD UPDATE LOGIC ---
         const leadId = data['leads[status][0][id]'] as string;
         console.log(`Processing Kommo Lead ID: ${leadId}`);
 
@@ -151,7 +140,6 @@ export async function POST(request: Request) {
           }
         }
         
-        // For Kommo, DNI is expected.
         if (!clientDNI) {
           console.warn("Kommo webhook processing stopped: DNI not found in contact's custom fields.");
           return NextResponse.json({ success: false, message: 'DNI not found in custom fields.' }, { status: 400 });
@@ -172,7 +160,6 @@ export async function POST(request: Request) {
           last_updated_from_kommo: new Date().toISOString(),
         };
 
-        // For Kommo, we use DNI as the document ID to upsert data
         const docRef = db.collection('clients').doc(clientDNI);
         await docRef.set(clientData, { merge: true });
         
