@@ -6,7 +6,7 @@ import type { Client, User, UserRole, CallStatus } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { doc, deleteDoc, updateDoc, setDoc } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 
 
@@ -16,8 +16,6 @@ import { Input } from '@/components/ui/input';
 import { Phone, Search } from 'lucide-react';
 import { QueueTable } from './components/queue-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CALL_STATUS_BADGE_MAP } from '@/lib/constants';
-
 
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
@@ -76,7 +74,7 @@ export default function CallCenterQueuePage() {
         return;
     }
 
-    // Assign agent if lead is new
+    // Assign agent and timestamp if lead is new
     if (client.estado_llamada === 'NUEVO') {
         const clientRef = doc(db, 'clients', client.id);
         await updateDoc(clientRef, {
@@ -84,6 +82,7 @@ export default function CallCenterQueuePage() {
             id_agente_asignado: currentUser.id_usuario,
             nombre_agente_asignado: currentUser.nombre,
             avatar_agente_asignado: currentUser.avatar || '',
+            first_interaction_at: new Date().toISOString(), // Set first interaction timestamp
         });
         toast({
           title: 'Lead Asignado',

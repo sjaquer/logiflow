@@ -2,6 +2,7 @@
 
 
 
+
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
 export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo' | 'Transferencia Bancaria';
@@ -162,6 +163,7 @@ export interface Client {
     nombre_agente_asignado?: string;
     avatar_agente_asignado?: string;
     notas_agente?: string;
+    first_interaction_at?: string; // Timestamp for when an agent first processes the lead
 }
 
 

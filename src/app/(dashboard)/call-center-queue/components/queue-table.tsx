@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { CALL_STATUS_BADGE_MAP } from '@/lib/constants';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 interface QueueTableProps {
   leads: Client[];
@@ -20,12 +21,32 @@ interface QueueTableProps {
 export function QueueTable({ leads, onProcess, onDelete }: QueueTableProps) {
   const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
+  const getWaitingTime = (lead: Client) => {
+    if (lead.estado_llamada !== 'NUEVO' || !lead.last_updated_from_kommo) {
+      return { text: 'Contactado', color: 'text-muted-foreground' };
+    }
+    
+    const creationDate = new Date(lead.last_updated_from_kommo);
+    const now = new Date();
+    const hoursWaiting = (now.getTime() - creationDate.getTime()) / (1000 * 60 * 60);
+
+    let color = 'text-green-600';
+    if (hoursWaiting > 4) {
+      color = 'text-red-600';
+    } else if (hoursWaiting > 1) {
+      color = 'text-yellow-600';
+    }
+
+    return { text: formatDistanceToNow(creationDate, { addSuffix: true, locale: es }), color };
+  };
+
+
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Estado</TableHead>
-          <TableHead>DNI</TableHead>
+          <TableHead>Tiempo de Espera</TableHead>
           <TableHead>Nombre Completo</TableHead>
           <TableHead>Celular</TableHead>
           <TableHead>Agente Asignado</TableHead>
@@ -34,54 +55,59 @@ export function QueueTable({ leads, onProcess, onDelete }: QueueTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {leads.length > 0 ? leads.map((lead) => (
-          <TableRow key={lead.id}>
-            <TableCell>
-                 {lead.estado_llamada && (
-                    <Badge variant={CALL_STATUS_BADGE_MAP[lead.estado_llamada]} className="capitalize w-28 justify-center">
-                        {lead.estado_llamada.replace(/_/g, ' ').toLowerCase()}
-                    </Badge>
-                 )}
-            </TableCell>
-            <TableCell className="font-medium">{lead.dni || 'N/A'}</TableCell>
-            <TableCell>{lead.nombres}</TableCell>
-            <TableCell>{lead.celular}</TableCell>
-            <TableCell>
-              {lead.id_agente_asignado ? (
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Avatar className="h-8 w-8">
-                        <AvatarImage src={lead.avatar_agente_asignado} />
-                        <AvatarFallback>{getInitials(lead.nombre_agente_asignado)}</AvatarFallback>
-                      </Avatar>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{lead.nombre_agente_asignado}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              ) : (
-                <span className="text-muted-foreground text-xs">Sin asignar</span>
-              )}
-            </TableCell>
-            <TableCell className="text-muted-foreground">
-                {lead.last_updated_from_kommo 
-                    ? formatDistanceToNow(new Date(lead.last_updated_from_kommo), { addSuffix: true, locale: es })
-                    : 'N/A'
-                }
-            </TableCell>
-            <TableCell className="text-right space-x-2">
-              <Button size="sm" onClick={() => onProcess(lead)} disabled={!!lead.id_agente_asignado && lead.estado_llamada === 'CONTACTADO'}>
-                <PhoneForwarded className="mr-2 h-4 w-4" />
-                {lead.estado_llamada === 'NUEVO' ? 'Procesar' : 'Continuar'}
-              </Button>
-               <Button variant="outline" size="icon" className="text-destructive" onClick={() => onDelete(lead.id)}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </TableCell>
-          </TableRow>
-        )) : (
+        {leads.length > 0 ? leads.map((lead) => {
+          const waitingTime = getWaitingTime(lead);
+          return (
+            <TableRow key={lead.id}>
+              <TableCell>
+                  {lead.estado_llamada && (
+                      <Badge variant={CALL_STATUS_BADGE_MAP[lead.estado_llamada]} className="capitalize w-28 justify-center">
+                          {lead.estado_llamada.replace(/_/g, ' ').toLowerCase()}
+                      </Badge>
+                  )}
+              </TableCell>
+              <TableCell className={cn("font-medium", waitingTime.color)}>
+                  {waitingTime.text}
+              </TableCell>
+              <TableCell>{lead.nombres}</TableCell>
+              <TableCell>{lead.celular}</TableCell>
+              <TableCell>
+                {lead.id_agente_asignado ? (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={lead.avatar_agente_asignado} />
+                          <AvatarFallback>{getInitials(lead.nombre_agente_asignado)}</AvatarFallback>
+                        </Avatar>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{lead.nombre_agente_asignado}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                ) : (
+                  <span className="text-muted-foreground text-xs">Sin asignar</span>
+                )}
+              </TableCell>
+              <TableCell className="text-muted-foreground">
+                  {lead.last_updated_from_kommo 
+                      ? formatDistanceToNow(new Date(lead.last_updated_from_kommo), { addSuffix: true, locale: es })
+                      : 'N/A'
+                  }
+              </TableCell>
+              <TableCell className="text-right space-x-2">
+                <Button size="sm" onClick={() => onProcess(lead)} disabled={!!lead.id_agente_asignado && lead.estado_llamada === 'CONTACTADO'}>
+                  <PhoneForwarded className="mr-2 h-4 w-4" />
+                  {lead.estado_llamada === 'NUEVO' ? 'Procesar' : 'Continuar'}
+                </Button>
+                <Button variant="outline" size="icon" className="text-destructive" onClick={() => onDelete(lead.id)}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </TableCell>
+            </TableRow>
+          )
+        }) : (
             <TableRow>
                 <TableCell colSpan={7} className="text-center h-24">
                     ¡Felicidades! No hay clientes pendientes por llamar.
