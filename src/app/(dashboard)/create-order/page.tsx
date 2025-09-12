@@ -1,6 +1,6 @@
 
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useForm } from 'react-hook-form';
 import { useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,7 @@ import { db } from '@/lib/firebase/firebase';
 import type { InventoryItem, Order, User, Shop, PaymentMethod, Courier, UserRole } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from './types';
 import { SHOPS } from '@/lib/constants';
-import { Suspense } from 'react';
+
 
 import { ClientForm } from './components/client-form';
 import { ItemsForm } from './components/items-form';
@@ -25,7 +25,7 @@ import { PaymentForm } from './components/payment-form';
 const createOrderSchema = z.object({
     tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }),
     cliente: z.object({
-        dni: z.string().min(8, "DNI es requerido").max(8, "DNI debe tener 8 dígitos"),
+        dni: z.string().max(8, "DNI debe tener 8 dígitos").optional(),
         nombres: z.string().min(3, "Nombre es requerido"),
         celular: z.string().min(9, "Celular es requerido"),
     }),
@@ -92,13 +92,10 @@ function CreateOrderPageContent() {
             if(clientToEdit.tienda_origen) {
               form.setValue('tienda', clientToEdit.tienda_origen);
             }
-
+            
+            // This is the key change: load shopify items into the cart
             if (clientToEdit.shopify_items && clientToEdit.shopify_items.length > 0) {
-              const itemsToAppend = clientToEdit.shopify_items.map(item => ({
-                ...item,
-                estado_item: 'PENDIENTE' as const
-              }));
-              form.setValue('items', itemsToAppend as Order['items']);
+              form.setValue('items', clientToEdit.shopify_items);
             }
              
             toast({
@@ -139,13 +136,22 @@ function CreateOrderPageContent() {
             toast({ title: "Error", description: "No se pudo identificar al usuario. Por favor, re-inicia sesión.", variant: "destructive"});
             return;
         }
+        
+        if (!data.cliente.dni || data.cliente.dni.length !== 8) {
+             toast({ title: "DNI Requerido", description: "El DNI del cliente es obligatorio y debe tener 8 dígitos.", variant: "destructive"});
+             return;
+        }
+
         setIsSubmitting(true);
 
         const newOrder: Omit<Order, 'id_pedido'> = {
             id_interno: `INT-${Date.now()}`,
             tienda: { id_tienda: data.tienda, nombre: data.tienda },
             estado_actual: 'PENDIENTE',
-            cliente: data.cliente,
+            cliente: {
+                ...data.cliente,
+                dni: data.cliente.dni, // Ensure DNI is included
+            },
             items: data.items,
             pago: {
                 monto_total: data.pago.monto_total,
@@ -217,7 +223,7 @@ function CreateOrderPageContent() {
         }
     };
     
-    if (!currentUser || !ALLOWED_ROLES.includes(currentUser.rol)) {
+    if (currentUser && !ALLOWED_ROLES.includes(currentUser.rol)) {
         return (
             <div className="flex-1 flex items-center justify-center">
                  <div className="text-center">
@@ -245,7 +251,7 @@ function CreateOrderPageContent() {
              </div>
             <Form {...form}>
                 <form className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
+                     <div className="lg:col-span-2 space-y-8">
                          <ItemsForm form={form} inventory={inventory} />
                     </div>
                     <div className="lg:col-span-1 space-y-8">

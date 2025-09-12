@@ -13,9 +13,9 @@ function formatPhoneNumber(phone: string | null | undefined): string {
     
     // Handle common Peruvian formats
     if (cleaned.startsWith('+51') && cleaned.length > 3) {
-      cleaned = '+51 ' + cleaned.substring(3);
+      cleaned = cleaned.substring(3).trim();
     } else if (cleaned.startsWith('51') && cleaned.length > 2 && phone.length > 9) { // Avoid '51' being part of a normal number
-      cleaned = '+51 ' + cleaned.substring(2);
+      cleaned = cleaned.substring(2).trim();
     }
     
     return cleaned;
@@ -74,26 +74,25 @@ export async function POST(request: Request) {
   try {
     if (sourceType === 'shopify' && data.id) {
         // --- SHOPIFY ORDER CREATION LOGIC ---
-        console.info("Processing Shopify order...");
+        console.info("--- RAW SHOPIFY PAYLOAD RECEIVED ---");
+        console.info(JSON.stringify(data, null, 2));
 
         const shippingAddress = data.shipping_address || {};
         const customer = data.customer || {};
 
-        // DNI field will be left blank to be filled by the Call Center agent.
-        const clientDNI = '';
-
-        // Extract items from the order
-        const shopifyItems: Omit<OrderItem, 'estado_item'>[] = data.line_items.map((item: any) => ({
+        // Extract items from the order and format them for the form
+        const shopifyItems: OrderItem[] = data.line_items.map((item: any) => ({
           sku: item.sku || 'N/A',
           nombre: item.title,
           variante: item.variant_title || '',
           cantidad: item.quantity,
           precio_unitario: parseFloat(item.price),
           subtotal: parseFloat(item.price) * item.quantity,
+          estado_item: 'PENDIENTE', // Set default status for the form
         }));
 
         const clientData = {
-            dni: clientDNI,
+            dni: '', // DNI will be filled manually by the agent
             nombres: shippingAddress.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
             celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
             email: data.email || customer.email || '',
@@ -103,14 +102,11 @@ export async function POST(request: Request) {
             estado_llamada: 'NUEVO' as const,
             source: 'shopify',
             shopify_order_id: data.id,
-            last_updated_from_kommo: new Date().toISOString(), // Use a generic timestamp
+            last_updated_from_kommo: new Date().toISOString(),
             shopify_items: shopifyItems,
-            // Shopify doesn't have a clear shop name field in the order payload. 
-            // We can assign a default or have a mapping based on another field if available.
-            tienda_origen: 'Trazto' as Shop, 
+            tienda_origen: 'Trazto' as Shop, // Assign a default or map from data if possible
         };
 
-        // We use addDoc to get an auto-generated ID, which is more robust
         const docRef = await db.collection('clients').add(clientData);
         
         console.log(`Successfully processed Shopify order and saved client with ID: ${docRef.id}`);
