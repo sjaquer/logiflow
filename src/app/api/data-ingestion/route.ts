@@ -42,8 +42,13 @@ export async function POST(request: Request) {
     } else {
         const rawBody = await request.text();
         console.warn(`Unexpected content-type: ${contentType}. Trying to parse as JSON.`);
-        data = JSON.parse(rawBody);
-        sourceType = 'shopify'; 
+        try {
+            data = JSON.parse(rawBody);
+            sourceType = 'shopify';
+        } catch {
+            console.error("Could not parse raw body as JSON. Body might be in another format.");
+            return NextResponse.json({ message: 'Invalid or unsupported content type.' }, { status: 400 });
+        }
     }
   } catch (error: any) {
     console.error("Failed to parse incoming webhook body:", error.message);
@@ -56,11 +61,10 @@ export async function POST(request: Request) {
         console.info("Processing Shopify order...");
 
         const shippingAddress = data.shipping_address || {};
-        const billingAddress = data.billing_address || {};
         const customer = data.customer || {};
 
-        // Prioritize DNI from shipping_address.address2, then billing_address.address2
-        let clientDNI = shippingAddress.address2 || billingAddress.address2 || `NEEDS-DNI-${data.id}`;
+        // DNI will be filled manually. We'll use a placeholder as the document ID.
+        let clientDNI = `NEEDS-DNI-${data.id}`;
 
         const clientData = {
             nombres: shippingAddress.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
@@ -75,11 +79,11 @@ export async function POST(request: Request) {
             last_updated_from_kommo: new Date().toISOString(), // Use a generic timestamp
         };
 
-        // The document ID will be the DNI
+        // The document ID will be the temporary placeholder DNI
         const docRef = db.collection('clients').doc(clientDNI);
         await docRef.set({ ...clientData, dni: clientDNI }, { merge: true });
         
-        console.log(`Successfully processed Shopify order and saved client: ${clientDNI}`);
+        console.log(`Successfully processed Shopify order and saved client with temporary ID: ${clientDNI}`);
         return NextResponse.json({ success: true, message: 'Shopify order processed.', id: docRef.id });
 
     } else if (sourceType === 'kommo') {
