@@ -29,7 +29,7 @@ export default function CallCenterQueuePage() {
   const [leads, setLeads] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<CallStatus | 'TODOS'>('NUEVO');
+  const [statusFilter, setStatusFilter] = useState<CallStatus | 'TODOS'>('TODOS');
   const [shopFilter, setShopFilter] = useState<string | 'TODAS'>('TODAS');
   const { toast } = useToast();
 
@@ -97,6 +97,8 @@ export default function CallCenterQueuePage() {
         if (!client.first_interaction_at) {
           updateData.first_interaction_at = new Date().toISOString();
         }
+        
+        // 1. Update the document in Firestore and WAIT for it to complete.
         await updateDoc(clientRef, updateData);
 
         toast({
@@ -104,7 +106,9 @@ export default function CallCenterQueuePage() {
           description: `Ahora estás a cargo de ${client.nombres}.`,
         });
         
+        // 2. Only navigate AFTER the update is successful.
         router.push(`/create-order?clientId=${client.id}`);
+
     } catch (error) {
         console.error("Error processing client:", error);
         toast({ title: 'Error', description: 'No se pudo asignar el lead.', variant: 'destructive' });
@@ -251,5 +255,3 @@ export default function CallCenterQueuePage() {
     </div>
   );
 }
-
-    

@@ -30,27 +30,40 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
 
             try {
                 // Fetch static data once
-                const inventoryData = await getCollectionData<InventoryItem>('inventory');
-                setInventory(inventoryData);
-                 if (isDevMode) console.log("Fetched Inventory:", inventoryData.length > 0 ? inventoryData : "No inventory found");
+                const inventoryDataPromise = getCollectionData<InventoryItem>('inventory');
+                const clientsDataPromise = getCollectionData<Client>('clients');
                 
-                const clientsData = await getCollectionData<Client>('clients');
+                // If a clientId is provided, fetch that specific client.
+                let initialClientPromise: Promise<Client | null> = Promise.resolve(null);
+                if (clientId) {
+                    initialClientPromise = getDocumentData<Client>('clients', clientId);
+                }
+
+                // Wait for all promises to resolve
+                const [inventoryData, clientsData, clientDoc] = await Promise.all([
+                    inventoryDataPromise,
+                    clientsDataPromise,
+                    initialClientPromise
+                ]);
+
+                setInventory(inventoryData);
+                if (isDevMode) console.log("Fetched Inventory:", inventoryData.length > 0 ? inventoryData : "No inventory found");
+
                 setClients(clientsData);
                 if (isDevMode) console.log("Fetched All Clients:", clientsData.length > 0 ? clientsData : "No clients found");
 
-                // If a clientId is provided (from Kommo or Shopify lead), fetch that client.
                 if (clientId) {
-                    const clientDoc = await getDocumentData<Client>('clients', clientId);
-                     if (clientDoc) {
+                    if (clientDoc) {
                         if (isDevMode) console.log("SUCCESS: Found initialClient document:", clientDoc);
                         setInitialClient(clientDoc);
                     } else {
-                       setError(`Error: No se encontró ningún cliente/lead con el ID: ${clientId}`);
-                       if (isDevMode) console.error(`FAILED: Could not find client with ID: ${clientId}`);
+                        setError(`Error: No se encontró ningún cliente/lead con el ID: ${clientId}`);
+                        if (isDevMode) console.error(`FAILED: Could not find client with ID: ${clientId}`);
                     }
                 } else {
                     if (isDevMode) console.log("No clientId provided, starting with a blank form.");
                 }
+
             } catch (err: any) {
                 if (isDevMode) console.error("FATAL: Error during initial data fetch:", err);
                 setError("Error al cargar los datos necesarios para crear el pedido.");
@@ -137,5 +150,3 @@ export default function CreateOrderPage({
     </Suspense>
   );
 }
-
-    
