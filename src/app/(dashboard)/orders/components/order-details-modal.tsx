@@ -29,7 +29,7 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
   const [isCheckingStock, setIsCheckingStock] = useState(false);
   const { toast } = useToast();
 
-  const assignedUser = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
+  const assignedUser = order.asignacion ? users.find(u => u.id_usuario === order.asignacion.id_usuario_actual) : undefined;
   const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
 
   const handleStatusChange = (newStatus: OrderStatus) => {
