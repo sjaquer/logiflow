@@ -2,7 +2,7 @@
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Client, User, UserRole, CallStatus, Shop } from '@/lib/types';
+import type { Client, User, UserRole, CallStatus } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -29,8 +29,8 @@ export default function CallCenterQueuePage() {
   const [leads, setLeads] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<CallStatus | 'TODOS'>('TODOS');
-  const [shopFilter, setShopFilter] = useState<Shop | 'TODAS'>('TODAS');
+  const [statusFilter, setStatusFilter] = useState<CallStatus | 'TODOS'>('NUEVO');
+  const [shopFilter, setShopFilter] = useState<string | 'TODAS'>('TODAS');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -67,12 +67,9 @@ export default function CallCenterQueuePage() {
           (lead.assigned_agent_name && lead.assigned_agent_name.toLowerCase().includes(searchInput));
 
         const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
+        const matchesShop = shopFilter === 'TODAS' || lead.source === shopFilter.toLowerCase();
         
-        // This part won't work yet as shopify orders are now in `orders` collection
-        // We'll leave it for a future implementation
-        // const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter;
-        
-        return matchesSearch && matchesStatus;
+        return matchesSearch && matchesStatus && matchesShop;
     });
   }, [leads, searchQuery, statusFilter, shopFilter]);
 
@@ -87,26 +84,31 @@ export default function CallCenterQueuePage() {
         return;
     }
 
-    // Always update client status when processing begins
-    const clientRef = doc(db, 'clients', client.id);
-    const updateData: any = {
-        call_status: 'CONTACTADO',
-        assigned_agent_id: currentUser.id_usuario,
-        assigned_agent_name: currentUser.nombre,
-        assigned_agent_avatar: currentUser.avatar || '',
-    };
-    if (!client.first_interaction_at) {
-      updateData.first_interaction_at = new Date().toISOString();
-    }
-    await updateDoc(clientRef, updateData);
+    try {
+        const clientRef = doc(db, 'clients', client.id);
+        const updateData: any = {
+            call_status: 'CONTACTADO',
+            'asignacion.id_usuario_actual': currentUser.id_usuario,
+            'asignacion.nombre_usuario_actual': currentUser.nombre,
+            last_updated: new Date().toISOString(),
+        };
 
-    toast({
-      title: 'Lead Asignado',
-      description: `Ahora estás a cargo de ${client.nombres}.`,
-    });
-    
-    // Navigate to create-order page with the client's DNI
-    router.push(`/create-order?clientId=${client.id}`);
+        if (!client.first_interaction_at) {
+          updateData.first_interaction_at = new Date().toISOString();
+        }
+        await updateDoc(clientRef, updateData);
+
+        toast({
+          title: 'Lead Asignado',
+          description: `Ahora estás a cargo de ${client.nombres}.`,
+        });
+        
+        // Navigate to create-order page with the client's DNI
+        router.push(`/create-order?clientId=${client.id}`);
+    } catch (error) {
+        console.error("Error processing client:", error);
+        toast({ title: 'Error', description: 'No se pudo asignar el lead.', variant: 'destructive' });
+    }
   }, [currentUser, router, toast]);
 
   const handleDeleteLead = async (clientId: string) => {
@@ -134,9 +136,8 @@ export default function CallCenterQueuePage() {
       try {
           await updateDoc(clientRef, {
               call_status: status,
-              assigned_agent_id: null,
-              assigned_agent_name: null,
-              assigned_agent_avatar: null,
+              'asignacion.id_usuario_actual': null,
+              'asignacion.nombre_usuario_actual': null,
           });
            toast({
               title: 'Estado Actualizado',
@@ -222,6 +223,15 @@ export default function CallCenterQueuePage() {
                   </SelectItem>
                 ))}
               </SelectContent>
+            </Select>
+            <Select value={shopFilter} onValueChange={(value) => setShopFilter(value as any)}>
+                <SelectTrigger className="w-full sm:w-[200px]">
+                    <SelectValue placeholder="Filtrar por tienda" />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="TODAS">Todas las Tiendas</SelectItem>
+                    <SelectItem value="Kommo">Kommo</SelectItem>
+                </SelectContent>
             </Select>
           </div>
           <div className="overflow-x-auto">

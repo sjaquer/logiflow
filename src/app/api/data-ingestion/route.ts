@@ -30,34 +30,19 @@ async function handleShopifyWebhook(data: Record<string, any>) {
         clientName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
     }
     
+    // The Client ID is now the DNI. If DNI is not present, we can't create a reliable link.
+    // However, the order can still be created, and the client can be created/linked later.
     if (!dni) {
-        console.warn(`Webhook from Shopify for order ${data.id} is missing DNI (company field). Client cannot be created reliably. Skipping.`);
-        return NextResponse.json({ success: false, message: 'Client DNI not found in shipping_address.company. Cannot process order.' }, { status: 400 });
+        console.warn(`Webhook from Shopify for order ${data.id} is missing DNI (company field). The client document will need to be created or linked manually during order confirmation.`);
     }
-
-    const clientRef = db.collection('clients').doc(dni);
-    const clientData: Partial<Client> = {
-        dni: dni,
-        nombres: clientName,
-        celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
-        email: data.email || customer.email || '',
-        direccion: shippingAddress.address1 || '',
-        distrito: shippingAddress.city || '',
-        provincia: shippingAddress.province || 'Lima',
-        source: 'shopify',
-        last_updated: new Date().toISOString(),
-    };
     
-    // Create or update the client record.
-    await clientRef.set(clientData, { merge: true });
-    console.log(`Client record for DNI ${dni} created/updated successfully.`);
-
-    // Now, create the ORDER document
-    const orderRef = db.collection('orders').doc(); // Firestore will generate the ID
+    // Create the ORDER document, NOT a client document.
+    const orderId = `SHOPIFY-${data.id}`;
+    const orderRef = db.collection('orders').doc(orderId);
 
     const shopifyItems: OrderItem[] = data.line_items.map((item: any) => ({
       sku: item.sku || 'N/A',
-      nombre: item.title,
+      nombre: item.title || 'Producto sin nombre',
       variante: item.variant_title || '',
       cantidad: item.quantity,
       precio_unitario: parseFloat(item.price),
@@ -67,13 +52,15 @@ async function handleShopifyWebhook(data: Record<string, any>) {
 
     const newOrder: Omit<Order, 'id_pedido' | 'asignacion' | 'historial'> = {
         id_interno: `SHOPIFY-${data.order_number}`,
-        tienda: { id_tienda: 'Dearel', nombre: 'Dearel' as Shop }, // Hardcoded as per request
+        tienda: { id_tienda: 'Dearel', nombre: 'Dearel' as Shop },
         estado_actual: 'PENDIENTE',
         cliente: {
-            id_cliente: dni, // Link to the client document
+            // We store the client data denormalized in the order.
+            // The id_cliente will be linked upon confirmation.
+            id_cliente: dni || `provisional-${data.id}`, // Provisional ID if DNI is missing
             dni: dni,
             nombres: clientName,
-            celular: clientData.celular!,
+            celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
         },
         items: shopifyItems,
         pago: {
@@ -89,7 +76,7 @@ async function handleShopifyWebhook(data: Record<string, any>) {
             provincia: shippingAddress.province || 'Lima',
             distrito: shippingAddress.city || '',
             direccion: shippingAddress.address1 || '',
-            courier: 'URBANO', // Default, can be changed later
+            courier: 'URBANO',
             agencia_shalom: null,
             nro_guia: null,
             link_seguimiento: null,
@@ -107,7 +94,7 @@ async function handleShopifyWebhook(data: Record<string, any>) {
         },
         notas: {
             nota_pedido: data.note || '',
-            observaciones_internas: '',
+            observaciones_internas: 'Pedido importado de Shopify. Pendiente de confirmación de datos y stock.',
             motivo_anulacion: null,
         },
         source: 'shopify',
@@ -119,8 +106,8 @@ async function handleShopifyWebhook(data: Record<string, any>) {
         id_pedido: orderRef.id,
     });
 
-    console.log(`Successfully created new order ${orderRef.id} from Shopify, linked to client ${dni}.`);
-    return NextResponse.json({ success: true, message: 'Shopify order processed into a new order document.', orderId: orderRef.id, clientId: dni });
+    console.log(`Successfully created new order ${orderRef.id} from Shopify. No client was created at this stage.`);
+    return NextResponse.json({ success: true, message: 'Shopify order processed into a new order document.', orderId: orderRef.id });
 }
 
 async function handleKommoWebhook(data: Record<string, any>) {

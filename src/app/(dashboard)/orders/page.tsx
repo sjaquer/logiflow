@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useEffect } from 'react';
 import { KanbanBoard } from './components/kanban-board';
@@ -7,7 +8,7 @@ import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useRouter } from 'next/navigation';
 
 export default function OrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
@@ -40,7 +41,7 @@ export default function OrdersPage() {
           setInventory(data);
       }),
        listenToCollection<Shop>('shops', (data) => {
-          setShops(data);
+          setShops(data.map(s => s.name as Shop));
       }),
     ];
     

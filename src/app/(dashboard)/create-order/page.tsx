@@ -34,9 +34,12 @@ function CreateOrderPageContent({ clientId, orderId }: { clientId: string | null
                 // Fetch static data once
                 const inventoryData = await getCollectionData<InventoryItem>('inventory');
                 setInventory(inventoryData);
+                 if (isDevMode) console.log("Fetched Inventory:", inventoryData);
                 
                 const clientsData = await getCollectionData<Client>('clients');
                 setClients(clientsData);
+                if (isDevMode) console.log("Fetched All Clients:", clientsData);
+
 
                 // If an orderId is provided (from Shopify), fetch that order.
                 if (orderId) {
@@ -44,9 +47,22 @@ function CreateOrderPageContent({ clientId, orderId }: { clientId: string | null
                     if (orderDoc) {
                         if (isDevMode) console.log("SUCCESS: Found initialOrder document:", orderDoc);
                         setInitialOrder(orderDoc);
-                        // Also fetch the associated client for consistency
-                        const clientDoc = await getDocumentData<Client>('clients', orderDoc.cliente.id_cliente);
-                        setInitialClient(clientDoc);
+                        // The client data is denormalized in the order, so we can construct a temporary client object
+                        // or try to find a matching one in the clients collection.
+                        const clientFromOrder: Client = {
+                            id: orderDoc.cliente.id_cliente,
+                            dni: orderDoc.cliente.dni,
+                            nombres: orderDoc.cliente.nombres,
+                            celular: orderDoc.cliente.celular,
+                            direccion: orderDoc.envio.direccion,
+                            distrito: orderDoc.envio.distrito,
+                            provincia: orderDoc.envio.provincia,
+                            source: 'shopify',
+                            last_updated: orderDoc.fechas_clave.creacion,
+                            call_status: 'NUEVO' // This is a transient status for the form
+                        }
+                        setInitialClient(clientFromOrder);
+
                     } else {
                         setError(`Error: No se encontró ningún pedido con el ID: ${orderId}`);
                     }
@@ -60,6 +76,8 @@ function CreateOrderPageContent({ clientId, orderId }: { clientId: string | null
                     } else {
                        setError(`Error: No se encontró ningún cliente con el ID: ${clientId}`);
                     }
+                } else {
+                    if (isDevMode) console.log("No clientId or orderId provided, starting with a blank form.");
                 }
             } catch (err: any) {
                 if (isDevMode) console.error("FATAL: Error during initial data fetch:", err);

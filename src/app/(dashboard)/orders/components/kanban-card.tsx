@@ -1,3 +1,4 @@
+
 'use client';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -21,7 +22,7 @@ interface KanbanCardProps {
 export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrderItemsChange, onProcessShopifyOrder }: KanbanCardProps) {
   const assignedUser = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
 
-  const getInitials = (name: string) => name.split(' ').map(n => n[0]).join('');
+  const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '?';
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
     // Only allow dragging for non-Shopify orders in "PENDIENTE" state
@@ -56,7 +57,7 @@ export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrd
           <div className={isShopifyPending ? 'pointer-events-none' : ''}>
               <CardHeader className="pb-3 pt-4 px-4">
                   <div className="flex justify-between items-start">
-                      <h4 className="font-semibold text-sm">{order.id_pedido}</h4>
+                      <h4 className="font-semibold text-sm">{order.id_interno}</h4>
                       <Badge variant={order.pago.estado_pago === 'PAGADO' ? 'success' : 'secondary'} className="capitalize text-xs">
                           {order.pago.estado_pago.toLowerCase()}
                       </Badge>

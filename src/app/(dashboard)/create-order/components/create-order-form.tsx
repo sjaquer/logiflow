@@ -6,10 +6,10 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form } from '@/components/ui/form';
 import { Button } from '@/components/ui/button';
-import { Loader2, Save, SaveAll } from 'lucide-react';
+import { Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { collection, addDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, Client } from '@/lib/types';
@@ -89,40 +89,43 @@ export function CreateOrderForm({ inventory, clients, initialClient, initialOrde
         if (isDevMode) {
           console.group("DEV MODE: CreateOrderForm Data Population");
           console.log("Timestamp:", new Date().toISOString());
-          console.log("Received initialClient:", initialClient);
-          console.log("Received initialOrder:", initialOrder);
+          console.log("Received initialClient prop:", initialClient);
+          console.log("Received initialOrder prop:", initialOrder);
         }
         
-        // Data from a Shopify Order takes precedence
-        if (initialOrder) {
-            if(isDevMode) console.log("Populating form from initialOrder...");
-            form.setValue('cliente.dni', initialOrder.cliente.dni);
-            form.setValue('cliente.nombres', initialOrder.cliente.nombres);
-            form.setValue('cliente.celular', initialOrder.cliente.celular);
-            form.setValue('envio.direccion', initialOrder.envio.direccion);
-            form.setValue('envio.provincia', initialOrder.envio.provincia);
-            form.setValue('envio.distrito', initialOrder.envio.distrito);
-            form.setValue('tienda', initialOrder.tienda.nombre);
-            form.setValue('items', initialOrder.items);
+        let clientToLoad = initialClient;
+        let orderToLoad = initialOrder;
 
-            const subtotal = initialOrder.items.reduce((acc, item) => acc + item.subtotal, 0);
+        // If an order is passed, its data takes precedence
+        if (orderToLoad) {
+             if (isDevMode) console.log("Populating form from initialOrder...");
+            form.setValue('cliente.dni', orderToLoad.cliente.dni);
+            form.setValue('cliente.nombres', orderToLoad.cliente.nombres);
+            form.setValue('cliente.celular', orderToLoad.cliente.celular);
+            form.setValue('envio.direccion', orderToLoad.envio.direccion);
+            form.setValue('envio.provincia', orderToLoad.envio.provincia);
+            form.setValue('envio.distrito', orderToLoad.envio.distrito);
+            form.setValue('tienda', orderToLoad.tienda.nombre);
+            form.setValue('items', orderToLoad.items);
+
+            const subtotal = orderToLoad.items.reduce((acc, item) => acc + item.subtotal, 0);
             form.setValue('pago.subtotal', subtotal);
-            form.setValue('pago.monto_total', initialOrder.pago.monto_total);
-            form.setValue('envio.costo_envio', initialOrder.envio.costo_envio);
+            form.setValue('pago.monto_total', orderToLoad.pago.monto_total);
+            form.setValue('envio.costo_envio', orderToLoad.envio.costo_envio);
             
-            toast({ title: 'Pedido de Shopify Cargado', description: `Datos del pedido ${initialOrder.id_interno} listos para confirmar.` });
+            toast({ title: 'Pedido de Shopify Cargado', description: `Datos del pedido ${orderToLoad.id_interno} listos para confirmar.` });
         }
         // Fallback to client data (from Kommo)
-        else if (initialClient) {
+        else if (clientToLoad) {
             if(isDevMode) console.log("Populating form from initialClient...");
-            form.setValue('cliente.dni', initialClient.dni || '');
-            form.setValue('cliente.nombres', initialClient.nombres || '');
-            form.setValue('cliente.celular', initialClient.celular || '');
-            form.setValue('envio.direccion', initialClient.direccion || '');
-            form.setValue('envio.provincia', initialClient.provincia || 'Lima');
-            form.setValue('envio.distrito', initialClient.distrito || '');
+            form.setValue('cliente.dni', clientToLoad.dni || '');
+            form.setValue('cliente.nombres', clientToLoad.nombres || '');
+            form.setValue('cliente.celular', clientToLoad.celular || '');
+            form.setValue('envio.direccion', clientToLoad.direccion || '');
+            form.setValue('envio.provincia', clientToLoad.provincia || 'Lima');
+            form.setValue('envio.distrito', clientToLoad.distrito || '');
             
-            toast({ title: 'Cliente Precargado', description: `Datos de ${initialClient.nombres} listos para confirmar.` });
+            toast({ title: 'Cliente Precargado', description: `Datos de ${clientToLoad.nombres} listos para confirmar.` });
         }
 
         if (isDevMode) console.groupEnd();
@@ -147,15 +150,41 @@ export function CreateOrderForm({ inventory, clients, initialClient, initialOrde
         }
 
         setIsSubmitting(true);
+        const batch = writeBatch(db);
 
-        const orderId = initialOrder ? initialOrder.id_pedido : `PED-${Date.now()}`;
+        // --- 1. Client Management ---
+        const clientRef = doc(db, 'clients', data.cliente.dni);
+        const clientData: Client = {
+          id: data.cliente.dni,
+          dni: data.cliente.dni,
+          nombres: data.cliente.nombres,
+          celular: data.cliente.celular,
+          direccion: data.envio.direccion,
+          distrito: data.envio.distrito,
+          provincia: data.envio.provincia,
+          // If it came from an initial order, preserve its source, otherwise 'manual' or 'kommo'
+          source: initialOrder?.source || initialClient?.source || 'manual',
+          last_updated: new Date().toISOString(),
+          call_status: 'VENTA_CONFIRMADA',
+        };
+        // Use set with merge to create or update the client
+        batch.set(clientRef, clientData, { merge: true });
+
+        // --- 2. Order Management ---
         const isUpdate = !!initialOrder;
-        
+        const orderId = isUpdate ? initialOrder.id_pedido : `PED-${Date.now()}`;
+        const orderRef = doc(db, 'orders', orderId);
+
         const finalOrderData = {
             id_interno: initialOrder?.id_interno || `MANUAL-${Date.now()}`,
             tienda: { id_tienda: data.tienda || 'Trazto', nombre: data.tienda || 'Trazto' },
             estado_actual: 'EN_PREPARACION', // Move to next step after confirmation
-            cliente: { ...data.cliente, id_cliente: data.cliente.dni },
+            cliente: { // Denormalize client data in order
+                id_cliente: data.cliente.dni, 
+                dni: data.cliente.dni,
+                nombres: data.cliente.nombres,
+                celular: data.cliente.celular
+            },
             items: data.items,
             pago: {
                 monto_total: data.pago.monto_total,
@@ -181,41 +210,40 @@ export function CreateOrderForm({ inventory, clients, initialClient, initialOrde
                     fecha: new Date().toISOString(),
                     id_usuario: currentUser.id_usuario,
                     nombre_usuario: currentUser.nombre,
-                    accion: 'Pedido Confirmado (Call Center)',
-                    detalle: `Pedido confirmado y procesado por ${currentUser.rol}.`
+                    accion: isUpdate ? 'Pedido de Shopify Confirmado' : 'Pedido Manual Creado',
+                    detalle: `Pedido procesado por ${currentUser.rol}.`
                 }
             ],
             fechas_clave: {
-                ...(initialOrder?.fechas_clave || { creacion: new Date().toISOString() }),
+                ...initialOrder?.fechas_clave,
+                creacion: initialOrder?.fechas_clave.creacion || new Date().toISOString(),
                 confirmacion_llamada: new Date().toISOString(),
                 procesamiento_iniciado: new Date().toISOString(),
             },
             notas: {
-                ...data.notas,
+                nota_pedido: data.notas.nota_pedido,
                 observaciones_internas: initialOrder?.notas?.observaciones_internas || '',
                 motivo_anulacion: null,
             },
-            source: initialOrder?.source || 'manual'
+            source: initialOrder?.source || initialClient?.source || 'manual',
+            shopify_order_id: initialOrder?.shopify_order_id || undefined,
         };
 
+        if (isUpdate) {
+            batch.update(orderRef, finalOrderData);
+        } else {
+            batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
+        }
+        
         try {
-            const orderRef = doc(db, 'orders', orderId);
-            if (isUpdate) {
-                await updateDoc(orderRef, finalOrderData);
-            } else {
-                 await setDoc(orderRef, { ...finalOrderData, id_pedido: orderId });
-            }
-
-            // Update client status
-            const clientRef = doc(db, 'clients', data.cliente.dni);
-            await updateDoc(clientRef, { call_status: 'VENTA_CONFIRMADA' });
+            await batch.commit();
             
             toast({ title: "¡Éxito!", description: `Pedido ${orderId} confirmado y guardado.` });
             router.push('/orders');
 
         } catch (error) {
             console.error("Error processing order:", error);
-            toast({ title: "Error", description: "No se pudo procesar el pedido.", variant: "destructive" });
+            toast({ title: "Error", description: "No se pudo procesar el pedido. Hubo un error al guardar en la base de datos.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
