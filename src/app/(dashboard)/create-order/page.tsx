@@ -2,18 +2,17 @@
 'use client';
 import React, { Suspense, useState, useEffect } from 'react';
 import { getCollectionData, getDocumentData } from '@/lib/firebase/firestore-client';
-import type { InventoryItem, Order } from '@/lib/types';
+import type { InventoryItem } from '@/lib/types';
 import { CreateOrderForm } from './components/create-order-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client } from '@/lib/types';
 import { useDevMode } from '@/context/dev-mode-context';
 
 // This component is responsible for fetching ALL necessary data.
-function CreateOrderPageContent({ clientId, orderId }: { clientId: string | null, orderId: string | null }) {
+function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [initialClient, setInitialClient] = useState<Client | null>(null);
-    const [initialOrder, setInitialOrder] = useState<Order | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const { isDevMode } = useDevMode();
@@ -27,57 +26,30 @@ function CreateOrderPageContent({ clientId, orderId }: { clientId: string | null
               console.group("DEV MODE: CreateOrderPageContent Data Fetching");
               console.log("Timestamp:", new Date().toISOString());
               console.log("Received clientId:", clientId);
-              console.log("Received orderId:", orderId);
             }
 
             try {
                 // Fetch static data once
                 const inventoryData = await getCollectionData<InventoryItem>('inventory');
                 setInventory(inventoryData);
-                 if (isDevMode) console.log("Fetched Inventory:", inventoryData);
+                 if (isDevMode) console.log("Fetched Inventory:", inventoryData.length > 0 ? inventoryData : "No inventory found");
                 
                 const clientsData = await getCollectionData<Client>('clients');
                 setClients(clientsData);
-                if (isDevMode) console.log("Fetched All Clients:", clientsData);
+                if (isDevMode) console.log("Fetched All Clients:", clientsData.length > 0 ? clientsData : "No clients found");
 
-
-                // If an orderId is provided (from Shopify), fetch that order.
-                if (orderId) {
-                    const orderDoc = await getDocumentData<Order>('orders', orderId);
-                    if (orderDoc) {
-                        if (isDevMode) console.log("SUCCESS: Found initialOrder document:", orderDoc);
-                        setInitialOrder(orderDoc);
-                        // The client data is denormalized in the order, so we can construct a temporary client object
-                        // or try to find a matching one in the clients collection.
-                        const clientFromOrder: Client = {
-                            id: orderDoc.cliente.id_cliente,
-                            dni: orderDoc.cliente.dni,
-                            nombres: orderDoc.cliente.nombres,
-                            celular: orderDoc.cliente.celular,
-                            direccion: orderDoc.envio.direccion,
-                            distrito: orderDoc.envio.distrito,
-                            provincia: orderDoc.envio.provincia,
-                            source: 'shopify',
-                            last_updated: orderDoc.fechas_clave.creacion,
-                            call_status: 'NUEVO' // This is a transient status for the form
-                        }
-                        setInitialClient(clientFromOrder);
-
-                    } else {
-                        setError(`Error: No se encontró ningún pedido con el ID: ${orderId}`);
-                    }
-                }
-                // If a clientId is provided (from Kommo), fetch that client.
-                else if (clientId) {
+                // If a clientId is provided (from Kommo or Shopify lead), fetch that client.
+                if (clientId) {
                     const clientDoc = await getDocumentData<Client>('clients', clientId);
                      if (clientDoc) {
                         if (isDevMode) console.log("SUCCESS: Found initialClient document:", clientDoc);
                         setInitialClient(clientDoc);
                     } else {
-                       setError(`Error: No se encontró ningún cliente con el ID: ${clientId}`);
+                       setError(`Error: No se encontró ningún cliente/lead con el ID: ${clientId}`);
+                       if (isDevMode) console.error(`FAILED: Could not find client with ID: ${clientId}`);
                     }
                 } else {
-                    if (isDevMode) console.log("No clientId or orderId provided, starting with a blank form.");
+                    if (isDevMode) console.log("No clientId provided, starting with a blank form.");
                 }
             } catch (err: any) {
                 if (isDevMode) console.error("FATAL: Error during initial data fetch:", err);
@@ -88,7 +60,7 @@ function CreateOrderPageContent({ clientId, orderId }: { clientId: string | null
             }
         }
         fetchData();
-    }, [clientId, orderId, isDevMode]);
+    }, [clientId, isDevMode]);
 
 
     if (loading) {
@@ -97,7 +69,6 @@ function CreateOrderPageContent({ clientId, orderId }: { clientId: string | null
                  <div className="flex items-center justify-between mb-8">
                     <Skeleton className="h-10 w-1/4" />
                     <div className="flex gap-4">
-                        <Skeleton className="h-11 w-40" />
                         <Skeleton className="h-11 w-52" />
                     </div>
                  </div>
@@ -128,7 +99,6 @@ function CreateOrderPageContent({ clientId, orderId }: { clientId: string | null
           inventory={inventory} 
           clients={clients}
           initialClient={initialClient}
-          initialOrder={initialOrder}
        />
     );
 }
@@ -141,7 +111,6 @@ export default function CreateOrderPage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const clientId = typeof searchParams.clientId === 'string' ? searchParams.clientId : null;
-  const orderId = typeof searchParams.orderId === 'string' ? searchParams.orderId : null;
 
   return (
     // The Suspense boundary is crucial for this pattern to work correctly.
@@ -150,7 +119,6 @@ export default function CreateOrderPage({
             <div className="flex items-center justify-between mb-8">
                 <Skeleton className="h-10 w-1/4" />
                 <div className="flex gap-4">
-                    <Skeleton className="h-11 w-40" />
                     <Skeleton className="h-11 w-52" />
                 </div>
             </div>
@@ -165,7 +133,9 @@ export default function CreateOrderPage({
             </div>
         </div>
     }>
-        <CreateOrderPageContent clientId={clientId} orderId={orderId} />
+        <CreateOrderPageContent clientId={clientId} />
     </Suspense>
   );
 }
+
+    

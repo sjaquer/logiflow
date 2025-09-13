@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, Client } from '@/lib/types';
@@ -62,10 +62,9 @@ interface CreateOrderFormProps {
     inventory: InventoryItem[];
     clients: Client[];
     initialClient: Client | null;
-    initialOrder: Order | null;
 }
 
-export function CreateOrderForm({ inventory, clients, initialClient, initialOrder }: CreateOrderFormProps) {
+export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrderFormProps) {
     const { user: authUser } = useAuth();
     const { toast } = useToast();
     const { isDevMode } = useDevMode();
@@ -90,46 +89,39 @@ export function CreateOrderForm({ inventory, clients, initialClient, initialOrde
           console.group("DEV MODE: CreateOrderForm Data Population");
           console.log("Timestamp:", new Date().toISOString());
           console.log("Received initialClient prop:", initialClient);
-          console.log("Received initialOrder prop:", initialOrder);
         }
         
-        let clientToLoad = initialClient;
-        let orderToLoad = initialOrder;
-
-        // If an order is passed, its data takes precedence
-        if (orderToLoad) {
-             if (isDevMode) console.log("Populating form from initialOrder...");
-            form.setValue('cliente.dni', orderToLoad.cliente.dni);
-            form.setValue('cliente.nombres', orderToLoad.cliente.nombres);
-            form.setValue('cliente.celular', orderToLoad.cliente.celular);
-            form.setValue('envio.direccion', orderToLoad.envio.direccion);
-            form.setValue('envio.provincia', orderToLoad.envio.provincia);
-            form.setValue('envio.distrito', orderToLoad.envio.distrito);
-            form.setValue('tienda', orderToLoad.tienda.nombre);
-            form.setValue('items', orderToLoad.items);
-
-            const subtotal = orderToLoad.items.reduce((acc, item) => acc + item.subtotal, 0);
-            form.setValue('pago.subtotal', subtotal);
-            form.setValue('pago.monto_total', orderToLoad.pago.monto_total);
-            form.setValue('envio.costo_envio', orderToLoad.envio.costo_envio);
-            
-            toast({ title: 'Pedido de Shopify Cargado', description: `Datos del pedido ${orderToLoad.id_interno} listos para confirmar.` });
-        }
-        // Fallback to client data (from Kommo)
-        else if (clientToLoad) {
+        if (initialClient) {
             if(isDevMode) console.log("Populating form from initialClient...");
-            form.setValue('cliente.dni', clientToLoad.dni || '');
-            form.setValue('cliente.nombres', clientToLoad.nombres || '');
-            form.setValue('cliente.celular', clientToLoad.celular || '');
-            form.setValue('envio.direccion', clientToLoad.direccion || '');
-            form.setValue('envio.provincia', clientToLoad.provincia || 'Lima');
-            form.setValue('envio.distrito', clientToLoad.distrito || '');
+            form.setValue('cliente.dni', initialClient.dni || '');
+            form.setValue('cliente.nombres', initialClient.nombres || '');
+            form.setValue('cliente.celular', initialClient.celular || '');
+            form.setValue('envio.direccion', initialClient.direccion || '');
+            form.setValue('envio.provincia', initialClient.provincia || 'Lima');
+            form.setValue('envio.distrito', initialClient.distrito || '');
+            form.setValue('tienda', initialClient.tienda_origen);
             
-            toast({ title: 'Cliente Precargado', description: `Datos de ${clientToLoad.nombres} listos para confirmar.` });
+            // If the lead comes from Shopify, populate the cart
+            if (initialClient.source === 'shopify' && initialClient.shopify_items) {
+                 if(isDevMode) console.log("Shopify items found, populating cart:", initialClient.shopify_items);
+                form.setValue('items', initialClient.shopify_items);
+
+                const subtotal = initialClient.shopify_items.reduce((acc, item) => acc + item.subtotal, 0);
+                form.setValue('pago.subtotal', subtotal);
+
+                if (initialClient.shopify_payment_details) {
+                    const shipping = initialClient.shopify_payment_details.total_shipping;
+                    form.setValue('envio.costo_envio', shipping);
+                    form.setValue('pago.monto_total', subtotal + shipping);
+                }
+                 toast({ title: 'Lead de Shopify Cargado', description: `Datos y productos de ${initialClient.nombres} listos para confirmar.` });
+            } else {
+                 toast({ title: 'Cliente Precargado', description: `Datos de ${initialClient.nombres} listos para confirmar.` });
+            }
         }
 
         if (isDevMode) console.groupEnd();
-    }, [initialClient, initialOrder, form, toast, isDevMode]);
+    }, [initialClient, form, toast, isDevMode]);
 
 
     useEffect(() => {
@@ -153,30 +145,30 @@ export function CreateOrderForm({ inventory, clients, initialClient, initialOrde
         const batch = writeBatch(db);
 
         // --- 1. Client Management ---
+        // Ensure client exists or create it. DNI is the ID.
         const clientRef = doc(db, 'clients', data.cliente.dni);
-        const clientData: Client = {
-          id: data.cliente.dni,
+        const clientSnap = await getDoc(clientRef);
+        
+        const clientData: Partial<Client> = {
           dni: data.cliente.dni,
           nombres: data.cliente.nombres,
           celular: data.cliente.celular,
           direccion: data.envio.direccion,
           distrito: data.envio.distrito,
           provincia: data.envio.provincia,
-          // If it came from an initial order, preserve its source, otherwise 'manual' or 'kommo'
-          source: initialOrder?.source || initialClient?.source || 'manual',
+          source: clientSnap.exists() ? clientSnap.data().source : (initialClient?.source || 'manual'),
           last_updated: new Date().toISOString(),
           call_status: 'VENTA_CONFIRMADA',
         };
         // Use set with merge to create or update the client
         batch.set(clientRef, clientData, { merge: true });
 
-        // --- 2. Order Management ---
-        const isUpdate = !!initialOrder;
-        const orderId = isUpdate ? initialOrder.id_pedido : `PED-${Date.now()}`;
+        // --- 2. Order Creation ---
+        const orderId = `PED-${Date.now()}`;
         const orderRef = doc(db, 'orders', orderId);
 
-        const finalOrderData = {
-            id_interno: initialOrder?.id_interno || `MANUAL-${Date.now()}`,
+        const finalOrderData: Omit<Order, 'id_pedido'> = {
+            id_interno: initialClient?.shopify_order_id ? `SHOPIFY-${initialClient.shopify_order_id}` : `MANUAL-${Date.now()}`,
             tienda: { id_tienda: data.tienda || 'Trazto', nombre: data.tienda || 'Trazto' },
             estado_actual: 'EN_PREPARACION', // Move to next step after confirmation
             cliente: { // Denormalize client data in order
@@ -188,7 +180,7 @@ export function CreateOrderForm({ inventory, clients, initialClient, initialOrde
             items: data.items,
             pago: {
                 monto_total: data.pago.monto_total,
-                monto_pendiente: data.pago.monto_total,
+                monto_pendiente: data.pago.monto_total, // Assume payment is pending on creation
                 metodo_pago_previsto: data.pago.metodo_pago_previsto!,
                 estado_pago: 'PENDIENTE',
                 comprobante_url: null,
@@ -205,40 +197,39 @@ export function CreateOrderForm({ inventory, clients, initialClient, initialOrde
                 nombre_usuario_actual: currentUser.nombre,
             },
             historial: [
-                ...(initialOrder?.historial || []),
                 {
                     fecha: new Date().toISOString(),
                     id_usuario: currentUser.id_usuario,
                     nombre_usuario: currentUser.nombre,
-                    accion: isUpdate ? 'Pedido de Shopify Confirmado' : 'Pedido Manual Creado',
-                    detalle: `Pedido procesado por ${currentUser.rol}.`
+                    accion: 'Pedido Confirmado',
+                    detalle: `Pedido procesado por ${currentUser.nombre} (${currentUser.rol}). Origen: ${initialClient?.source || 'manual'}`
                 }
             ],
             fechas_clave: {
-                ...initialOrder?.fechas_clave,
-                creacion: initialOrder?.fechas_clave.creacion || new Date().toISOString(),
+                creacion: new Date().toISOString(),
                 confirmacion_llamada: new Date().toISOString(),
                 procesamiento_iniciado: new Date().toISOString(),
+                preparacion: null,
+                despacho: null,
+                entrega_estimada: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+                entrega_real: null,
+                anulacion: null,
             },
             notas: {
-                nota_pedido: data.notas.nota_pedido,
-                observaciones_internas: initialOrder?.notas?.observaciones_internas || '',
+                nota_pedido: data.notas.nota_pedido || '',
+                observaciones_internas: '',
                 motivo_anulacion: null,
             },
-            source: initialOrder?.source || initialClient?.source || 'manual',
-            shopify_order_id: initialOrder?.shopify_order_id || undefined,
+            source: initialClient?.source || 'manual',
+            shopify_order_id: initialClient?.shopify_order_id || undefined,
         };
 
-        if (isUpdate) {
-            batch.update(orderRef, finalOrderData);
-        } else {
-            batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
-        }
+        batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
         
         try {
             await batch.commit();
             
-            toast({ title: "¡Éxito!", description: `Pedido ${orderId} confirmado y guardado.` });
+            toast({ title: "¡Éxito!", description: `Pedido ${orderId} creado y guardado.` });
             router.push('/orders');
 
         } catch (error) {
@@ -296,3 +287,5 @@ export function CreateOrderForm({ inventory, clients, initialClient, initialOrde
         </div>
     );
 }
+
+    

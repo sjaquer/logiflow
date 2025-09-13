@@ -8,7 +8,7 @@ import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useRouter } from 'next/navigation';
 
 export default function OrdersPage() {
-  const [orders, setOrders] useState<Order[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
@@ -60,7 +60,10 @@ export default function OrdersPage() {
   }, []);
 
   const handleProcessShopifyOrder = (order: Order) => {
-      router.push(`/create-order?orderId=${order.id_pedido}`);
+      // This is deprecated, the flow is now handled in Call Center
+      // but we leave the function here in case it's needed in the future.
+      console.warn("handleProcessShopifyOrder is deprecated. Flow moved to Call Center.");
+      router.push(`/create-order?clientId=${order.cliente.id_cliente}`);
   }
 
 
@@ -93,3 +96,5 @@ export default function OrdersPage() {
     </div>
   );
 }
+
+    

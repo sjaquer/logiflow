@@ -2,7 +2,7 @@
 'use client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PhoneForwarded, Trash2, MoreVertical, PhoneOff, AlertTriangle, ShoppingBag } from 'lucide-react';
+import { PhoneForwarded, Trash2, MoreVertical, PhoneOff, AlertTriangle, ShoppingCart, Globe } from 'lucide-react';
 import type { Client, CallStatus } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -12,7 +12,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Globe } from 'lucide-react';
 
 interface QueueTableProps {
   leads: Client[];
@@ -44,6 +43,17 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
     return { text: formatDistanceToNow(creationDate, { addSuffix: true, locale: es }), color };
   };
 
+  const getSourceIcon = (source: Client['source']) => {
+    switch (source) {
+        case 'shopify':
+            return <ShoppingCart className="h-4 w-4 text-primary" />;
+        case 'kommo':
+            return <Globe className="h-4 w-4 text-blue-500" />;
+        default:
+            return <Globe className="h-4 w-4 text-muted-foreground"/>;
+    }
+  }
+
 
   return (
     <Table>
@@ -52,6 +62,7 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
           <TableHead>Estado</TableHead>
           <TableHead>Tiempo de Espera</TableHead>
           <TableHead>Nombre Completo</TableHead>
+          <TableHead>Tienda</TableHead>
           <TableHead>Origen</TableHead>
           <TableHead>Celular</TableHead>
           <TableHead>Agente Asignado</TableHead>
@@ -79,11 +90,25 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
               </TableCell>
               <TableCell>{lead.nombres}</TableCell>
               <TableCell>
+                {lead.tienda_origen && (
+                    <Badge variant="outline">{lead.tienda_origen}</Badge>
+                )}
+              </TableCell>
+              <TableCell>
                   {lead.source && (
-                      <div className="flex items-center gap-2">
-                        <Globe className="h-4 w-4 text-muted-foreground"/>
-                        <span className="font-medium capitalize">{lead.source}</span>
-                      </div>
+                      <TooltipProvider>
+                          <Tooltip>
+                              <TooltipTrigger asChild>
+                                  <div className="flex items-center gap-2">
+                                      {getSourceIcon(lead.source)}
+                                      <span className="font-medium capitalize">{lead.source}</span>
+                                  </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                  <p>Lead de {lead.source}</p>
+                              </TooltipContent>
+                          </Tooltip>
+                      </TooltipProvider>
                   )}
               </TableCell>
               <TableCell>{lead.celular}</TableCell>
@@ -145,7 +170,7 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
           )
         }) : (
             <TableRow>
-                <TableCell colSpan={8} className="text-center h-24">
+                <TableCell colSpan={9} className="text-center h-24">
                     ¡Felicidades! No hay clientes pendientes por llamar.
                 </TableCell>
             </TableRow>
@@ -154,3 +179,5 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
     </Table>
   );
 }
+
+    

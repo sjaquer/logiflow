@@ -67,7 +67,7 @@ export default function CallCenterQueuePage() {
           (lead.assigned_agent_name && lead.assigned_agent_name.toLowerCase().includes(searchInput));
 
         const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
-        const matchesShop = shopFilter === 'TODAS' || lead.source === shopFilter.toLowerCase();
+        const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter;
         
         return matchesSearch && matchesStatus && matchesShop;
     });
@@ -88,8 +88,9 @@ export default function CallCenterQueuePage() {
         const clientRef = doc(db, 'clients', client.id);
         const updateData: any = {
             call_status: 'CONTACTADO',
-            'asignacion.id_usuario_actual': currentUser.id_usuario,
-            'asignacion.nombre_usuario_actual': currentUser.nombre,
+            assigned_agent_id: currentUser.id_usuario,
+            assigned_agent_name: currentUser.nombre,
+            assigned_agent_avatar: currentUser.avatar,
             last_updated: new Date().toISOString(),
         };
 
@@ -103,7 +104,6 @@ export default function CallCenterQueuePage() {
           description: `Ahora estás a cargo de ${client.nombres}.`,
         });
         
-        // Navigate to create-order page with the client's DNI
         router.push(`/create-order?clientId=${client.id}`);
     } catch (error) {
         console.error("Error processing client:", error);
@@ -136,8 +136,9 @@ export default function CallCenterQueuePage() {
       try {
           await updateDoc(clientRef, {
               call_status: status,
-              'asignacion.id_usuario_actual': null,
-              'asignacion.nombre_usuario_actual': null,
+              assigned_agent_id: null,
+              assigned_agent_name: null,
+              assigned_agent_avatar: null,
           });
            toast({
               title: 'Estado Actualizado',
@@ -196,7 +197,7 @@ export default function CallCenterQueuePage() {
                 Bandeja de Entrada de Llamadas
             </CardTitle>
             <CardDescription>
-                Lista de clientes potenciales de Kommo para contactar, confirmar datos y crear un pedido.
+                Lista de clientes potenciales (de Kommo y Shopify) para contactar, confirmar datos y crear un pedido.
             </CardDescription>
           </div>
         </CardHeader>
@@ -230,7 +231,9 @@ export default function CallCenterQueuePage() {
                 </SelectTrigger>
                 <SelectContent>
                     <SelectItem value="TODAS">Todas las Tiendas</SelectItem>
-                    <SelectItem value="Kommo">Kommo</SelectItem>
+                    {SHOPS.map(shop => (
+                        <SelectItem key={shop} value={shop}>{shop}</SelectItem>
+                    ))}
                 </SelectContent>
             </Select>
           </div>
@@ -248,3 +251,5 @@ export default function CallCenterQueuePage() {
     </div>
   );
 }
+
+    

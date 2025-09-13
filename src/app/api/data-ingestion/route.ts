@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/firebase-admin';
 import { getContactDetails, getLeadDetails } from '@/lib/kommo';
@@ -17,28 +18,18 @@ function formatPhoneNumber(phone: string | null | undefined): string {
 }
 
 async function handleShopifyWebhook(data: Record<string, any>) {
-    console.info("--- Processing Shopify Payload ---");
+    console.info("--- Processing Shopify Payload for Call Center Queue ---");
 
     const shippingAddress = data.shipping_address || {};
     const customer = data.customer || {};
-
+    
     // Prioritize DNI from 'company' field, a common practice in Peru for Shopify.
-    const dni = shippingAddress.company || '';
+    const dni = shippingAddress.company || `temp-${data.id}`;
 
     let clientName = shippingAddress.name || '';
     if (!clientName && (customer.first_name || customer.last_name)) {
         clientName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
     }
-    
-    // The Client ID is now the DNI. If DNI is not present, we can't create a reliable link.
-    // However, the order can still be created, and the client can be created/linked later.
-    if (!dni) {
-        console.warn(`Webhook from Shopify for order ${data.id} is missing DNI (company field). The client document will need to be created or linked manually during order confirmation.`);
-    }
-    
-    // Create the ORDER document, NOT a client document.
-    const orderId = `SHOPIFY-${data.id}`;
-    const orderRef = db.collection('orders').doc(orderId);
 
     const shopifyItems: OrderItem[] = data.line_items.map((item: any) => ({
       sku: item.sku || 'N/A',
@@ -49,66 +40,41 @@ async function handleShopifyWebhook(data: Record<string, any>) {
       subtotal: parseFloat(item.price) * item.quantity,
       estado_item: 'PENDIENTE' as const,
     }));
+    
+    const subtotal = shopifyItems.reduce((sum, item) => sum + item.subtotal, 0);
+    const shippingCost = parseFloat(data.total_shipping_price_set?.shop_money?.amount || '0');
+    const total = subtotal + shippingCost;
 
-    const newOrder: Omit<Order, 'id_pedido' | 'asignacion' | 'historial'> = {
-        id_interno: `SHOPIFY-${data.order_number}`,
-        tienda: { id_tienda: 'Dearel', nombre: 'Dearel' as Shop },
-        estado_actual: 'PENDIENTE',
-        cliente: {
-            // We store the client data denormalized in the order.
-            // The id_cliente will be linked upon confirmation.
-            id_cliente: dni || `provisional-${data.id}`, // Provisional ID if DNI is missing
-            dni: dni,
-            nombres: clientName,
-            celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
-        },
-        items: shopifyItems,
-        pago: {
-            monto_total: parseFloat(data.total_price),
-            monto_pendiente: parseFloat(data.total_outstanding),
-            metodo_pago_previsto: data.payment_gateway_names?.[0] || 'Desconocido',
-            estado_pago: 'PENDIENTE',
-            comprobante_url: null,
-            fecha_pago: null,
-        },
-        envio: {
-            tipo: (shippingAddress.province || 'Lima').toLowerCase() === 'lima' ? 'LIMA' : 'PROVINCIA',
-            provincia: shippingAddress.province || 'Lima',
-            distrito: shippingAddress.city || '',
-            direccion: shippingAddress.address1 || '',
-            courier: 'URBANO',
-            agencia_shalom: null,
-            nro_guia: null,
-            link_seguimiento: null,
-            costo_envio: parseFloat(data.total_shipping_price_set?.shop_money?.amount || '0'),
-        },
-        fechas_clave: {
-            creacion: data.created_at || new Date().toISOString(),
-            confirmacion_llamada: null,
-            procesamiento_iniciado: null,
-            preparacion: null,
-            despacho: null,
-            entrega_estimada: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-            entrega_real: null,
-            anulacion: null,
-        },
-        notas: {
-            nota_pedido: data.note || '',
-            observaciones_internas: 'Pedido importado de Shopify. Pendiente de confirmación de datos y stock.',
-            motivo_anulacion: null,
-        },
-        source: 'shopify',
-        shopify_order_id: String(data.id),
+    const clientLead: Partial<Client> & { shopify_items: OrderItem[], shopify_payment_details: any } = {
+      dni: dni,
+      nombres: clientName,
+      celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
+      email: customer.email || '',
+      direccion: shippingAddress.address1 || '',
+      distrito: shippingAddress.city || '',
+      provincia: shippingAddress.province || 'Lima',
+      source: 'shopify',
+      tienda_origen: 'Dearel', // Hardcoded as requested
+      last_updated: new Date().toISOString(),
+      call_status: 'NUEVO',
+      shopify_order_id: String(data.id),
+      shopify_items: shopifyItems,
+      shopify_payment_details: {
+        total_price: parseFloat(data.total_price),
+        subtotal_price: parseFloat(data.subtotal_price),
+        total_shipping: shippingCost,
+        payment_gateway: data.payment_gateway_names?.[0] || 'Desconocido',
+      }
     };
+    
+    // The ID for the client lead will be the DNI if available, otherwise a unique ID.
+    const clientDocRef = db.collection('clients').doc(dni);
+    await clientDocRef.set(clientLead, { merge: true });
 
-    await orderRef.set({
-        ...newOrder,
-        id_pedido: orderRef.id,
-    });
-
-    console.log(`Successfully created new order ${orderRef.id} from Shopify. No client was created at this stage.`);
-    return NextResponse.json({ success: true, message: 'Shopify order processed into a new order document.', orderId: orderRef.id });
+    console.log(`Successfully created/updated lead in 'clients' collection for Shopify order. Client/Lead ID: ${clientDocRef.id}`);
+    return NextResponse.json({ success: true, message: 'Shopify order processed into a client lead for Call Center.', clientId: clientDocRef.id });
 }
+
 
 async function handleKommoWebhook(data: Record<string, any>) {
     const leadId = data['leads[status][0][id]'] as string;
@@ -134,7 +100,7 @@ async function handleKommoWebhook(data: Record<string, any>) {
     if (contactDetails.custom_fields_values) {
       for (const field of contactDetails.custom_fields_values) {
         const value = field.values[0]?.value;
-        switch (field.field_code) { // Using field_code is more reliable than field_name
+        switch (field.field_code) {
           case 'DNI': clientDNI = value; break;
           case 'PHONE': clientPhone = value; break;
           case 'EMAIL': clientEmail = value; break;
@@ -213,3 +179,5 @@ export async function POST(request: Request) {
         }
     }
 }
+
+    

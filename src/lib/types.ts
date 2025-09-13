@@ -153,6 +153,7 @@ export interface Client {
     provincia?: string;
     source: 'kommo' | 'manual' | 'shopify';
     last_updated: string;
+    tienda_origen?: Shop;
     
     // Fields for Call Center workflow
     call_status: CallStatus;
@@ -165,6 +166,16 @@ export interface Client {
     // For leads coming from Kommo
     kommo_lead_id?: string;
     kommo_contact_id?: number;
+
+    // For leads coming from Shopify
+    shopify_order_id?: string;
+    shopify_items?: OrderItem[];
+    shopify_payment_details?: {
+      total_price: number;
+      subtotal_price: number;
+      total_shipping: number;
+      payment_gateway: string;
+    }
 }
 
 
@@ -196,3 +207,6 @@ export interface Webhook {
     active: boolean;
     createdAt: string;
 }
+
+
+    
