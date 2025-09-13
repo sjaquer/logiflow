@@ -114,12 +114,12 @@ export async function POST(request: Request) {
             shopify_order_id: String(data.id),
             last_updated_from_kommo: new Date().toISOString(),
             shopify_items: shopifyItems,
-            // Determine shop from source_name, default to Trazto for 'web'
-            tienda_origen: (data.source_name === 'web' ? 'Trazto' : data.source_name) as Shop,
+            // Per user request, Shopify orders are currently from "Dearel"
+            tienda_origen: 'Dearel' as Shop,
         };
 
-        // Let Firestore generate the ID automatically for robustness
-        const docRef = await db.collection('clients').add(clientData);
+        const docRef = db.collection('clients').doc();
+        await docRef.set(clientData);
         
         console.log(`Successfully processed Shopify order and saved client with Firestore-generated ID: ${docRef.id}`);
         return NextResponse.json({ success: true, message: 'Shopify order processed.', id: docRef.id });

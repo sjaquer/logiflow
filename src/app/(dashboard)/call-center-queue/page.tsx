@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Client, User, UserRole, CallStatus } from '@/lib/types';
+import type { Client, User, UserRole, CallStatus, Shop } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Phone, Search } from 'lucide-react';
 import { QueueTable } from './components/queue-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SHOPS } from '@/lib/constants';
 
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
@@ -28,6 +29,7 @@ export default function CallCenterQueuePage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<CallStatus | 'TODOS'>('TODOS');
+  const [shopFilter, setShopFilter] = useState<Shop | 'TODAS'>('TODAS');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -65,9 +67,11 @@ export default function CallCenterQueuePage() {
 
         const matchesStatus = statusFilter === 'TODOS' || lead.estado_llamada === statusFilter;
         
-        return matchesSearch && matchesStatus;
+        const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter;
+        
+        return matchesSearch && matchesStatus && matchesShop;
     });
-  }, [leads, searchQuery, statusFilter]);
+  }, [leads, searchQuery, statusFilter, shopFilter]);
 
   const handleProcessClient = useCallback(async (client: Client) => {
     if (!currentUser) {
@@ -214,6 +218,19 @@ export default function CallCenterQueuePage() {
                 {STATUS_FILTERS.map(status => (
                   <SelectItem key={status} value={status}>
                     <span className="capitalize">{status.replace(/_/g, ' ').toLowerCase()}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={shopFilter} onValueChange={(value) => setShopFilter(value as any)}>
+              <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectValue placeholder="Filtrar por tienda" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="TODAS">Todas las Tiendas</SelectItem>
+                {SHOPS.map(shop => (
+                  <SelectItem key={shop} value={shop}>
+                    {shop}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -2,7 +2,7 @@
 'use client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
-import { PhoneForwarded, Trash2, MoreVertical, PhoneOff, AlertTriangle } from 'lucide-react';
+import { PhoneForwarded, Trash2, MoreVertical, PhoneOff, AlertTriangle, ShoppingBag } from 'lucide-react';
 import type { Client, CallStatus } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -51,6 +51,7 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
           <TableHead>Estado</TableHead>
           <TableHead>Tiempo de Espera</TableHead>
           <TableHead>Nombre Completo</TableHead>
+          <TableHead>Tienda</TableHead>
           <TableHead>Celular</TableHead>
           <TableHead>Agente Asignado</TableHead>
           <TableHead>Última Actualización</TableHead>
@@ -76,6 +77,14 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
                   {waitingTime.text}
               </TableCell>
               <TableCell>{lead.nombres}</TableCell>
+              <TableCell>
+                  {lead.tienda_origen && (
+                      <div className="flex items-center gap-2">
+                        <ShoppingBag className="h-4 w-4 text-muted-foreground"/>
+                        <span className="font-medium">{lead.tienda_origen}</span>
+                      </div>
+                  )}
+              </TableCell>
               <TableCell>{lead.celular}</TableCell>
               <TableCell>
                 {lead.id_agente_asignado ? (
@@ -135,7 +144,7 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
           )
         }) : (
             <TableRow>
-                <TableCell colSpan={7} className="text-center h-24">
+                <TableCell colSpan={8} className="text-center h-24">
                     ¡Felicidades! No hay clientes pendientes por llamar.
                 </TableCell>
             </TableRow>
