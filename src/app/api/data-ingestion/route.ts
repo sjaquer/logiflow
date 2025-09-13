@@ -82,7 +82,7 @@ export async function POST(request: Request) {
         }));
 
         const clientData = {
-            dni: '',
+            dni: customer.default_address?.company || '', // Intenta obtener DNI del campo 'company' o dejarlo vacío
             nombres: shippingAddress.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
             celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
             email: data.email || customer.email || '',
@@ -97,6 +97,7 @@ export async function POST(request: Request) {
             tienda_origen: (data.source_name === 'web' ? 'Trazto' : data.source_name) as Shop,
         };
 
+        // Dejar que Firestore genere el ID automáticamente
         const docRef = await db.collection('clients').add(clientData);
         
         console.log(`Successfully processed Shopify order and saved client with ID: ${docRef.id}`);

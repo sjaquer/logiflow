@@ -84,6 +84,8 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
     // This useEffect is now responsible for populating the form when a client is pre-loaded
     useEffect(() => {
         if (initialClient) {
+            const subtotalFromShopify = initialClient.shopify_items?.reduce((acc, item) => acc + item.subtotal, 0) || 0;
+            
             form.reset({
                 cliente: {
                     dni: initialClient.dni || '',
@@ -100,8 +102,8 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                 tienda: initialClient.tienda_origen,
                 items: initialClient.shopify_items || [],
                 pago: {
-                    subtotal: initialClient.shopify_items?.reduce((acc, item) => acc + item.subtotal, 0) || 0,
-                    monto_total: 0,
+                    subtotal: subtotalFromShopify,
+                    monto_total: subtotalFromShopify, // Initialize total with subtotal
                     metodo_pago_previsto: undefined,
                 },
                 notas: {
@@ -252,16 +254,6 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         const target = event.target as HTMLElement;
         if (target.tagName.toLowerCase() !== 'textarea' && target.getAttribute('type') !== 'submit') {
             event.preventDefault();
-            const form = (event.target as HTMLElement).closest('form');
-            if (!form) return;
-            
-            const focusable = Array.from(form.querySelectorAll<HTMLElement>('input, button, select, textarea, [role=combobox]'));
-            const index = focusable.indexOf(target);
-
-            if (index > -1 && index < focusable.length - 1) {
-              const nextElement = focusable[index + 1];
-              nextElement?.focus();
-            }
         }
       }
     };
