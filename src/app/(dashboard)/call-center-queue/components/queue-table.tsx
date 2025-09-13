@@ -25,13 +25,16 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
   const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
   const getWaitingTime = (lead: Client) => {
-    if (lead.call_status !== 'NUEVO' || !lead.last_updated) {
-      return { text: 'Contactado', color: 'text-muted-foreground' };
+    // Use first_interaction_at as the source of truth for waiting time.
+    // Fallback to last_updated for older leads that might not have this field yet.
+    const referenceDateStr = lead.first_interaction_at || lead.last_updated;
+    if (!referenceDateStr) {
+        return { text: 'N/A', color: 'text-muted-foreground' };
     }
-    
-    const creationDate = new Date(lead.last_updated);
+
+    const referenceDate = new Date(referenceDateStr);
     const now = new Date();
-    const hoursWaiting = (now.getTime() - creationDate.getTime()) / (1000 * 60 * 60);
+    const hoursWaiting = (now.getTime() - referenceDate.getTime()) / (1000 * 60 * 60);
 
     let color = 'text-green-600';
     if (hoursWaiting > 4) {
@@ -40,7 +43,7 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
       color = 'text-yellow-600';
     }
 
-    return { text: formatDistanceToNow(creationDate, { addSuffix: true, locale: es }), color };
+    return { text: formatDistanceToNow(referenceDate, { addSuffix: true, locale: es }), color };
   };
 
   const getSourceIcon = (source: Client['source']) => {
@@ -179,5 +182,3 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
     </Table>
   );
 }
-
-    

@@ -23,8 +23,7 @@ async function handleShopifyWebhook(data: Record<string, any>) {
     const shippingAddress = data.shipping_address || {};
     const customer = data.customer || {};
     
-    // Prioritize DNI from 'company' field, a common practice in Peru for Shopify.
-    const dni = shippingAddress.company || `temp-${data.id}`;
+    const dni = shippingAddress.company || `temp-shopify-${data.id}`;
 
     let clientName = shippingAddress.name || '';
     if (!clientName && (customer.first_name || customer.last_name)) {
@@ -41,11 +40,9 @@ async function handleShopifyWebhook(data: Record<string, any>) {
       estado_item: 'PENDIENTE' as const,
     }));
     
-    const subtotal = shopifyItems.reduce((sum, item) => sum + item.subtotal, 0);
     const shippingCost = parseFloat(data.total_shipping_price_set?.shop_money?.amount || '0');
-    const total = subtotal + shippingCost;
 
-    const clientLead: Partial<Client> & { shopify_items: OrderItem[], shopify_payment_details: any } = {
+    const clientLead: Partial<Client> = {
       dni: dni,
       nombres: clientName,
       celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
@@ -54,9 +51,10 @@ async function handleShopifyWebhook(data: Record<string, any>) {
       distrito: shippingAddress.city || '',
       provincia: shippingAddress.province || 'Lima',
       source: 'shopify',
-      tienda_origen: 'Dearel', // Hardcoded as requested
+      tienda_origen: 'Dearel',
       last_updated: new Date().toISOString(),
       call_status: 'NUEVO',
+      first_interaction_at: new Date().toISOString(), // Register creation time
       shopify_order_id: String(data.id),
       shopify_items: shopifyItems,
       shopify_payment_details: {
@@ -67,7 +65,6 @@ async function handleShopifyWebhook(data: Record<string, any>) {
       }
     };
     
-    // The ID for the client lead will be the DNI if available, otherwise a unique ID.
     const clientDocRef = db.collection('clients').doc(dni);
     await clientDocRef.set(clientLead, { merge: true });
 
@@ -115,8 +112,7 @@ async function handleKommoWebhook(data: Record<string, any>) {
       return NextResponse.json({ success: false, message: 'DNI not found in custom fields.' }, { status: 400 });
     }
     
-    const clientData: Client = {
-      id: clientDNI,
+    const clientData: Partial<Client> = {
       dni: clientDNI,
       nombres: contactDetails.name || '',
       celular: formatPhoneNumber(clientPhone),
@@ -126,6 +122,7 @@ async function handleKommoWebhook(data: Record<string, any>) {
       provincia: 'Lima',
       source: 'kommo',
       last_updated: new Date().toISOString(),
+      first_interaction_at: new Date().toISOString(), // Register creation time
       call_status: 'NUEVO',
       kommo_lead_id: leadId,
       kommo_contact_id: contactId,
@@ -179,5 +176,3 @@ export async function POST(request: Request) {
         }
     }
 }
-
-    
