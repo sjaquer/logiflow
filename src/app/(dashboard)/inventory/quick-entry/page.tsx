@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -211,8 +212,9 @@ export default function QuickEntryPage() {
             <div className="space-y-4">
               <form onSubmit={handleManualSearch} className="flex w-full items-center space-x-2">
                   <div className="flex-grow grid grid-cols-[auto_1fr] items-center rounded-md border border-input focus-within:ring-2 focus-within:ring-ring">
-                    <span className="pl-3 text-sm font-medium text-muted-foreground">SKU-</span>
+                    <Label htmlFor="sku-input" className="pl-3 text-sm font-medium text-muted-foreground">SKU-</Label>
                     <Input
+                      id="sku-input"
                       type="text"
                       placeholder="0001"
                       value={skuNumber}
