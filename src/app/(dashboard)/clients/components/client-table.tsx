@@ -19,7 +19,6 @@ export function ClientTable({ clients, onEdit, onDelete }: ClientTableProps) {
           <TableHead>DNI</TableHead>
           <TableHead>Nombre Completo</TableHead>
           <TableHead>Celular</TableHead>
-          <TableHead>Email</TableHead>
           <TableHead>Dirección</TableHead>
           <TableHead className="text-right">Acciones</TableHead>
         </TableRow>
@@ -30,7 +29,6 @@ export function ClientTable({ clients, onEdit, onDelete }: ClientTableProps) {
             <TableCell className="font-medium">{client.dni}</TableCell>
             <TableCell>{client.nombres}</TableCell>
             <TableCell>{client.celular}</TableCell>
-            <TableCell>{client.email || 'N/A'}</TableCell>
             <TableCell className="max-w-xs truncate">{client.direccion || 'N/A'}</TableCell>
             <TableCell className="text-right">
               <Button variant="ghost" size="icon" onClick={() => onEdit(client)}>
@@ -43,7 +41,7 @@ export function ClientTable({ clients, onEdit, onDelete }: ClientTableProps) {
           </TableRow>
         )) : (
             <TableRow>
-                <TableCell colSpan={6} className="text-center h-24">
+                <TableCell colSpan={5} className="text-center h-24">
                     No se encontraron clientes.
                 </TableCell>
             </TableRow>
