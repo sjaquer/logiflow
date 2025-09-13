@@ -84,20 +84,21 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
     // This useEffect is now responsible for populating the form when a client is pre-loaded
     useEffect(() => {
         if (initialClient) {
-            const subtotalFromShopify = initialClient.shopify_items?.reduce((acc, item) => acc + item.subtotal, 0) || 0;
+            const subtotalFromShopify = initialClient.shopify_items?.reduce((acc, item) => acc + (item.precio_unitario * item.cantidad), 0) || 0;
             
             form.reset({
                 cliente: {
                     dni: initialClient.dni || '',
-                    nombres: initialClient.nombres,
-                    celular: initialClient.celular,
+                    nombres: initialClient.nombres || '',
+                    celular: initialClient.celular || '',
                 },
                 envio: {
                     direccion: initialClient.direccion || '',
                     provincia: initialClient.provincia || 'Lima',
                     distrito: initialClient.distrito || '',
-                    costo_envio: 0,
+                    costo_envio: 0, // Reset shipping cost
                     courier: undefined,
+                    agencia_shalom: '',
                 },
                 tienda: initialClient.tienda_origen,
                 items: initialClient.shopify_items || [],
@@ -227,12 +228,15 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         };
 
         try {
-            if (!initialClient?.id) throw new Error("Could not find the original client record to update.");
-
-            const clientRef = doc(db, 'clients', initialClient.id);
-            await updateDoc(clientRef, { 
-                estado_llamada: 'VENTA_CONFIRMADA',
-             });
+            // It's crucial to have an initialClient ID to update its status
+            if (initialClient?.id) {
+                 const clientRef = doc(db, 'clients', initialClient.id);
+                 await updateDoc(clientRef, { 
+                     estado_llamada: 'VENTA_CONFIRMADA',
+                 });
+            } else {
+                 console.warn("No initialClient found to update status. This might happen for manually created orders.");
+            }
 
             const orderCollectionRef = collection(db, 'orders');
             const docRef = await addDoc(orderCollectionRef, newOrder);
@@ -292,7 +296,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                 </div>
              </div>
             <Form {...form}>
-                <form onKeyDown={handleKeyDown} className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <form onSubmit={form.handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
                      <div className="lg:col-span-2 space-y-8">
                          <ItemsForm form={form} inventory={inventory} />
                     </div>

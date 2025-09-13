@@ -6,15 +6,21 @@ import type { OrderItem, Shop } from '@/lib/types';
 
 const db = getAdminDb();
 
+/**
+ * Normalizes a phone number by removing country codes for Peru (+51 or 51).
+ * @param phone The raw phone number string.
+ * @returns The cleaned 9-digit phone number, or an empty string if input is invalid.
+ */
 function formatPhoneNumber(phone: string | null | undefined): string {
     if (!phone) return '';
+    // Remove all non-digit characters except for a leading '+'
     let cleaned = phone.replace(/[^\d+]/g, '');
     if (cleaned.startsWith('+51')) {
-      cleaned = cleaned.substring(3).trim();
-    } else if (cleaned.startsWith('51') && cleaned.length > 2 && phone.length > 9) {
-      cleaned = cleaned.substring(2).trim();
+      cleaned = cleaned.substring(3);
+    } else if (cleaned.startsWith('51')) {
+      cleaned = cleaned.substring(2);
     }
-    return cleaned;
+    return cleaned.trim();
 }
 
 export async function POST(request: Request) {
@@ -38,7 +44,10 @@ export async function POST(request: Request) {
     if (contentType.includes('application/json')) {
         data = await request.json();
         console.info("Received JSON data, likely from Shopify.");
-        sourceType = 'shopify'; 
+        // Simple check to confirm if it's a Shopify payload
+        if (data.id && data.line_items) {
+           sourceType = 'shopify'; 
+        }
     } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
         const formData = await request.formData();
         data = Object.fromEntries(formData.entries());
@@ -51,7 +60,9 @@ export async function POST(request: Request) {
         console.warn(`Unexpected content-type: ${contentType}. Trying to parse as JSON.`);
         try {
             data = JSON.parse(rawBody);
-            sourceType = 'shopify';
+             if (data.id && data.line_items) {
+               sourceType = 'shopify';
+            }
         } catch {
             console.error("Could not parse raw body as JSON. Body might be in another format.");
             return NextResponse.json({ message: 'Invalid or unsupported content type.' }, { status: 400 });
@@ -67,9 +78,12 @@ export async function POST(request: Request) {
         console.info("--- RAW SHOPIFY PAYLOAD RECEIVED ---");
         console.info(JSON.stringify(data, null, 2));
 
+        // Prioritize shipping_address as it's the most relevant for logistics
         const shippingAddress = data.shipping_address || {};
-        const billingAddress = data.billing_address || {};
         const customer = data.customer || {};
+
+        // Extract DNI from a conventional field (like 'company') or leave empty
+        const dni = shippingAddress.company || '';
 
         const shopifyItems: OrderItem[] = data.line_items.map((item: any) => ({
           sku: item.sku || 'N/A',
@@ -78,29 +92,36 @@ export async function POST(request: Request) {
           cantidad: item.quantity,
           precio_unitario: parseFloat(item.price),
           subtotal: parseFloat(item.price) * item.quantity,
-          estado_item: 'PENDIENTE',
+          estado_item: 'PENDIENTE' as const,
         }));
 
         const clientData = {
-            dni: customer.default_address?.company || '', // Intenta obtener DNI del campo 'company' o dejarlo vacío
+            // Take DNI specifically from shipping_address.company
+            dni: dni,
+            // Prioritize shipping name, fallback to customer name
             nombres: shippingAddress.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
+            // Prioritize shipping phone, fallback to order phone, then customer phone
             celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
+            // Email is usually reliable on the main object
             email: data.email || customer.email || '',
+            // Address details from shipping_address
             direccion: shippingAddress.address1 || '',
             distrito: shippingAddress.city || '',
-            provincia: shippingAddress.province || '',
+            provincia: shippingAddress.province || 'Lima', // Default to Lima if not provided
+            // System fields
             estado_llamada: 'NUEVO' as const,
-            source: 'shopify',
-            shopify_order_id: data.id,
+            source: 'shopify' as const,
+            shopify_order_id: String(data.id),
             last_updated_from_kommo: new Date().toISOString(),
             shopify_items: shopifyItems,
+            // Determine shop from source_name, default to Trazto for 'web'
             tienda_origen: (data.source_name === 'web' ? 'Trazto' : data.source_name) as Shop,
         };
 
-        // Dejar que Firestore genere el ID automáticamente
+        // Let Firestore generate the ID automatically for robustness
         const docRef = await db.collection('clients').add(clientData);
         
-        console.log(`Successfully processed Shopify order and saved client with ID: ${docRef.id}`);
+        console.log(`Successfully processed Shopify order and saved client with Firestore-generated ID: ${docRef.id}`);
         return NextResponse.json({ success: true, message: 'Shopify order processed.', id: docRef.id });
 
     } else if (sourceType === 'kommo') {
@@ -155,7 +176,7 @@ export async function POST(request: Request) {
           distrito: clientDistrict || '',
           provincia: 'Lima',
           estado_llamada: 'NUEVO' as const,
-          source: 'kommo',
+          source: 'kommo' as const,
           kommo_lead_id: leadId,
           kommo_contact_id: contactId,
           last_updated_from_kommo: new Date().toISOString(),
