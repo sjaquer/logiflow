@@ -1,9 +1,5 @@
 
 
-
-
-
-
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
 export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo' | 'Transferencia Bancaria';
@@ -32,7 +28,7 @@ export interface Order {
   };
   estado_actual: OrderStatus;
   cliente: {
-    id_cliente?: string; // Made optional for new clients
+    id_cliente: string; 
     nombres: string;
     dni: string;
     celular: string;
@@ -70,6 +66,8 @@ export interface Order {
   }[];
   fechas_clave: {
     creacion: string;
+    confirmacion_llamada: string | null;
+    procesamiento_iniciado: string | null;
     preparacion: string | null;
     despacho: string | null;
     entrega_estimada: string;
@@ -81,6 +79,8 @@ export interface Order {
     observaciones_internas: string;
     motivo_anulacion: string | null;
   };
+  source: 'shopify' | 'kommo' | 'manual';
+  shopify_order_id?: string;
 }
 
 export type InventoryStatus = 'ACTIVO' | 'DESCONTINUADO' | 'SIN_STOCK';
@@ -143,7 +143,7 @@ export interface User {
 export type CallStatus = 'NUEVO' | 'CONTACTADO' | 'NO_CONTESTA' | 'NUMERO_EQUIVOCADO' | 'EN_SEGUIMIENTO' | 'VENTA_CONFIRMADA' | 'HIBERNACION';
 
 export interface Client {
-    id: string; // Document ID from Firestore
+    id: string; // Document ID from Firestore (DNI or Kommo-ID)
     dni: string;
     nombres: string;
     celular: string;
@@ -151,20 +151,20 @@ export interface Client {
     direccion?: string;
     distrito?: string;
     provincia?: string;
-    source?: 'shopify' | 'kommo' | 'manual';
-    tienda_origen?: Shop;
-    shopify_order_id?: number | string;
-    shopify_items?: OrderItem[];
+    source: 'kommo' | 'manual' | 'shopify';
+    last_updated: string;
+    
+    // Fields for Call Center workflow
+    call_status: CallStatus;
+    assigned_agent_id?: string;
+    assigned_agent_name?: string;
+    assigned_agent_avatar?: string;
+    agent_notes?: string;
+    first_interaction_at?: string; 
+    
+    // For leads coming from Kommo
     kommo_lead_id?: string;
     kommo_contact_id?: number;
-    last_updated_from_kommo?: string;
-    // New fields for call center workflow
-    estado_llamada: CallStatus;
-    id_agente_asignado?: string;
-    nombre_agente_asignado?: string;
-    avatar_agente_asignado?: string;
-    notas_agente?: string;
-    first_interaction_at?: string; // Timestamp for when an agent first processes the lead
 }
 
 
@@ -184,8 +184,8 @@ export type WebhookEvent = 'ORDER_CREATED' | 'ORDER_STATUS_CHANGED' | 'STOCK_CON
 export const WEBHOOK_EVENTS: { value: WebhookEvent, label: string }[] = [
     { value: 'ORDER_CREATED', label: 'Pedido Creado' },
     { value: 'ORDER_STATUS_CHANGED', label: 'Cambio de Estado de Pedido' },
-    { value: 'STOCK_CONFIRMED', label: 'Stock Confirmado' },
     { value: 'ORDER_CANCELLED', label: 'Pedido Anulado' },
+    { value: 'STOCK_CONFIRMED', label: 'Stock Confirmado' },
 ];
 
 export interface Webhook {

@@ -17,9 +17,10 @@ interface KanbanBoardProps {
   shops: Shop[];
   filters: Filters;
   onFilterChange: (filters: Filters) => void;
+  onProcessShopifyOrder: (order: Order) => void;
 }
 
-export function KanbanBoard({ orders, users, inventory, shops, filters, onFilterChange }: KanbanBoardProps) {
+export function KanbanBoard({ orders, users, inventory, shops, filters, onFilterChange, onProcessShopifyOrder }: KanbanBoardProps) {
 
   const filteredOrders = useMemo(() => {
     return filterOrders(orders, filters);
@@ -55,6 +56,7 @@ export function KanbanBoard({ orders, users, inventory, shops, filters, onFilter
               inventory={inventory}
               onOrderStatusChange={updateOrderStatus}
               onOrderItemsChange={updateOrderItems}
+              onProcessShopifyOrder={onProcessShopifyOrder}
             />
           ))}
         </div>

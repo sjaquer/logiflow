@@ -45,11 +45,11 @@ export default function CallCenterQueuePage() {
 
   useEffect(() => {
     const unsubscribe = listenToCollection<Client>('clients', (data) => {
-      const queueLeads = data.filter(client => client.estado_llamada !== 'VENTA_CONFIRMADA' && client.estado_llamada !== 'HIBERNACION');
+      const queueLeads = data.filter(client => client.call_status !== 'VENTA_CONFIRMADA' && client.call_status !== 'HIBERNACION');
       
       queueLeads.sort((a, b) => {
-        const dateA = a.last_updated_from_kommo ? new Date(a.last_updated_from_kommo).getTime() : 0;
-        const dateB = b.last_updated_from_kommo ? new Date(b.last_updated_from_kommo).getTime() : 0;
+        const dateA = a.last_updated ? new Date(a.last_updated).getTime() : 0;
+        const dateB = b.last_updated ? new Date(b.last_updated).getTime() : 0;
         return dateB - dateA;
       });
 
@@ -64,13 +64,15 @@ export default function CallCenterQueuePage() {
         const searchInput = searchQuery.toLowerCase();
         const matchesSearch = lead.nombres.toLowerCase().includes(searchInput) ||
           (lead.celular && lead.celular.includes(searchInput)) ||
-          (lead.nombre_agente_asignado && lead.nombre_agente_asignado.toLowerCase().includes(searchInput));
+          (lead.assigned_agent_name && lead.assigned_agent_name.toLowerCase().includes(searchInput));
 
-        const matchesStatus = statusFilter === 'TODOS' || lead.estado_llamada === statusFilter;
+        const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
         
-        const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter;
+        // This part won't work yet as shopify orders are now in `orders` collection
+        // We'll leave it for a future implementation
+        // const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter;
         
-        return matchesSearch && matchesStatus && matchesShop;
+        return matchesSearch && matchesStatus;
     });
   }, [leads, searchQuery, statusFilter, shopFilter]);
 
@@ -80,32 +82,30 @@ export default function CallCenterQueuePage() {
         return;
     }
     
-    if (client.id_agente_asignado && client.id_agente_asignado !== currentUser.id_usuario) {
-        toast({ title: 'Lead Asignado', description: `${client.nombre_agente_asignado} ya está trabajando en este lead.`, variant: 'destructive'});
+    if (client.assigned_agent_id && client.assigned_agent_id !== currentUser.id_usuario) {
+        toast({ title: 'Lead Asignado', description: `${client.assigned_agent_name} ya está trabajando en este lead.`, variant: 'destructive'});
         return;
     }
 
-    if (client.estado_llamada === 'NUEVO' || !client.id_agente_asignado) {
-        const clientRef = doc(db, 'clients', client.id);
-        const updateData: any = {
-            estado_llamada: 'CONTACTADO',
-            id_agente_asignado: currentUser.id_usuario,
-            nombre_agente_asignado: currentUser.nombre,
-            avatar_agente_asignado: currentUser.avatar || '',
-        };
-        if (!client.first_interaction_at) {
-          updateData.first_interaction_at = new Date().toISOString();
-        }
-
-        await updateDoc(clientRef, updateData);
-
-        toast({
-          title: 'Lead Asignado',
-          description: `Ahora estás a cargo de ${client.nombres}.`,
-        });
+    // Always update client status when processing begins
+    const clientRef = doc(db, 'clients', client.id);
+    const updateData: any = {
+        call_status: 'CONTACTADO',
+        assigned_agent_id: currentUser.id_usuario,
+        assigned_agent_name: currentUser.nombre,
+        assigned_agent_avatar: currentUser.avatar || '',
+    };
+    if (!client.first_interaction_at) {
+      updateData.first_interaction_at = new Date().toISOString();
     }
+    await updateDoc(clientRef, updateData);
+
+    toast({
+      title: 'Lead Asignado',
+      description: `Ahora estás a cargo de ${client.nombres}.`,
+    });
     
-    // Correct Navigation: Use template literal (backticks) to correctly interpolate the client ID.
+    // Navigate to create-order page with the client's DNI
     router.push(`/create-order?clientId=${client.id}`);
   }, [currentUser, router, toast]);
 
@@ -133,10 +133,10 @@ export default function CallCenterQueuePage() {
       const clientRef = doc(db, 'clients', clientId);
       try {
           await updateDoc(clientRef, {
-              estado_llamada: status,
-              id_agente_asignado: null, // Release agent
-              nombre_agente_asignado: null,
-              avatar_agente_asignado: null,
+              call_status: status,
+              assigned_agent_id: null,
+              assigned_agent_name: null,
+              assigned_agent_avatar: null,
           });
            toast({
               title: 'Estado Actualizado',
@@ -195,7 +195,7 @@ export default function CallCenterQueuePage() {
                 Bandeja de Entrada de Llamadas
             </CardTitle>
             <CardDescription>
-                Esta es tu lista de clientes por contactar. Selecciónalos uno por uno para confirmar sus datos y crear un pedido.
+                Lista de clientes potenciales de Kommo para contactar, confirmar datos y crear un pedido.
             </CardDescription>
           </div>
         </CardHeader>
@@ -204,7 +204,7 @@ export default function CallCenterQueuePage() {
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre, celular o agente..."
+                placeholder="Buscar por nombre, DNI o agente..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -219,19 +219,6 @@ export default function CallCenterQueuePage() {
                 {STATUS_FILTERS.map(status => (
                   <SelectItem key={status} value={status}>
                     <span className="capitalize">{status.replace(/_/g, ' ').toLowerCase()}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={shopFilter} onValueChange={(value) => setShopFilter(value as any)}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Filtrar por tienda" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODAS">Todas las Tiendas</SelectItem>
-                {SHOPS.map(shop => (
-                  <SelectItem key={shop} value={shop}>
-                    {shop}
                   </SelectItem>
                 ))}
               </SelectContent>

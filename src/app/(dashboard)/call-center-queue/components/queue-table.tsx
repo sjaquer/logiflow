@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Globe } from 'lucide-react';
 
 interface QueueTableProps {
   leads: Client[];
@@ -25,11 +26,11 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
   const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
   const getWaitingTime = (lead: Client) => {
-    if (lead.estado_llamada !== 'NUEVO' || !lead.last_updated_from_kommo) {
+    if (lead.call_status !== 'NUEVO' || !lead.last_updated) {
       return { text: 'Contactado', color: 'text-muted-foreground' };
     }
     
-    const creationDate = new Date(lead.last_updated_from_kommo);
+    const creationDate = new Date(lead.last_updated);
     const now = new Date();
     const hoursWaiting = (now.getTime() - creationDate.getTime()) / (1000 * 60 * 60);
 
@@ -51,7 +52,7 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
           <TableHead>Estado</TableHead>
           <TableHead>Tiempo de Espera</TableHead>
           <TableHead>Nombre Completo</TableHead>
-          <TableHead>Tienda</TableHead>
+          <TableHead>Origen</TableHead>
           <TableHead>Celular</TableHead>
           <TableHead>Agente Asignado</TableHead>
           <TableHead>Última Actualización</TableHead>
@@ -61,15 +62,15 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
       <TableBody>
         {leads.length > 0 ? leads.map((lead) => {
           const waitingTime = getWaitingTime(lead);
-          const isAssigned = !!lead.id_agente_asignado;
-          const isAssignedToOther = isAssigned && lead.id_agente_asignado !== currentUserId;
+          const isAssigned = !!lead.assigned_agent_id;
+          const isAssignedToOther = isAssigned && lead.assigned_agent_id !== currentUserId;
 
           return (
             <TableRow key={lead.id} className={cn(isAssignedToOther && "bg-muted/30 opacity-70")}>
               <TableCell>
-                  {lead.estado_llamada && (
-                      <Badge variant={CALL_STATUS_BADGE_MAP[lead.estado_llamada]} className="capitalize w-28 justify-center">
-                          {lead.estado_llamada.replace(/_/g, ' ').toLowerCase()}
+                  {lead.call_status && (
+                      <Badge variant={CALL_STATUS_BADGE_MAP[lead.call_status]} className="capitalize w-28 justify-center">
+                          {lead.call_status.replace(/_/g, ' ').toLowerCase()}
                       </Badge>
                   )}
               </TableCell>
@@ -78,26 +79,26 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
               </TableCell>
               <TableCell>{lead.nombres}</TableCell>
               <TableCell>
-                  {lead.tienda_origen && (
+                  {lead.source && (
                       <div className="flex items-center gap-2">
-                        <ShoppingBag className="h-4 w-4 text-muted-foreground"/>
-                        <span className="font-medium">{lead.tienda_origen}</span>
+                        <Globe className="h-4 w-4 text-muted-foreground"/>
+                        <span className="font-medium capitalize">{lead.source}</span>
                       </div>
                   )}
               </TableCell>
               <TableCell>{lead.celular}</TableCell>
               <TableCell>
-                {lead.id_agente_asignado ? (
+                {lead.assigned_agent_id ? (
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Avatar className="h-8 w-8">
-                          <AvatarImage src={lead.avatar_agente_asignado} />
-                          <AvatarFallback>{getInitials(lead.nombre_agente_asignado)}</AvatarFallback>
+                          <AvatarImage src={lead.assigned_agent_avatar} />
+                          <AvatarFallback>{getInitials(lead.assigned_agent_name)}</AvatarFallback>
                         </Avatar>
                       </TooltipTrigger>
                       <TooltipContent>
-                        <p>{lead.nombre_agente_asignado}</p>
+                        <p>{lead.assigned_agent_name}</p>
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
@@ -106,15 +107,15 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
                 )}
               </TableCell>
               <TableCell className="text-muted-foreground">
-                  {lead.last_updated_from_kommo 
-                      ? formatDistanceToNow(new Date(lead.last_updated_from_kommo), { addSuffix: true, locale: es })
+                  {lead.last_updated 
+                      ? formatDistanceToNow(new Date(lead.last_updated), { addSuffix: true, locale: es })
                       : 'N/A'
                   }
               </TableCell>
               <TableCell className="text-right space-x-2">
                 <Button size="sm" onClick={() => onProcess(lead)} disabled={isAssignedToOther}>
                   <PhoneForwarded className="mr-2 h-4 w-4" />
-                  {lead.estado_llamada === 'NUEVO' ? 'Procesar' : 'Continuar'}
+                  {lead.call_status === 'NUEVO' ? 'Procesar' : 'Continuar'}
                 </Button>
                 
                 <DropdownMenu>

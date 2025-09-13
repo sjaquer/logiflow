@@ -4,6 +4,7 @@ import { KanbanBoard } from './components/kanban-board';
 import type { Order, User, InventoryItem, Filters, Shop } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
+import { useRouter } from 'next/navigation';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState<Order[]>([]);
@@ -11,6 +12,8 @@ export default function OrdersPage() {
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
 
   const [filters, setFilters] = useState<Filters>({
     shops: [],
@@ -28,6 +31,7 @@ export default function OrdersPage() {
       listenToCollection<Order>('orders', (data) => {
         data.sort((a, b) => new Date(b.fechas_clave.creacion).getTime() - new Date(a.fechas_clave.creacion).getTime());
         setOrders(data);
+        setLoading(false);
       }),
       listenToCollection<User>('users', (data) => {
           setUsers(data);
@@ -40,24 +44,23 @@ export default function OrdersPage() {
       }),
     ];
     
-    // Check if all initial data has been loaded.
-    const checkDataLoaded = () => {
-        if (orders.length > 0 && users.length > 0 && inventory.length > 0 && shops.length > 0) {
-            setLoading(false);
-        }
-    };
-    
+    // Safety timeout to prevent infinite loading screen
     const timer = setTimeout(() => {
         if (loading) {
+            console.warn("Loading timeout exceeded, forcing render.");
             setLoading(false);
         }
-    }, 1500); 
+    }, 5000); 
 
     return () => {
       clearTimeout(timer);
       unsubs.forEach(unsubscribe => unsubscribe());
     };
   }, []);
+
+  const handleProcessShopifyOrder = (order: Order) => {
+      router.push(`/create-order?orderId=${order.id_pedido}`);
+  }
 
 
   if (loading) {
@@ -84,6 +87,7 @@ export default function OrdersPage() {
         shops={shops}
         filters={filters}
         onFilterChange={setFilters}
+        onProcessShopifyOrder={handleProcessShopifyOrder}
       />
     </div>
   );

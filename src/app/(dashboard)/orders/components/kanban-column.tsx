@@ -10,9 +10,10 @@ interface KanbanColumnProps {
   inventory: InventoryItem[];
   onOrderStatusChange: (orderId: string, newStatus: OrderStatus) => void;
   onOrderItemsChange: (orderId: string, items: Order['items']) => void;
+  onProcessShopifyOrder: (order: Order) => void;
 }
 
-export function KanbanColumn({ column, orders, users, inventory, onOrderStatusChange, onOrderItemsChange }: KanbanColumnProps) {
+export function KanbanColumn({ column, orders, users, inventory, onOrderStatusChange, onOrderItemsChange, onProcessShopifyOrder }: KanbanColumnProps) {
   return (
     <div className="flex flex-col w-[320px] shrink-0">
         <Droppable id={column.id} onDrop={onOrderStatusChange}>
@@ -31,6 +32,7 @@ export function KanbanColumn({ column, orders, users, inventory, onOrderStatusCh
                 inventory={inventory} 
                 onOrderStatusChange={onOrderStatusChange}
                 onOrderItemsChange={onOrderItemsChange}
+                onProcessShopifyOrder={onProcessShopifyOrder}
             />
             ))}
             {orders.length === 0 && (
