@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { collection, addDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import { getCollectionData } from '@/lib/firebase/firestore-client';
+import { getCollectionData, listenToCollection } from '@/lib/firebase/firestore-client';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, CallStatus } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from '../types';
 import { SHOPS } from '@/lib/constants';
@@ -84,33 +84,27 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
     // This useEffect is now responsible for populating the form when a client is pre-loaded
     useEffect(() => {
         if (initialClient) {
-            const subtotalFromShopify = initialClient.shopify_items?.reduce((acc, item) => acc + (item.precio_unitario * item.cantidad), 0) || 0;
+            // Use setValue for each field to ensure robust update in all environments
+            form.setValue('cliente.dni', initialClient.dni || '');
+            form.setValue('cliente.nombres', initialClient.nombres || '');
+            form.setValue('cliente.celular', initialClient.celular || '');
+            form.setValue('envio.direccion', initialClient.direccion || '');
+            form.setValue('envio.provincia', initialClient.provincia || 'Lima');
+            form.setValue('envio.distrito', initialClient.distrito || '');
             
-            form.reset({
-                cliente: {
-                    dni: initialClient.dni || '',
-                    nombres: initialClient.nombres || '',
-                    celular: initialClient.celular || '',
-                },
-                envio: {
-                    direccion: initialClient.direccion || '',
-                    provincia: initialClient.provincia || 'Lima',
-                    distrito: initialClient.distrito || '',
-                    costo_envio: 0, // Reset shipping cost
-                    courier: undefined,
-                    agencia_shalom: '',
-                },
-                tienda: initialClient.tienda_origen,
-                items: initialClient.shopify_items || [],
-                pago: {
-                    subtotal: subtotalFromShopify,
-                    monto_total: subtotalFromShopify, // Initialize total with subtotal
-                    metodo_pago_previsto: undefined,
-                },
-                notas: {
-                    nota_pedido: '',
-                },
-            });
+            if (initialClient.tienda_origen) {
+              form.setValue('tienda', initialClient.tienda_origen);
+            }
+            
+            if (initialClient.shopify_items && initialClient.shopify_items.length > 0) {
+              const subtotal = initialClient.shopify_items.reduce((acc, item) => acc + (item.precio_unitario * item.cantidad), 0);
+              form.setValue('items', initialClient.shopify_items);
+              form.setValue('pago.subtotal', subtotal);
+              form.setValue('pago.monto_total', subtotal + (form.getValues('envio.costo_envio') || 0));
+            } else {
+              form.setValue('items', []);
+            }
+            
              toast({
                 title: 'Cliente Precargado',
                 description: `Datos de ${initialClient.nombres} listos para confirmar.`,
@@ -120,15 +114,14 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
 
     useEffect(() => {
-        async function fetchCurrentUser() {
-            if (authUser) {
-                const usersData = await getCollectionData<User>('users');
-                const foundUser = usersData.find(u => u.email === authUser.email);
-                setCurrentUser(foundUser || null);
-            }
+        if (authUser) {
+          const unsubUser = listenToCollection<User>('users', (users) => {
+            const foundUser = users.find(u => u.email === authUser.email);
+            setCurrentUser(foundUser || null);
+          });
+          return () => unsubUser();
         }
-        fetchCurrentUser();
-    }, [authUser]);
+      }, [authUser]);
     
     const handleSaveDraft = async () => {
         setIsSavingDraft(true);
@@ -253,14 +246,11 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         }
     };
 
-    const handleKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
-      if (event.key === 'Enter') {
-        const target = event.target as HTMLElement;
-        if (target.tagName.toLowerCase() !== 'textarea' && target.getAttribute('type') !== 'submit') {
-            event.preventDefault();
+    const handleKeyDown = (event: React.KeyboardEvent) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
         }
-      }
-    };
+      };
     
     if (currentUser && !ALLOWED_ROLES.includes(currentUser.rol)) {
         return (
@@ -309,3 +299,5 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         </div>
     );
 }
+
+    
