@@ -20,7 +20,7 @@ interface KanbanCardProps {
 }
 
 export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrderItemsChange, onProcessShopifyOrder }: KanbanCardProps) {
-  const assignedUser = users.find(u => u.id_usuario === order.asignacion.id_usuario_actual);
+  const assignedUser = order.asignacion ? users.find(u => u.id_usuario === order.asignacion.id_usuario_actual) : undefined;
 
   const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '?';
 
