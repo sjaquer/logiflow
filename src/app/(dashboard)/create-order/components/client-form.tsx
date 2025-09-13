@@ -11,13 +11,17 @@ import { Textarea } from '@/components/ui/textarea';
 import { provinces, getDistrictsByProvince } from '@/lib/ubigeo';
 import { Combobox } from '@/components/ui/combobox';
 import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Save } from 'lucide-react';
 
 interface ClientFormProps {
   form: ReturnType<typeof useForm<CreateOrderFormValues>>;
   clients: Client[];
+  onSaveClient: () => void;
+  isSavingClient: boolean;
 }
 
-export function ClientForm({ form, clients }: ClientFormProps) {
+export function ClientForm({ form, clients, onSaveClient, isSavingClient }: ClientFormProps) {
   
   const courier = useWatch({
     control: form.control,
@@ -42,14 +46,23 @@ export function ClientForm({ form, clients }: ClientFormProps) {
   const handleClientChange = (dni: string) => {
     const client = clients.find(c => c.dni === dni);
     if (client) {
+        form.setValue('cliente.id', client.id);
         form.setValue('cliente.nombres', client.nombres);
         form.setValue('cliente.celular', client.celular);
+        form.setValue('cliente.email', client.email || '');
         form.setValue('envio.direccion', client.direccion || '');
         form.setValue('envio.provincia', client.provincia || 'Lima');
         // Ensure district is updated after province is set
         setTimeout(() => {
             form.setValue('envio.distrito', client.distrito || '');
         }, 0);
+    } else {
+      // Clear client-specific fields if DNI doesn't match any existing client
+      form.setValue('cliente.id', undefined);
+      form.setValue('cliente.nombres', '');
+      form.setValue('cliente.celular', '');
+      form.setValue('cliente.email', '');
+      form.setValue('envio.direccion', '');
     }
   }
 
@@ -72,10 +85,18 @@ export function ClientForm({ form, clients }: ClientFormProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Cliente y Envío</CardTitle>
-        <CardDescription>
-          Busca o ingresa los datos del cliente.
-        </CardDescription>
+        <div className="flex justify-between items-center">
+            <div>
+                <CardTitle>Cliente y Envío</CardTitle>
+                <CardDescription>
+                Busca o ingresa los datos del cliente.
+                </CardDescription>
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={onSaveClient} disabled={isSavingClient}>
+                <Save className="mr-2 h-4 w-4" />
+                Guardar Cliente
+            </Button>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <FormField
@@ -97,7 +118,7 @@ export function ClientForm({ form, clients }: ClientFormProps) {
                         />
                     </FormControl>
                     <datalist id="client-dnis">
-                        {clients.map(c => <option key={c.id} value={c.dni} />)}
+                        {clients.map(c => <option key={c.id} value={c.dni}>{c.nombres}</option>)}
                     </datalist>
                     <FormMessage />
                 </FormItem>
@@ -114,17 +135,30 @@ export function ClientForm({ form, clients }: ClientFormProps) {
                 </FormItem>
             )}
         />
-        <FormField
-            control={form.control}
-            name="cliente.celular"
-            render={({ field }) => (
-                <FormItem>
-                    <FormLabel>Celular</FormLabel>
-                    <FormControl><Input {...field} placeholder="987654321" onKeyDown={handleKeyDown} /></FormControl>
-                    <FormMessage />
-                </FormItem>
-            )}
-        />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormField
+                control={form.control}
+                name="cliente.celular"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Celular</FormLabel>
+                        <FormControl><Input {...field} placeholder="987654321" onKeyDown={handleKeyDown} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormField
+                control={form.control}
+                name="cliente.email"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Email (Opcional)</FormLabel>
+                        <FormControl><Input {...field} placeholder="cliente@email.com" onKeyDown={handleKeyDown} /></FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+        </div>
         <FormField
               control={form.control}
               name="tienda"

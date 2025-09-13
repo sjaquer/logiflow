@@ -15,7 +15,7 @@ import { provinces, getDistrictsByProvince } from '@/lib/ubigeo';
 import { Combobox } from '@/components/ui/combobox';
 
 const clientSchema = z.object({
-  dni: z.string().length(8, 'El DNI debe tener 8 dígitos.'),
+  dni: z.string().min(3, 'El DNI/RUC/CE es requerido.'),
   nombres: z.string().min(3, 'El nombre es requerido.'),
   celular: z.string().min(9, 'El celular es requerido.'),
   email: z.string().email('Email inválido.').optional().or(z.literal('')),
@@ -105,9 +105,9 @@ export function ClientDialog({ isOpen, onOpenChange, onSave, client }: ClientDia
                 name="dni"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>DNI</FormLabel>
+                    <FormLabel>DNI / RUC / CE</FormLabel>
                     <FormControl>
-                        <Input {...field} placeholder="12345678" disabled={!!client} />
+                        <Input {...field} placeholder="12345678" />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -211,4 +211,3 @@ export function ClientDialog({ isOpen, onOpenChange, onSave, client }: ClientDia
     </Dialog>
   );
 }
-

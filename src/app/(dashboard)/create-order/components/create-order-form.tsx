@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, writeBatch, getDocs, query, where, addDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, Client } from '@/lib/types';
@@ -25,9 +25,11 @@ import { useRouter } from 'next/navigation';
 const createOrderSchema = z.object({
     tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }).optional(),
     cliente: z.object({
-        dni: z.string().length(8, "DNI debe tener 8 dígitos"),
+        id: z.string().optional(),
+        dni: z.string().min(3, "DNI/CE/RUC es requerido"),
         nombres: z.string().min(3, "Nombre es requerido"),
         celular: z.string().min(9, "Celular es requerido"),
+        email: z.string().email('Email inválido.').optional().or(z.literal('')),
     }),
     items: z.array(z.object({
         sku: z.string(),
@@ -72,11 +74,12 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
 
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSavingClient, setIsSavingClient] = useState(false);
     
     const form = useForm<CreateOrderFormValues>({
         resolver: zodResolver(createOrderSchema),
         defaultValues: {
-            cliente: { dni: '', nombres: '', celular: '' },
+            cliente: { id: '', dni: '', nombres: '', celular: '', email: '' },
             items: [],
             pago: { subtotal: 0, monto_total: 0 },
             envio: { direccion: '', provincia: 'Lima', distrito: '', costo_envio: 0 },
@@ -93,15 +96,16 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         
         if (initialClient) {
             if(isDevMode) console.log("Populating form from initialClient...");
+            form.setValue('cliente.id', initialClient.id);
             form.setValue('cliente.dni', initialClient.dni || '');
             form.setValue('cliente.nombres', initialClient.nombres || '');
             form.setValue('cliente.celular', initialClient.celular || '');
+            form.setValue('cliente.email', initialClient.email || '');
             form.setValue('envio.direccion', initialClient.direccion || '');
             form.setValue('envio.provincia', initialClient.provincia || 'Lima');
             form.setValue('envio.distrito', initialClient.distrito || '');
             form.setValue('tienda', initialClient.tienda_origen);
             
-            // If the lead comes from Shopify, populate the cart
             if (initialClient.source === 'shopify' && initialClient.shopify_items) {
                  if(isDevMode) console.log("Shopify items found, populating cart:", initialClient.shopify_items);
                 form.setValue('items', initialClient.shopify_items);
@@ -134,6 +138,73 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         }
       }, [authUser]);
 
+    const saveOrUpdateClient = async (clientData: CreateOrderFormValues['cliente'], shippingData: CreateOrderFormValues['envio']): Promise<string> => {
+        const clientsRef = collection(db, 'clients');
+        
+        // Use client ID from form if it exists (meaning it was pre-loaded)
+        if (clientData.id) {
+             const clientRef = doc(db, 'clients', clientData.id);
+             const clientSnap = await getDoc(clientRef);
+             if (clientSnap.exists()) {
+                await updateDoc(clientRef, {
+                    nombres: clientData.nombres,
+                    celular: clientData.celular,
+                    email: clientData.email,
+                    dni: clientData.dni,
+                    direccion: shippingData.direccion,
+                    distrito: shippingData.distrito,
+                    provincia: shippingData.provincia,
+                    last_updated: new Date().toISOString(),
+                });
+                return clientData.id;
+             }
+        }
+
+        // If no ID, check if client exists by DNI
+        const q = query(clientsRef, where("dni", "==", clientData.dni));
+        const querySnapshot = await getDocs(q);
+
+        const newClientPayload = {
+            nombres: clientData.nombres,
+            celular: clientData.celular,
+            email: clientData.email,
+            dni: clientData.dni,
+            direccion: shippingData.direccion,
+            distrito: shippingData.distrito,
+            provincia: shippingData.provincia,
+            last_updated: new Date().toISOString(),
+            source: 'manual', // If created from form, it's manual
+            call_status: 'VENTA_CONFIRMADA',
+            first_interaction_at: new Date().toISOString(),
+        };
+
+        if (!querySnapshot.empty) {
+            // Client with DNI exists, update it and return its ID
+            const existingClientDoc = querySnapshot.docs[0];
+            await updateDoc(existingClientDoc.ref, newClientPayload);
+            return existingClientDoc.id;
+        } else {
+            // Client does not exist, create a new one
+            const newClientRef = await addDoc(clientsRef, newClientPayload);
+            return newClientRef.id;
+        }
+    };
+    
+    const handleSaveClient = async () => {
+        setIsSavingClient(true);
+        try {
+            const formData = form.getValues();
+            const clientId = await saveOrUpdateClient(formData.cliente, formData.envio);
+            form.setValue('cliente.id', clientId); // Update form state with the correct ID
+            toast({ title: 'Cliente Guardado', description: 'Los datos del cliente se han guardado correctamente.' });
+        } catch (error) {
+            console.error("Error saving client:", error);
+            toast({ title: "Error", description: "No se pudo guardar la información del cliente.", variant: "destructive" });
+        } finally {
+            setIsSavingClient(false);
+        }
+    };
+
 
     const onSubmit = async (data: CreateOrderFormValues) => {
         if (!currentUser) {
@@ -142,91 +213,82 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
         }
 
         setIsSubmitting(true);
-        const batch = writeBatch(db);
-
-        // --- 1. Client Management ---
-        // Ensure client exists or create it. DNI is the ID.
-        const clientRef = doc(db, 'clients', data.cliente.dni);
-        const clientSnap = await getDoc(clientRef);
-        
-        const clientData: Partial<Client> = {
-          dni: data.cliente.dni,
-          nombres: data.cliente.nombres,
-          celular: data.cliente.celular,
-          direccion: data.envio.direccion,
-          distrito: data.envio.distrito,
-          provincia: data.envio.provincia,
-          source: clientSnap.exists() ? clientSnap.data().source : (initialClient?.source || 'manual'),
-          last_updated: new Date().toISOString(),
-          call_status: 'VENTA_CONFIRMADA',
-        };
-        // Use set with merge to create or update the client
-        batch.set(clientRef, clientData, { merge: true });
-
-        // --- 2. Order Creation ---
-        const orderId = `PED-${Date.now()}`;
-        const orderRef = doc(db, 'orders', orderId);
-
-        const finalOrderData: Omit<Order, 'id_pedido'> = {
-            id_interno: initialClient?.shopify_order_id ? `SHOPIFY-${initialClient.shopify_order_id}` : `MANUAL-${Date.now()}`,
-            tienda: { id_tienda: data.tienda || 'Trazto', nombre: data.tienda || 'Trazto' },
-            estado_actual: 'EN_PREPARACION', // Move to next step after confirmation
-            cliente: { // Denormalize client data in order
-                id_cliente: data.cliente.dni, 
-                dni: data.cliente.dni,
-                nombres: data.cliente.nombres,
-                celular: data.cliente.celular
-            },
-            items: data.items,
-            pago: {
-                monto_total: data.pago.monto_total,
-                monto_pendiente: data.pago.monto_total, // Assume payment is pending on creation
-                metodo_pago_previsto: data.pago.metodo_pago_previsto!,
-                estado_pago: 'PENDIENTE',
-                comprobante_url: null,
-                fecha_pago: null,
-            },
-            envio: {
-                ...data.envio,
-                tipo: data.envio.provincia.toLowerCase() === 'lima' ? 'LIMA' : 'PROVINCIA',
-                nro_guia: null,
-                link_seguimiento: null,
-            },
-            asignacion: {
-                id_usuario_actual: currentUser.id_usuario,
-                nombre_usuario_actual: currentUser.nombre,
-            },
-            historial: [
-                {
-                    fecha: new Date().toISOString(),
-                    id_usuario: currentUser.id_usuario,
-                    nombre_usuario: currentUser.nombre,
-                    accion: 'Pedido Confirmado',
-                    detalle: `Pedido procesado por ${currentUser.nombre} (${currentUser.rol}). Origen: ${initialClient?.source || 'manual'}`
-                }
-            ],
-            fechas_clave: {
-                creacion: new Date().toISOString(),
-                confirmacion_llamada: new Date().toISOString(),
-                procesamiento_iniciado: new Date().toISOString(),
-                preparacion: null,
-                despacho: null,
-                entrega_estimada: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-                entrega_real: null,
-                anulacion: null,
-            },
-            notas: {
-                nota_pedido: data.notas.nota_pedido || '',
-                observaciones_internas: '',
-                motivo_anulacion: null,
-            },
-            source: initialClient?.source || 'manual',
-            shopify_order_id: initialClient?.shopify_order_id || undefined,
-        };
-
-        batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
         
         try {
+            const finalClientId = await saveOrUpdateClient(data.cliente, data.envio);
+
+            const batch = writeBatch(db);
+
+            // --- Order Creation ---
+            const orderId = `PED-${Date.now()}`;
+            const orderRef = doc(db, 'orders', orderId);
+
+            const finalOrderData: Omit<Order, 'id_pedido'> = {
+                id_interno: initialClient?.shopify_order_id ? `SHOPIFY-${initialClient.shopify_order_id}` : `MANUAL-${Date.now()}`,
+                tienda: { id_tienda: data.tienda || 'Trazto', nombre: data.tienda || 'Trazto' },
+                estado_actual: 'EN_PREPARACION', 
+                cliente: { 
+                    id_cliente: finalClientId, 
+                    dni: data.cliente.dni,
+                    nombres: data.cliente.nombres,
+                    celular: data.cliente.celular,
+                    email: data.cliente.email
+                },
+                items: data.items,
+                pago: {
+                    monto_total: data.pago.monto_total,
+                    monto_pendiente: data.pago.monto_total, 
+                    metodo_pago_previsto: data.pago.metodo_pago_previsto!,
+                    estado_pago: 'PENDIENTE',
+                    comprobante_url: null,
+                    fecha_pago: null,
+                },
+                envio: {
+                    ...data.envio,
+                    tipo: data.envio.provincia.toLowerCase() === 'lima' ? 'LIMA' : 'PROVINCIA',
+                    nro_guia: null,
+                    link_seguimiento: null,
+                },
+                asignacion: {
+                    id_usuario_actual: currentUser.id_usuario,
+                    nombre_usuario_actual: currentUser.nombre,
+                },
+                historial: [
+                    {
+                        fecha: new Date().toISOString(),
+                        id_usuario: currentUser.id_usuario,
+                        nombre_usuario: currentUser.nombre,
+                        accion: 'Pedido Confirmado',
+                        detalle: `Pedido procesado por ${currentUser.nombre} (${currentUser.rol}). Origen: ${initialClient?.source || 'manual'}`
+                    }
+                ],
+                fechas_clave: {
+                    creacion: new Date().toISOString(),
+                    confirmacion_llamada: new Date().toISOString(),
+                    procesamiento_iniciado: new Date().toISOString(),
+                    preparacion: null,
+                    despacho: null,
+                    entrega_estimada: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+                    entrega_real: null,
+                    anulacion: null,
+                },
+                notas: {
+                    nota_pedido: data.notas.nota_pedido || '',
+                    observaciones_internas: '',
+                    motivo_anulacion: null,
+                },
+                source: initialClient?.source || 'manual',
+                shopify_order_id: initialClient?.shopify_order_id || undefined,
+            };
+
+            batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
+        
+            // Update client status in a separate write if it came from the queue
+            if (initialClient?.id) {
+                const clientRef = doc(db, 'clients', initialClient.id);
+                batch.update(clientRef, { call_status: 'VENTA_CONFIRMADA' });
+            }
+
             await batch.commit();
             
             toast({ title: "¡Éxito!", description: `Pedido ${orderId} creado y guardado.` });
@@ -279,7 +341,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                          <ItemsForm form={form} inventory={inventory} />
                     </div>
                     <div className="lg:col-span-1 space-y-8">
-                        <ClientForm form={form} clients={clients} />
+                        <ClientForm form={form} clients={clients} onSaveClient={handleSaveClient} isSavingClient={isSavingClient} />
                         <PaymentForm form={form} />
                     </div>
                 </form>

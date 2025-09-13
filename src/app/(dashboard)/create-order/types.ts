@@ -6,9 +6,11 @@ export type { Client };
 export type CreateOrderFormValues = {
     tienda?: Order['tienda']['nombre'];
     cliente: {
+        id?: string; // Client document ID
         dni: string;
         nombres: string;
         celular: string;
+        email?: string;
     };
     items: Order['items'];
     pago: {

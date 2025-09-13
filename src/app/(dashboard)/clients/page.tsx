@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import type { Client } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { db } from '@/lib/firebase/firebase';
-import { doc, setDoc, deleteDoc, addDoc, collection } from 'firebase/firestore';
+import { doc, setDoc, deleteDoc, addDoc, collection, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -44,17 +44,23 @@ export default function ClientsPage() {
     setIsDialogOpen(true);
   };
 
-  const handleSaveClient = async (clientData: Omit<Client, 'id'>) => {
+  const handleSaveClient = async (clientData: Omit<Client, 'id' | 'source' | 'last_updated' | 'call_status'>) => {
     try {
       if (editingClient) {
         // Update existing client
         const clientRef = doc(db, 'clients', editingClient.id);
-        await setDoc(clientRef, clientData, { merge: true });
+        await updateDoc(clientRef, { ...clientData, last_updated: new Date().toISOString() });
         toast({ title: 'Éxito', description: 'Cliente actualizado correctamente.' });
       } else {
-        // Create new client (DNI becomes the ID)
-        const clientRef = doc(db, 'clients', clientData.dni);
-        await setDoc(clientRef, clientData);
+        // Create new client
+        const clientCollectionRef = collection(db, 'clients');
+        await addDoc(clientCollectionRef, { 
+            ...clientData,
+            source: 'manual',
+            call_status: 'NUEVO',
+            last_updated: new Date().toISOString(),
+            first_interaction_at: new Date().toISOString()
+        });
         toast({ title: 'Éxito', description: 'Cliente creado correctamente.' });
       }
       setIsDialogOpen(false);

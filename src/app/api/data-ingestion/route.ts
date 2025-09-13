@@ -3,6 +3,8 @@ import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/firebase-admin';
 import { getContactDetails, getLeadDetails } from '@/lib/kommo';
 import type { OrderItem, Shop, Client, Order } from '@/lib/types';
+import { addDoc, collection, getDocs, query, where, updateDoc } from 'firebase/firestore';
+
 
 const db = getAdminDb();
 
@@ -23,7 +25,9 @@ async function handleShopifyWebhook(data: Record<string, any>) {
     const shippingAddress = data.shipping_address || {};
     const customer = data.customer || {};
     
-    const dni = shippingAddress.company || `temp-shopify-${data.id}`;
+    // Prioritize DNI from the 'company' field. Fallback to a temporary ID.
+    const dniRaw = shippingAddress.company || `temp-shopify-${data.id}`;
+    const dni = String(dniRaw).trim();
 
     let clientName = shippingAddress.name || '';
     if (!clientName && (customer.first_name || customer.last_name)) {
@@ -41,12 +45,16 @@ async function handleShopifyWebhook(data: Record<string, any>) {
     }));
     
     const shippingCost = parseFloat(data.total_shipping_price_set?.shop_money?.amount || '0');
+    
+    const clientsRef = db.collection('clients');
+    const q = query(clientsRef, where("dni", "==", dni));
+    const querySnapshot = await getDocs(q);
 
-    const clientLead: Partial<Client> = {
+    const clientLeadPayload: Omit<Client, 'id'> = {
       dni: dni,
       nombres: clientName,
       celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
-      email: customer.email || '',
+      email: customer.email || data.email || '',
       direccion: shippingAddress.address1 || '',
       distrito: shippingAddress.city || '',
       provincia: shippingAddress.province || 'Lima',
@@ -64,12 +72,22 @@ async function handleShopifyWebhook(data: Record<string, any>) {
         payment_gateway: data.payment_gateway_names?.[0] || 'Desconocido',
       }
     };
-    
-    const clientDocRef = db.collection('clients').doc(dni);
-    await clientDocRef.set(clientLead, { merge: true });
 
-    console.log(`Successfully created/updated lead in 'clients' collection for Shopify order. Client/Lead ID: ${clientDocRef.id}`);
-    return NextResponse.json({ success: true, message: 'Shopify order processed into a client lead for Call Center.', clientId: clientDocRef.id });
+    let clientId: string;
+    if (!querySnapshot.empty) {
+        // Client exists, update it
+        const existingClientDoc = querySnapshot.docs[0];
+        await updateDoc(existingClientDoc.ref, clientLeadPayload as { [x: string]: any });
+        clientId = existingClientDoc.id;
+        console.log(`Successfully updated existing client from Shopify order. Client ID: ${clientId}`);
+    } else {
+        // Client does not exist, create a new one
+        const newClientRef = await addDoc(clientsRef, clientLeadPayload);
+        clientId = newClientRef.id;
+        console.log(`Successfully created new client from Shopify order. Client ID: ${clientId}`);
+    }
+
+    return NextResponse.json({ success: true, message: 'Shopify order processed into a client lead for Call Center.', clientId: clientId });
 }
 
 
@@ -112,7 +130,11 @@ async function handleKommoWebhook(data: Record<string, any>) {
       return NextResponse.json({ success: false, message: 'DNI not found in custom fields.' }, { status: 400 });
     }
     
-    const clientData: Partial<Client> = {
+    const clientsRef = db.collection('clients');
+    const q = query(clientsRef, where("dni", "==", clientDNI));
+    const querySnapshot = await getDocs(q);
+
+    const clientDataPayload: Partial<Client> = {
       dni: clientDNI,
       nombres: contactDetails.name || '',
       celular: formatPhoneNumber(clientPhone),
@@ -127,12 +149,20 @@ async function handleKommoWebhook(data: Record<string, any>) {
       kommo_lead_id: leadId,
       kommo_contact_id: contactId,
     };
-
-    const docRef = db.collection('clients').doc(clientDNI);
-    await docRef.set(clientData, { merge: true });
     
-    console.log(`Successfully processed Kommo lead and created/updated client: ${clientDNI}`);
-    return NextResponse.json({ success: true, message: 'Kommo lead processed into a client document.', id: docRef.id });
+    let clientId: string;
+    if(!querySnapshot.empty) {
+        const existingClientDoc = querySnapshot.docs[0];
+        await updateDoc(existingClientDoc.ref, clientDataPayload as { [x: string]: any });
+        clientId = existingClientDoc.id;
+        console.log(`Successfully updated existing client from Kommo lead. Client ID: ${clientId}`);
+    } else {
+        const newClientRef = await addDoc(clientsRef, clientDataPayload);
+        clientId = newClientRef.id;
+        console.log(`Successfully created new client from Kommo lead. Client ID: ${clientId}`);
+    }
+
+    return NextResponse.json({ success: true, message: 'Kommo lead processed into a client document.', id: clientId });
 }
 
 export async function POST(request: Request) {

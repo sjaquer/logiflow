@@ -1,3 +1,4 @@
+
 // tsx -r dotenv/config --tsconfig tsconfig.scripts.json scripts/seed-firestore.ts
 import 'dotenv/config';
 import { getAuth } from 'firebase-admin/auth';
@@ -13,7 +14,7 @@ const BATCH_LIMIT = 400; // Firestore batch limit, reduced for safety
 
 async function clearCollection(collectionName: string) {
     const collectionRef = db.collection(collectionName);
-    const snapshot = await collectionRef.limit(BATCH_LIMIT).get();
+    let snapshot = await collectionRef.limit(BATCH_LIMIT).get();
 
     if (snapshot.empty) {
         console.log(`Collection ${collectionName} is already empty.`);
@@ -30,8 +31,7 @@ async function clearCollection(collectionName: string) {
         await batch.commit();
         deletedCount += snapshot.size;
         console.log(`Deleted ${deletedCount} documents from ${collectionName}.`);
-        const nextSnapshot = await collectionRef.limit(BATCH_LIMIT).get();
-        if (nextSnapshot.empty) break;
+        snapshot = await collectionRef.limit(BATCH_LIMIT).get();
     }
      console.log(`✅ Collection ${collectionName} cleared.`);
 }
@@ -46,19 +46,26 @@ async function seedCollection<T extends { [key: string]: any }>(
   const collectionRef = db.collection(collectionName);
   let batch = db.batch();
   let count = 0;
+  const generatedIds: string[] = [];
 
   for (const item of data) {
     const docId = idField ? String(item[idField]) : undefined;
     const docRef = docId ? collectionRef.doc(docId) : collectionRef.doc();
     
-    // If we're creating a new doc, add the ID to the data
-    const dataToSet = { ...item, ...(docId ? {} : { id: docRef.id }) };
+    const dataToSet: any = { ...item };
+
+    if (!docId) {
+      dataToSet.id = docRef.id;
+    }
+
     if (collectionName === 'orders' && !docId) {
         dataToSet.id_pedido = docRef.id;
     }
 
     batch.set(docRef, dataToSet);
+    generatedIds.push(docRef.id);
     count++;
+
     if (count % BATCH_LIMIT === 0) {
       console.log(`Committing batch of ${BATCH_LIMIT} documents to ${collectionName}...`);
       await batch.commit();
@@ -72,6 +79,7 @@ async function seedCollection<T extends { [key: string]: any }>(
   }
 
   console.log(`✅ Seeded ${count} documents into ${collectionName}.`);
+  return generatedIds;
 }
 
 
@@ -142,27 +150,33 @@ async function seedInventory() {
     return dataWithSku;
 }
 
-async function seedClients() {
-    const clientData: Client[] = seedOrdersData.map(order => ({
-        id: order.cliente.dni,
+async function seedClients(): Promise<Client[]> {
+    const clientData: Omit<Client, 'id'>[] = seedOrdersData.map(order => ({
         dni: order.cliente.dni,
         nombres: order.cliente.nombres,
         celular: order.cliente.celular,
+        email: `cliente${order.cliente.dni}@example.com`,
         direccion: order.envio.direccion,
         distrito: order.envio.distrito || '',
         provincia: order.envio.provincia,
         source: 'manual',
         last_updated: new Date().toISOString(),
         call_status: 'VENTA_CONFIRMADA',
+        first_interaction_at: new Date().toISOString()
     }));
 
-    const uniqueClients = Array.from(new Map(clientData.map(c => [c.dni, c])).values());
-    if (uniqueClients.length > 0) {
-      await seedCollection('clients', uniqueClients, 'id');
-    } else {
-      console.log('No unique clients found in orders to seed.');
-    }
-    return uniqueClients;
+    const uniqueClientsMap = new Map<string, Omit<Client, 'id'>>();
+    clientData.forEach(c => uniqueClientsMap.set(c.dni, c));
+    const uniqueClientsData = Array.from(uniqueClientsMap.values());
+    
+    const generatedIds = await seedCollection('clients', uniqueClientsData);
+
+    const seededClients = uniqueClientsData.map((client, index) => ({
+        ...client,
+        id: generatedIds[index],
+    }));
+
+    return seededClients;
 }
 
 async function seedOrders(allUsers: User[], inventoryItems: any[], clients: Client[]) {
@@ -195,7 +209,7 @@ async function seedOrders(allUsers: User[], inventoryItems: any[], clients: Clie
             ...order,
             id_pedido: id_pedido,
             id_interno: `INT-${String(index + 1).padStart(5, '0')}`,
-            cliente: { ...order.cliente, id_cliente: client.id },
+            cliente: { ...order.cliente, id_cliente: client.id, email: client.email },
             asignacion: {
                 id_usuario_actual: assignedUser.id_usuario,
                 nombre_usuario_actual: assignedUser.nombre,

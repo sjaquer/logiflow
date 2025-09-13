@@ -32,6 +32,7 @@ export interface Order {
     nombres: string;
     dni: string;
     celular: string;
+    email?: string;
   };
   items: OrderItem[];
   pago: {
@@ -143,7 +144,7 @@ export interface User {
 export type CallStatus = 'NUEVO' | 'CONTACTADO' | 'NO_CONTESTA' | 'NUMERO_EQUIVOCADO' | 'EN_SEGUIMIENTO' | 'VENTA_CONFIRMADA' | 'HIBERNACION';
 
 export interface Client {
-    id: string; // Document ID from Firestore (DNI or Kommo-ID)
+    id: string; // Document ID from Firestore (unique, auto-generated)
     dni: string;
     nombres: string;
     celular: string;
