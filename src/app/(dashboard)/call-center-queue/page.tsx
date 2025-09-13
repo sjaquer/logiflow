@@ -106,8 +106,12 @@ export default function CallCenterQueuePage() {
           description: `Ahora estás a cargo de ${client.nombres}.`,
         });
         
-        // 2. Only navigate AFTER the update is successful.
-        router.push(`/create-order?clientId=${client.id}`);
+        // 2. Create updated client object with the new data
+        const updatedClient = { ...client, ...updateData };
+        
+        // 3. Pass the complete client data via URL state to avoid race conditions
+        const clientDataParam = encodeURIComponent(JSON.stringify(updatedClient));
+        router.push(`/create-order?clientId=${client.id}&clientData=${clientDataParam}`);
 
     } catch (error) {
         console.error("Error processing client:", error);

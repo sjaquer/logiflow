@@ -9,7 +9,7 @@ import type { Client } from '@/lib/types';
 import { useDevMode } from '@/context/dev-mode-context';
 
 // This component is responsible for fetching ALL necessary data.
-function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
+function CreateOrderPageContent({ clientId, clientData }: { clientId: string | null; clientData: string | null }) {
     const [inventory, setInventory] = useState<InventoryItem[]>([]);
     const [clients, setClients] = useState<Client[]>([]);
     const [initialClient, setInitialClient] = useState<Client | null>(null);
@@ -26,6 +26,7 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
               console.group("DEV MODE: CreateOrderPageContent Data Fetching");
               console.log("Timestamp:", new Date().toISOString());
               console.log("Received clientId:", clientId);
+              console.log("Received clientData:", clientData);
             }
 
             try {
@@ -33,9 +34,22 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
                 const inventoryDataPromise = getCollectionData<InventoryItem>('inventory');
                 const clientsDataPromise = getCollectionData<Client>('clients');
                 
-                // If a clientId is provided, fetch that specific client.
-                let initialClientPromise: Promise<Client | null> = Promise.resolve(null);
-                if (clientId) {
+                let parsedClientData: Client | null = null;
+                
+                // First, try to use the passed clientData (this avoids race conditions)
+                if (clientData) {
+                    try {
+                        parsedClientData = JSON.parse(decodeURIComponent(clientData));
+                        if (isDevMode) console.log("SUCCESS: Using passed client data to avoid race condition:", parsedClientData);
+                    } catch (e) {
+                        if (isDevMode) console.warn("Could not parse clientData, falling back to fetching by ID:", e);
+                    }
+                }
+                
+                // If no clientData was passed or parsing failed, fetch by ID
+                let initialClientPromise: Promise<Client | null> = Promise.resolve(parsedClientData);
+                if (!parsedClientData && clientId) {
+                    if (isDevMode) console.log("Fetching client by ID as fallback...");
                     initialClientPromise = getDocumentData<Client>('clients', clientId);
                 }
 
@@ -73,7 +87,7 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
             }
         }
         fetchData();
-    }, [clientId, isDevMode]);
+    }, [clientId, clientData, isDevMode]);
 
 
     if (loading) {
@@ -124,6 +138,7 @@ export default function CreateOrderPage({
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
   const clientId = typeof searchParams.clientId === 'string' ? searchParams.clientId : null;
+  const clientData = typeof searchParams.clientData === 'string' ? searchParams.clientData : null;
 
   return (
     // The Suspense boundary is crucial for this pattern to work correctly.
@@ -146,7 +161,7 @@ export default function CreateOrderPage({
             </div>
         </div>
     }>
-        <CreateOrderPageContent clientId={clientId} />
+        <CreateOrderPageContent clientId={clientId} clientData={clientData} />
     </Suspense>
   );
 }
