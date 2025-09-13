@@ -15,6 +15,7 @@ import { getCollectionData, listenToCollection } from '@/lib/firebase/firestore-
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, CallStatus } from '@/lib/types';
 import type { CreateOrderFormValues, Client } from '../types';
 import { SHOPS } from '@/lib/constants';
+import { useDevMode } from '@/context/dev-mode-context';
 
 import { ClientForm } from './client-form';
 import { ItemsForm } from './items-form';
@@ -65,6 +66,7 @@ interface CreateOrderFormProps {
 export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrderFormProps) {
     const { user: authUser } = useAuth();
     const { toast } = useToast();
+    const { isDevMode } = useDevMode();
 
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,7 +85,14 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
     
     // This useEffect is now responsible for populating the form when a client is pre-loaded
     useEffect(() => {
+        if (isDevMode) {
+          console.group("DEV MODE: CreateOrderForm Data Population");
+          console.log("Timestamp:", new Date().toISOString());
+          console.log("Received initialClient prop:", initialClient);
+        }
+
         if (initialClient) {
+            if (isDevMode) console.log("Attempting to populate form with initialClient data...");
             // Use setValue for each field to ensure robust update in all environments
             form.setValue('cliente.dni', initialClient.dni || '');
             form.setValue('cliente.nombres', initialClient.nombres || '');
@@ -97,11 +106,13 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             }
             
             if (initialClient.shopify_items && initialClient.shopify_items.length > 0) {
+              if(isDevMode) console.log("Populating items from shopify_items:", initialClient.shopify_items);
               const subtotal = initialClient.shopify_items.reduce((acc, item) => acc + (item.precio_unitario * item.cantidad), 0);
               form.setValue('items', initialClient.shopify_items);
               form.setValue('pago.subtotal', subtotal);
               form.setValue('pago.monto_total', subtotal + (form.getValues('envio.costo_envio') || 0));
             } else {
+              if(isDevMode) console.log("No shopify_items found, setting items to empty array.");
               form.setValue('items', []);
             }
             
@@ -110,7 +121,8 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                 description: `Datos de ${initialClient.nombres} listos para confirmar.`,
             });
         }
-    }, [initialClient, form, toast]);
+        if (isDevMode) console.groupEnd();
+    }, [initialClient, form, toast, isDevMode]);
 
 
     useEffect(() => {

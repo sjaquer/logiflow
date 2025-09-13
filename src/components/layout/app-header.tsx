@@ -22,13 +22,15 @@ export function AppHeader({ user }: AppHeaderProps) {
 
   useEffect(() => {
     if (isDevMode) {
-      console.group("Dev Mode Active");
+      console.group("DEV MODE: AppHeader Diagnostics");
+      console.log("Timestamp:", new Date().toISOString());
+      console.log("Current Pathname:", pathname);
       console.log("Current User:", user);
-      console.log("Current Theme:", theme);
-      console.log("Current Color Palette:", colorPalette);
+      console.log("Theme:", theme);
+      console.log("Color Palette:", colorPalette.name);
       console.groupEnd();
     }
-  }, [isDevMode, user, theme, colorPalette]);
+  }, [isDevMode, user, theme, colorPalette, pathname]);
 
   useEffect(() => {
     const unsubs: (() => void)[] = [];

@@ -6,6 +6,7 @@ import type { InventoryItem } from '@/lib/types';
 import { CreateOrderForm } from './components/create-order-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { Client } from './types';
+import { useDevMode } from '@/context/dev-mode-context';
 
 // This component is now responsible for fetching ALL data.
 function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
@@ -14,37 +15,54 @@ function CreateOrderPageContent({ clientId }: { clientId: string | null }) {
     const [initialClient, setInitialClient] = useState<Client | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const { isDevMode } = useDevMode();
 
     useEffect(() => {
         async function fetchData() {
             setLoading(true);
             setError(null);
+            
+            if (isDevMode) {
+              console.group("DEV MODE: CreateOrderPageContent Data Fetching");
+              console.log("Timestamp:", new Date().toISOString());
+              console.log("Received clientId:", clientId);
+            }
+
             try {
                 // Fetch static data once
                 const inventoryData = await getCollectionData<InventoryItem>('inventory');
-                const clientsData = await getCollectionData<Client>('clients');
-                
+                if (isDevMode) console.log("Fetched Inventory:", inventoryData);
                 setInventory(inventoryData);
+                
+                const clientsData = await getCollectionData<Client>('clients');
+                if (isDevMode) console.log("Fetched All Clients:", clientsData);
                 setClients(clientsData);
 
                 // Fetch the specific client to be processed using its ID from the URL
                 if (clientId) {
                     const clientDoc = await getDocumentData<Client>('clients', clientId);
                      if (clientDoc) {
+                        if (isDevMode) console.log("SUCCESS: Found initialClient document:", clientDoc);
                         setInitialClient(clientDoc);
                     } else {
-                        setError(`No se encontró ningún cliente con el ID: ${clientId}`);
+                        const errorMsg = `No se encontró ningún cliente con el ID: ${clientId}`;
+                        if (isDevMode) console.error("ERROR: " + errorMsg);
+                        setError(errorMsg);
                     }
+                } else {
+                    if (isDevMode) console.log("No clientId provided, starting with a blank form.");
                 }
-            } catch (err) {
+            } catch (err: any) {
+                if (isDevMode) console.error("FATAL: Error during initial data fetch:", err);
                 console.error("Error fetching initial data for order creation:", err);
                 setError("Error al cargar los datos necesarios para crear el pedido.");
             } finally {
+                if (isDevMode) console.groupEnd();
                 setLoading(false);
             }
         }
         fetchData();
-    }, [clientId]);
+    }, [clientId, isDevMode]);
 
 
     if (loading) {
