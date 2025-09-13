@@ -78,11 +78,9 @@ export async function POST(request: Request) {
         console.info("--- RAW SHOPIFY PAYLOAD RECEIVED ---");
         console.info(JSON.stringify(data, null, 2));
 
-        // Prioritize shipping_address as it's the most relevant for logistics
         const shippingAddress = data.shipping_address || {};
         const customer = data.customer || {};
 
-        // Extract DNI from a conventional field (like 'company') or leave empty
         const dni = shippingAddress.company || '';
 
         const shopifyItems: OrderItem[] = data.line_items.map((item: any) => ({
@@ -94,27 +92,25 @@ export async function POST(request: Request) {
           subtotal: parseFloat(item.price) * item.quantity,
           estado_item: 'PENDIENTE' as const,
         }));
+        
+        let clientName = shippingAddress.name || '';
+        if (!clientName && (customer.first_name || customer.last_name)) {
+            clientName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
+        }
 
         const clientData = {
-            // Take DNI specifically from shipping_address.company
             dni: dni,
-            // Prioritize shipping name, fallback to customer name
-            nombres: shippingAddress.name || `${customer.first_name || ''} ${customer.last_name || ''}`.trim(),
-            // Prioritize shipping phone, fallback to order phone, then customer phone
+            nombres: clientName,
             celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
-            // Email is usually reliable on the main object
             email: data.email || customer.email || '',
-            // Address details from shipping_address
             direccion: shippingAddress.address1 || '',
             distrito: shippingAddress.city || '',
-            provincia: shippingAddress.province || 'Lima', // Default to Lima if not provided
-            // System fields
+            provincia: shippingAddress.province || 'Lima',
             estado_llamada: 'NUEVO' as const,
             source: 'shopify' as const,
             shopify_order_id: String(data.id),
             last_updated_from_kommo: new Date().toISOString(),
             shopify_items: shopifyItems,
-            // Per user request, Shopify orders are currently from "Dearel"
             tienda_origen: 'Dearel' as Shop,
         };
 
