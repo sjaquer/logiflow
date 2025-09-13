@@ -1,3 +1,4 @@
+
 'use client';
 import { useState, useMemo, MouseEvent } from 'react';
 import Link from 'next/link';
@@ -39,7 +40,7 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
 
   // Delayed orders
   orders.forEach(order => {
-    if (order.fechas_clave.entrega_real && new Date(order.fechas_clave.entrega_real) > new Date(order.fechas_clave.entrega_estimada)) {
+    if (order.fechas_clave && order.fechas_clave.entrega_real && new Date(order.fechas_clave.entrega_real) > new Date(order.fechas_clave.entrega_estimada)) {
       notifications.push({
         id: `delayed-${order.id_pedido}`,
         type: 'Pedido Retrasado',
