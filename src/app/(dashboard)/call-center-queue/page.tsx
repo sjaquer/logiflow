@@ -105,7 +105,7 @@ export default function CallCenterQueuePage() {
         });
     }
     
-    // Correct Navigation: Pass only the client ID
+    // Correct Navigation: Use template literal (backticks) to correctly interpolate the client ID.
     router.push(`/create-order?clientId=${client.id}`);
   }, [currentUser, router, toast]);
 
