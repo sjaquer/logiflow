@@ -2,11 +2,8 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/firebase-admin';
 import { getContactDetails, getLeadDetails } from '@/lib/kommo';
-import type { OrderItem, Shop, Client, Order } from '@/lib/types';
-import { addDoc, collection, getDocs, query, where, updateDoc } from 'firebase/firestore';
+import type { OrderItem, Client } from '@/lib/types';
 
-
-const db = getAdminDb();
 
 function formatPhoneNumber(phone: string | null | undefined): string {
     if (!phone) return '';
@@ -21,11 +18,11 @@ function formatPhoneNumber(phone: string | null | undefined): string {
 
 async function handleShopifyWebhook(data: Record<string, any>) {
     console.info("--- Processing Shopify Payload for Call Center Queue ---");
+    const db = getAdminDb(); // Initialize DB inside the handler
 
     const shippingAddress = data.shipping_address || {};
     const customer = data.customer || {};
     
-    // Prioritize DNI from the 'company' field. Fallback to a temporary ID.
     const dniRaw = shippingAddress.company || `temp-shopify-${data.id}`;
     const dni = String(dniRaw).trim();
 
@@ -47,8 +44,8 @@ async function handleShopifyWebhook(data: Record<string, any>) {
     const shippingCost = parseFloat(data.total_shipping_price_set?.shop_money?.amount || '0');
     
     const clientsRef = db.collection('clients');
-    const q = query(clientsRef, where("dni", "==", dni));
-    const querySnapshot = await getDocs(q);
+    const q = clientsRef.where("dni", "==", dni);
+    const querySnapshot = await q.get();
 
     const clientLeadPayload: Omit<Client, 'id'> = {
       dni: dni,
@@ -62,7 +59,7 @@ async function handleShopifyWebhook(data: Record<string, any>) {
       tienda_origen: 'Dearel',
       last_updated: new Date().toISOString(),
       call_status: 'NUEVO',
-      first_interaction_at: new Date().toISOString(), // Register creation time
+      first_interaction_at: new Date().toISOString(),
       shopify_order_id: String(data.id),
       shopify_items: shopifyItems,
       shopify_payment_details: {
@@ -75,14 +72,12 @@ async function handleShopifyWebhook(data: Record<string, any>) {
 
     let clientId: string;
     if (!querySnapshot.empty) {
-        // Client exists, update it
         const existingClientDoc = querySnapshot.docs[0];
-        await updateDoc(existingClientDoc.ref, clientLeadPayload as { [x: string]: any });
+        await existingClientDoc.ref.update(clientLeadPayload as { [x: string]: any });
         clientId = existingClientDoc.id;
         console.log(`Successfully updated existing client from Shopify order. Client ID: ${clientId}`);
     } else {
-        // Client does not exist, create a new one
-        const newClientRef = await addDoc(clientsRef, clientLeadPayload);
+        const newClientRef = await clientsRef.add(clientLeadPayload);
         clientId = newClientRef.id;
         console.log(`Successfully created new client from Shopify order. Client ID: ${clientId}`);
     }
@@ -92,6 +87,7 @@ async function handleShopifyWebhook(data: Record<string, any>) {
 
 
 async function handleKommoWebhook(data: Record<string, any>) {
+    const db = getAdminDb(); // Initialize DB inside the handler
     const leadId = data['leads[status][0][id]'] as string;
     console.log(`Processing Kommo Lead ID: ${leadId}`);
 
@@ -131,8 +127,8 @@ async function handleKommoWebhook(data: Record<string, any>) {
     }
     
     const clientsRef = db.collection('clients');
-    const q = query(clientsRef, where("dni", "==", clientDNI));
-    const querySnapshot = await getDocs(q);
+    const q = clientsRef.where("dni", "==", clientDNI);
+    const querySnapshot = await q.get();
 
     const clientDataPayload: Partial<Client> = {
       dni: clientDNI,
@@ -144,7 +140,7 @@ async function handleKommoWebhook(data: Record<string, any>) {
       provincia: 'Lima',
       source: 'kommo',
       last_updated: new Date().toISOString(),
-      first_interaction_at: new Date().toISOString(), // Register creation time
+      first_interaction_at: new Date().toISOString(),
       call_status: 'NUEVO',
       kommo_lead_id: leadId,
       kommo_contact_id: contactId,
@@ -153,11 +149,11 @@ async function handleKommoWebhook(data: Record<string, any>) {
     let clientId: string;
     if(!querySnapshot.empty) {
         const existingClientDoc = querySnapshot.docs[0];
-        await updateDoc(existingClientDoc.ref, clientDataPayload as { [x: string]: any });
+        await existingClientDoc.ref.update(clientDataPayload as { [x: string]: any });
         clientId = existingClientDoc.id;
         console.log(`Successfully updated existing client from Kommo lead. Client ID: ${clientId}`);
     } else {
-        const newClientRef = await addDoc(clientsRef, clientDataPayload);
+        const newClientRef = await clientsRef.add(clientDataPayload);
         clientId = newClientRef.id;
         console.log(`Successfully created new client from Kommo lead. Client ID: ${clientId}`);
     }
@@ -181,7 +177,6 @@ export async function POST(request: Request) {
     try {
         const payload = await request.json();
         
-        // Determine source based on payload structure
         if (payload.id && payload.line_items && payload.order_number) {
             return await handleShopifyWebhook(payload);
         } else if (payload['leads[status][0][id]']) {
@@ -191,7 +186,6 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, message: "Payload not recognized, ignored." });
         }
     } catch (error) {
-        // Fallback for form-data from Kommo if JSON parsing fails
         try {
             const formData = await request.formData();
             const data = Object.fromEntries(formData.entries());
