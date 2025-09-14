@@ -50,7 +50,7 @@ export default function CallCenterQueuePage() {
       setLeads(currentLeads => {
         const otherLeads = currentLeads.filter(l => l.source !== 'kommo' && l.source !== 'manual');
         const updatedLeads = [...otherLeads, ...clientLeads.filter(c => c.call_status !== 'VENTA_CONFIRMADA' && c.call_status !== 'HIBERNACION')];
-        updatedLeads.sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+        updatedLeads.sort((a, b) => new Date(b.first_interaction_at || b.last_updated).getTime() - new Date(a.first_interaction_at || a.last_updated).getTime());
         return updatedLeads;
       });
       setLoading(false);
@@ -59,10 +59,8 @@ export default function CallCenterQueuePage() {
     const unsubShopify = listenToCollection<Client>('shopify_leads', (shopifyLeads) => {
        setLeads(currentLeads => {
         const otherLeads = currentLeads.filter(l => l.source !== 'shopify');
-        // Add the id to shopify leads, which is the document id (shopify_order_id)
-        const shopifyLeadsWithId = shopifyLeads.map(l => ({ ...l, id: l.shopify_order_id! }));
-        const updatedLeads = [...otherLeads, ...shopifyLeadsWithId];
-        updatedLeads.sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+        const updatedLeads = [...otherLeads, ...shopifyLeads];
+        updatedLeads.sort((a, b) => new Date(b.first_interaction_at || b.last_updated).getTime() - new Date(a.first_interaction_at || a.last_updated).getTime());
         return updatedLeads;
       });
       setLoading(false);

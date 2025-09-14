@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { PhoneForwarded, Trash2, MoreVertical, PhoneOff, AlertTriangle, ShoppingCart, Globe } from 'lucide-react';
 import type { Client, CallStatus } from '@/lib/types';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { CALL_STATUS_BADGE_MAP } from '@/lib/constants';
@@ -44,17 +44,13 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
     return { text: formatDistanceToNow(referenceDate, { addSuffix: true, locale: es }), color };
   };
 
-  const getSourceIcon = (source: Client['source']) => {
-    switch (source) {
-        case 'shopify':
-            return <ShoppingCart className="h-4 w-4 text-primary" />;
-        case 'kommo':
-            return <Globe className="h-4 w-4 text-blue-500" />;
-        default:
-            return <Globe className="h-4 w-4 text-muted-foreground"/>;
+  const getEntryTime = (lead: Client) => {
+    const referenceDateStr = lead.first_interaction_at || lead.last_updated;
+    if (!referenceDateStr) {
+        return 'N/A';
     }
+    return format(new Date(referenceDateStr), 'dd/MM/yyyy HH:mm', { locale: es });
   }
-
 
   return (
     <Table>
@@ -62,8 +58,9 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
         <TableRow>
           <TableHead>Estado</TableHead>
           <TableHead>Tiempo de Espera</TableHead>
+          <TableHead>Fecha de Ingreso</TableHead>
           <TableHead>Nombre Completo</TableHead>
-          <TableHead>Origen</TableHead>
+          <TableHead>Tienda</TableHead>
           <TableHead>Celular</TableHead>
           <TableHead>Agente Asignado</TableHead>
           <TableHead>Última Actualización</TableHead>
@@ -88,22 +85,19 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
               <TableCell className={cn("font-medium", waitingTime.color)}>
                   {waitingTime.text}
               </TableCell>
+              <TableCell className="text-sm">{getEntryTime(lead)}</TableCell>
               <TableCell>{lead.nombres}</TableCell>
               <TableCell>
-                  {lead.source && (
-                      <TooltipProvider>
-                          <Tooltip>
-                              <TooltipTrigger asChild>
-                                  <div className="flex items-center gap-2">
-                                      {getSourceIcon(lead.source)}
-                                      <span className="font-medium capitalize">{lead.source}</span>
-                                  </div>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                  <p>Lead de {lead.source}</p>
-                              </TooltipContent>
-                          </Tooltip>
-                      </TooltipProvider>
+                  {lead.tienda_origen ? (
+                      <div className="flex items-center gap-2">
+                          <ShoppingCart className="h-4 w-4 text-primary" />
+                          <span className="font-medium capitalize">{lead.tienda_origen}</span>
+                      </div>
+                  ) : (
+                      <div className="flex items-center gap-2 text-muted-foreground">
+                        <Globe className="h-4 w-4" />
+                        <span className="capitalize">{lead.source}</span>
+                      </div>
                   )}
               </TableCell>
               <TableCell>{lead.celular}</TableCell>
@@ -165,7 +159,7 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
           )
         }) : (
             <TableRow>
-                <TableCell colSpan={8} className="text-center h-24">
+                <TableCell colSpan={9} className="text-center h-24">
                     ¡Felicidades! No hay clientes pendientes por llamar.
                 </TableCell>
             </TableRow>
