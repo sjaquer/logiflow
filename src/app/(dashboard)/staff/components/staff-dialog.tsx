@@ -53,6 +53,25 @@ interface StaffDialogProps {
   currentUser: User | null;
 }
 
+const defaultPermissions = {
+    puede_crear_pedido: true,
+    puede_preparar: false,
+    puede_despachar: false,
+    puede_confirmar_entrega: false,
+    puede_anular: false,
+    puede_gestionar_inventario: false,
+    puede_ver_reportes: false,
+    puede_ver: {
+        pedidos: true,
+        call_center: true,
+        procesar_pedido: true,
+        clientes: false,
+        inventario: false,
+        reportes: false,
+        staff: false,
+    }
+};
+
 export function StaffDialog({ isOpen, onOpenChange, onSave, user, currentUser }: StaffDialogProps) {
   const form = useForm<UserFormValues>({
     resolver: zodResolver(userSchema),
@@ -62,24 +81,7 @@ export function StaffDialog({ isOpen, onOpenChange, onSave, user, currentUser }:
       password: '',
       rol: 'Call Center',
       activo: true,
-      permisos: {
-        puede_crear_pedido: false,
-        puede_preparar: false,
-        puede_despachar: false,
-        puede_confirmar_entrega: false,
-        puede_anular: false,
-        puede_gestionar_inventario: false,
-        puede_ver_reportes: false,
-        puede_ver: {
-            pedidos: true,
-            call_center: true,
-            procesar_pedido: true,
-            clientes: true,
-            inventario: true,
-            reportes: true,
-            staff: false,
-        }
-      },
+      permisos: defaultPermissions,
     },
   });
 
@@ -94,7 +96,15 @@ export function StaffDialog({ isOpen, onOpenChange, onSave, user, currentUser }:
             password: '', // Password is not fetched for editing
             rol: user.rol,
             activo: user.activo,
-            permisos: user.permisos
+            // Merge existing permissions with defaults to prevent errors on old users
+            permisos: {
+                ...defaultPermissions,
+                ...user.permisos,
+                puede_ver: {
+                    ...defaultPermissions.puede_ver,
+                    ...user.permisos?.puede_ver,
+                }
+            }
           });
         } else {
           form.reset({
@@ -103,24 +113,7 @@ export function StaffDialog({ isOpen, onOpenChange, onSave, user, currentUser }:
             password: '',
             rol: 'Call Center',
             activo: true,
-            permisos: {
-                puede_crear_pedido: true,
-                puede_preparar: false,
-                puede_despachar: false,
-                puede_confirmar_entrega: false,
-                puede_anular: false,
-                puede_gestionar_inventario: false,
-                puede_ver_reportes: false,
-                puede_ver: {
-                    pedidos: true,
-                    call_center: true,
-                    procesar_pedido: true,
-                    clientes: false,
-                    inventario: false,
-                    reportes: false,
-                    staff: false,
-                }
-            },
+            permisos: defaultPermissions,
           });
         }
     }
@@ -223,7 +216,7 @@ export function StaffDialog({ isOpen, onOpenChange, onSave, user, currentUser }:
                            <FormField
                             key={key}
                             control={form.control}
-                            name={`permisos.${key as keyof User['permisos']}`}
+                            name={`permisos.${key as keyof Omit<User['permisos'], 'puede_ver'>}`}
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                     <FormLabel className="text-sm capitalize">{key.replace(/_/g, ' ').replace('puede ', '')}</FormLabel>
