@@ -19,11 +19,11 @@ import {
   Warehouse,
   Settings,
   LogOut,
-  PlusCircle,
   Code,
   Users,
   Phone,
   PackagePlus,
+  UsersCog
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
@@ -44,6 +44,7 @@ const menuItems: { href: string; label: string; icon: React.ElementType; require
   { href: '/clients', label: 'Clientes', icon: Users },
   { href: '/inventory', label: 'Inventario', icon: Box },
   { href: '/reports', label: 'Reportes', icon: BarChart3 },
+  { href: '/staff', label: 'Roles y Personal', icon: UsersCog, requiredRoles: ['Admin', 'Desarrolladores'] },
 ];
 
 export function AppSidebar({ currentUser }: AppSidebarProps) {
