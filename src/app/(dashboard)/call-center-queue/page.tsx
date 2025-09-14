@@ -44,19 +44,34 @@ export default function CallCenterQueuePage() {
   }, [authUser]);
 
   useEffect(() => {
-    const unsubscribe = listenToCollection<Client>('clients', (data) => {
-      const queueLeads = data.filter(client => client.call_status !== 'VENTA_CONFIRMADA' && client.call_status !== 'HIBERNACION');
-      
-      queueLeads.sort((a, b) => {
-        const dateA = a.last_updated ? new Date(a.last_updated).getTime() : 0;
-        const dateB = b.last_updated ? new Date(b.last_updated).getTime() : 0;
-        return dateB - dateA;
+    setLoading(true);
+    // Listen to both permanent clients (for manual/Kommo leads) and temporary Shopify leads
+    const unsubClients = listenToCollection<Client>('clients', (clientLeads) => {
+      setLeads(currentLeads => {
+        const otherLeads = currentLeads.filter(l => l.source !== 'kommo' && l.source !== 'manual');
+        const updatedLeads = [...otherLeads, ...clientLeads.filter(c => c.call_status !== 'VENTA_CONFIRMADA' && c.call_status !== 'HIBERNACION')];
+        updatedLeads.sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+        return updatedLeads;
       });
-
-      setLeads(queueLeads);
       setLoading(false);
     });
-    return () => unsubscribe();
+
+    const unsubShopify = listenToCollection<Client>('shopify_leads', (shopifyLeads) => {
+       setLeads(currentLeads => {
+        const otherLeads = currentLeads.filter(l => l.source !== 'shopify');
+        // Add the id to shopify leads, which is the document id (shopify_order_id)
+        const shopifyLeadsWithId = shopifyLeads.map(l => ({ ...l, id: l.shopify_order_id! }));
+        const updatedLeads = [...otherLeads, ...shopifyLeadsWithId];
+        updatedLeads.sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+        return updatedLeads;
+      });
+      setLoading(false);
+    });
+
+    return () => {
+      unsubClients();
+      unsubShopify();
+    };
   }, []);
 
   const filteredLeads = useMemo(() => {
@@ -85,7 +100,9 @@ export default function CallCenterQueuePage() {
     }
 
     try {
-        const clientRef = doc(db, 'clients', client.id);
+        const collectionName = client.source === 'shopify' ? 'shopify_leads' : 'clients';
+        const clientRef = doc(db, collectionName, client.id);
+
         const updateData: any = {
             call_status: 'CONTACTADO',
             assigned_agent_id: currentUser.id_usuario,
@@ -105,13 +122,7 @@ export default function CallCenterQueuePage() {
           description: `Ahora estás a cargo de ${client.nombres}.`,
         });
         
-        // Use the stable shopify_order_id for navigation
-        if (client.shopify_order_id) {
-            router.push(`/create-order?shopifyOrderId=${client.shopify_order_id}`);
-        } else {
-             // Fallback for non-shopify leads, although the primary flow is shopify
-            router.push(`/create-order?clientId=${client.id}`);
-        }
+        router.push(`/create-order?leadId=${client.id}&source=${client.source}`);
 
     } catch (error) {
         console.error("Error processing client:", error);
@@ -119,12 +130,13 @@ export default function CallCenterQueuePage() {
     }
   }, [currentUser, router, toast]);
 
-  const handleDeleteLead = async (clientId: string) => {
+  const handleDeleteLead = async (clientId: string, source: Client['source']) => {
     if (!confirm('¿Estás seguro de que quieres eliminar este lead? Esta acción es permanente.')) {
       return;
     }
     try {
-      await deleteDoc(doc(db, 'clients', clientId));
+      const collectionName = source === 'shopify' ? 'shopify_leads' : 'clients';
+      await deleteDoc(doc(db, collectionName, clientId));
       toast({
         title: 'Lead Eliminado',
         description: 'El lead ha sido eliminado de la cola.',
@@ -139,8 +151,9 @@ export default function CallCenterQueuePage() {
     }
   };
 
-  const handleStatusChange = async (clientId: string, status: CallStatus) => {
-      const clientRef = doc(db, 'clients', clientId);
+  const handleStatusChange = async (clientId: string, status: CallStatus, source: Client['source']) => {
+      const collectionName = source === 'shopify' ? 'shopify_leads' : 'clients';
+      const clientRef = doc(db, collectionName, clientId);
       try {
           await updateDoc(clientRef, {
               call_status: status,
@@ -249,8 +262,8 @@ export default function CallCenterQueuePage() {
             <QueueTable
               leads={filteredLeads}
               onProcess={handleProcessClient}
-              onDelete={handleDeleteLead}
-              onStatusChange={handleStatusChange}
+              onDelete={(clientId, source) => handleDeleteLead(clientId, source)}
+              onStatusChange={(clientId, status, source) => handleStatusChange(clientId, status, source)}
               currentUserId={currentUser?.id_usuario}
             />
           </div>
@@ -259,5 +272,3 @@ export default function CallCenterQueuePage() {
     </div>
   );
 }
-
-    

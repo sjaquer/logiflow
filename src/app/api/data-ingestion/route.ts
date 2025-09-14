@@ -23,9 +23,6 @@ async function handleShopifyWebhook(data: Record<string, any>) {
     const shippingAddress = data.shipping_address || {};
     const customer = data.customer || {};
     
-    // The DNI is not provided by Shopify and must be filled in by the agent. We will leave it empty.
-    const dni = '';
-    
     const shopifyOrderId = String(data.id);
     if (!shopifyOrderId) {
         console.error("Shopify webhook processing stopped: Order ID is missing from payload.");
@@ -54,30 +51,31 @@ async function handleShopifyWebhook(data: Record<string, any>) {
         payment_gateway: data.payment_gateway_names?.[0] || 'Desconocido',
     };
 
-    const newClientLead: Omit<Client, 'id'> = {
-        dni, // DNI is initially empty
+    // This is a temporary lead, not a permanent client.
+    const newShopifyLead = {
         nombres: clientName,
         celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
         email: customer.email || data.email || '',
         direccion: shippingAddress.address1 || '',
         distrito: shippingAddress.city || '',
         provincia: shippingAddress.province || 'Lima',
-        source: 'shopify',
+        source: 'shopify' as const,
         last_updated: new Date().toISOString(),
-        call_status: 'NUEVO', // New leads from Shopify start here
+        call_status: 'NUEVO' as const, 
         first_interaction_at: new Date().toISOString(),
-        tienda_origen: 'Dearel' as Shop, // Can be improved later
+        tienda_origen: 'Dearel' as Shop,
         shopify_order_id: shopifyOrderId,
         shopify_items: shopifyItems,
         shopify_payment_details: shopifyPaymentDetails,
     };
     
-    // Add the new lead to the 'clients' collection with an auto-generated ID
-    const clientRef = await db.collection('clients').add(newClientLead);
+    // Use the shopify_order_id as the document ID in a separate collection for leads.
+    const leadRef = db.collection('shopify_leads').doc(shopifyOrderId);
+    await leadRef.set(newShopifyLead);
 
-    console.log(`Successfully created lead from Shopify in call center queue. Document ID: ${clientRef.id}`);
+    console.log(`Successfully created Shopify lead. Document ID in shopify_leads: ${leadRef.id}`);
 
-    return NextResponse.json({ success: true, message: 'Shopify lead processed for call center queue.', clientId: clientRef.id });
+    return NextResponse.json({ success: true, message: 'Shopify lead processed for call center queue.', leadId: leadRef.id });
 }
 
 
@@ -199,5 +197,3 @@ export async function POST(request: Request) {
         }
     }
 }
-
-    

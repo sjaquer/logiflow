@@ -16,8 +16,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 interface QueueTableProps {
   leads: Client[];
   onProcess: (client: Client) => void;
-  onDelete: (clientId: string) => void;
-  onStatusChange: (clientId: string, status: CallStatus) => void;
+  onDelete: (clientId: string, source: Client['source']) => void;
+  onStatusChange: (clientId: string, status: CallStatus, source: Client['source']) => void;
   currentUserId: string | undefined;
 }
 
@@ -25,8 +25,6 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
   const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
   const getWaitingTime = (lead: Client) => {
-    // Use first_interaction_at as the source of truth for waiting time.
-    // Fallback to last_updated for older leads that might not have this field yet.
     const referenceDateStr = lead.first_interaction_at || lead.last_updated;
     if (!referenceDateStr) {
         return { text: 'N/A', color: 'text-muted-foreground' };
@@ -65,7 +63,6 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
           <TableHead>Estado</TableHead>
           <TableHead>Tiempo de Espera</TableHead>
           <TableHead>Nombre Completo</TableHead>
-          <TableHead>Tienda</TableHead>
           <TableHead>Origen</TableHead>
           <TableHead>Celular</TableHead>
           <TableHead>Agente Asignado</TableHead>
@@ -92,11 +89,6 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
                   {waitingTime.text}
               </TableCell>
               <TableCell>{lead.nombres}</TableCell>
-              <TableCell>
-                {lead.tienda_origen && (
-                    <Badge variant="outline">{lead.tienda_origen}</Badge>
-                )}
-              </TableCell>
               <TableCell>
                   {lead.source && (
                       <TooltipProvider>
@@ -153,15 +145,15 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NO_CONTESTA')}>
+                        <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NO_CONTESTA', lead.source)}>
                             <PhoneOff className="mr-2 h-4 w-4" />
                             <span>Marcar como No Contesta</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NUMERO_EQUIVOCADO')}>
+                        <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NUMERO_EQUIVOCADO', lead.source)}>
                             <AlertTriangle className="mr-2 h-4 w-4" />
                              <span>Número Equivocado</span>
                         </DropdownMenuItem>
-                         <DropdownMenuItem onClick={() => onDelete(lead.id)} className="text-destructive">
+                         <DropdownMenuItem onClick={() => onDelete(lead.id, lead.source)} className="text-destructive">
                             <Trash2 className="mr-2 h-4 w-4" />
                             <span>Eliminar Lead</span>
                         </DropdownMenuItem>
@@ -173,7 +165,7 @@ export function QueueTable({ leads, onProcess, onDelete, onStatusChange, current
           )
         }) : (
             <TableRow>
-                <TableCell colSpan={9} className="text-center h-24">
+                <TableCell colSpan={8} className="text-center h-24">
                     ¡Felicidades! No hay clientes pendientes por llamar.
                 </TableCell>
             </TableRow>

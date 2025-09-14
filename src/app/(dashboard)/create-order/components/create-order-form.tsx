@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { collection, doc, setDoc, updateDoc, writeBatch, getDocs, query, where, addDoc, getDoc } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, writeBatch, getDocs, query, where, addDoc, getDoc, deleteDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { listenToCollection, getCollectionData, getDocumentData } from '@/lib/firebase/firestore-client';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, Client } from '@/lib/types';
@@ -63,10 +63,11 @@ const createOrderSchema = z.object({
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
 interface CreateOrderFormProps {
-    initialShopifyOrderId: string | null;
+    leadId: string | null;
+    source: string | null;
 }
 
-export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps) {
+export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
     const { user: authUser } = useAuth();
     const { toast } = useToast();
     const { isDevMode } = useDevMode();
@@ -101,7 +102,8 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
             if (isDevMode) {
               console.group("DEV MODE: CreateOrderForm Data Fetching");
               console.log("Timestamp:", new Date().toISOString());
-              console.log("Received initialShopifyOrderId:", initialShopifyOrderId);
+              console.log("Received leadId:", leadId);
+              console.log("Received source:", source);
             }
 
             try {
@@ -109,14 +111,10 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
                 const clientsPromise = getCollectionData<Client>('clients');
                 
                 let initialLeadPromise: Promise<Client | null> = Promise.resolve(null);
-                if (initialShopifyOrderId) { // Lead from Call Center Queue
-                    if (isDevMode) console.log("Fetching lead data by Shopify Order ID:", initialShopifyOrderId);
-                    const leadsQuery = query(collection(db, 'clients'), where('shopify_order_id', '==', initialShopifyOrderId));
-                    const leadsSnapshot = await getDocs(leadsQuery);
-                    if (!leadsSnapshot.empty) {
-                        const leadDoc = leadsSnapshot.docs[0];
-                        initialLeadPromise = Promise.resolve({ ...leadDoc.data(), id: leadDoc.id } as Client);
-                    }
+                if (leadId && source) {
+                    const collectionName = source === 'shopify' ? 'shopify_leads' : 'clients';
+                    if (isDevMode) console.log(`Fetching lead data from ${collectionName} with ID:`, leadId);
+                    initialLeadPromise = getDocumentData<Client>(collectionName, leadId);
                 }
 
                 const [inventoryData, clientsData, leadDoc] = await Promise.all([
@@ -130,9 +128,8 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
 
                 if (leadDoc) {
                     if (isDevMode) console.log("SUCCESS: Found initial lead document:", leadDoc);
-                     // This is the lead to pre-fill the form
-                    form.setValue('cliente.id', leadDoc.id);
-                    // DNI is NOT set from leadDoc.dni, it will be entered by the agent.
+                    form.setValue('cliente.id', leadDoc.id); // This could be the shopify_order_id or a Firestore ID
+                    form.setValue('cliente.dni', ''); // DNI is NEVER set from the lead, it's entered by the agent.
                     form.setValue('cliente.nombres', leadDoc.nombres || '');
                     form.setValue('cliente.celular', leadDoc.celular || '');
                     form.setValue('cliente.email', leadDoc.email || '');
@@ -154,13 +151,12 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
                             form.setValue('pago.monto_total', subtotal + shipping);
                         }
                         toast({ title: 'Lead de Shopify Cargado', description: `Datos y productos de ${leadDoc.nombres} listos para confirmar.` });
-                    }
-                    else {
+                    } else {
                         toast({ title: 'Lead Precargado', description: `Datos de ${leadDoc.nombres} listos para confirmar.` });
                     }
-                } else if (initialShopifyOrderId) {
-                    setError(`Error: No se encontró ningún lead con el ID: ${initialShopifyOrderId}`);
-                    if (isDevMode) console.error(`FAILED: Could not find lead with ID: ${initialShopifyOrderId}`);
+                } else if (leadId) {
+                    setError(`Error: No se encontró ningún lead con el ID: ${leadId}`);
+                    if (isDevMode) console.error(`FAILED: Could not find lead with ID: ${leadId} in source ${source}`);
                 }
 
 
@@ -173,7 +169,7 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
             }
         }
         fetchData();
-    }, [initialShopifyOrderId, isDevMode, form, toast]);
+    }, [leadId, source, isDevMode, form, toast]);
 
 
     useEffect(() => {
@@ -189,31 +185,11 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
     const saveOrUpdateClient = async (clientData: CreateOrderFormValues['cliente'], shippingData: CreateOrderFormValues['envio']): Promise<string> => {
         const clientsRef = collection(db, 'clients');
         
-        // If the lead from the queue has an ID, we prioritize updating it.
-        if (clientData.id) {
-             const clientRef = doc(db, 'clients', clientData.id);
-             const clientSnap = await getDoc(clientRef);
-             if (clientSnap.exists()) {
-                await updateDoc(clientRef, {
-                    nombres: clientData.nombres,
-                    celular: clientData.celular,
-                    email: clientData.email,
-                    dni: clientData.dni, // DNI is now being saved
-                    direccion: shippingData.direccion,
-                    distrito: shippingData.distrito,
-                    provincia: shippingData.provincia,
-                    last_updated: new Date().toISOString(),
-                    // We can also mark it as confirmed or move it to a more permanent state here if needed
-                });
-                return clientData.id;
-             }
-        }
-
-        // If no ID, it might be a new client or an existing one found by DNI
+        // Search by DNI first, as it's the unique identifier for a permanent client.
         const q = query(clientsRef, where("dni", "==", clientData.dni));
         const querySnapshot = await getDocs(q);
 
-        const newClientPayload = {
+        const clientPayload = {
             nombres: clientData.nombres,
             celular: clientData.celular,
             email: clientData.email,
@@ -222,18 +198,22 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
             distrito: shippingData.distrito,
             provincia: shippingData.provincia,
             last_updated: new Date().toISOString(),
-            source: 'manual', // Any client saved from the form is considered manual/confirmed
-            call_status: 'VENTA_CONFIRMADA', // Mark as confirmed
-            first_interaction_at: new Date().toISOString(),
         };
 
         if (!querySnapshot.empty) {
             // Client with DNI exists, update it and return its ID
             const existingClientDoc = querySnapshot.docs[0];
-            await updateDoc(existingClientDoc.ref, newClientPayload);
+            await updateDoc(existingClientDoc.ref, clientPayload);
             return existingClientDoc.id;
         } else {
-            // Client does not exist, create a new one
+            // Client does not exist, create a new one.
+            // Add source and other first-time fields.
+            const newClientPayload = {
+                ...clientPayload,
+                source: source as 'shopify' | 'kommo' | 'manual',
+                call_status: 'VENTA_CONFIRMADA' as const,
+                first_interaction_at: new Date().toISOString(),
+            };
             const newClientRef = await addDoc(clientsRef, newClientPayload);
             return newClientRef.id;
         }
@@ -242,10 +222,15 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
     const handleSaveClient = async () => {
         setIsSavingClient(true);
         try {
-            const formData = form.getValues();
-            const clientId = await saveOrUpdateClient(formData.cliente, formData.envio);
-            form.setValue('cliente.id', clientId); // Update form state with the correct ID
-            toast({ title: 'Cliente Guardado', description: 'Los datos del cliente se han guardado correctamente.' });
+            const { cliente, envio } = form.getValues();
+             if (!cliente.dni) {
+                toast({ title: 'Falta DNI', description: 'Por favor, ingresa el DNI del cliente antes de guardar.', variant: "destructive" });
+                setIsSavingClient(false);
+                return;
+            }
+            const clientId = await saveOrUpdateClient(cliente, envio);
+            // Don't update the form's client.id. The lead ID and the final client ID are different things.
+            toast({ title: 'Cliente Guardado', description: 'Los datos del cliente se han guardado en la base de datos de clientes.' });
         } catch (error) {
             console.error("Error saving client:", error);
             toast({ title: "Error", description: "No se pudo guardar la información del cliente.", variant: "destructive" });
@@ -274,7 +259,7 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
             const orderRef = doc(db, 'orders', orderId);
 
             const finalOrderData: Omit<Order, 'id_pedido'> = {
-                id_interno: initialShopifyOrderId ? `SHOPIFY-${initialShopifyOrderId}` : `MANUAL-${Date.now()}`,
+                id_interno: source === 'shopify' ? `SHOPIFY-${leadId}` : `MANUAL-${Date.now()}`,
                 tienda: { id_tienda: data.tienda || 'Trazto', nombre: data.tienda || 'Trazto' },
                 estado_actual: 'EN_PREPARACION', 
                 cliente: { 
@@ -309,7 +294,7 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
                         id_usuario: currentUser.id_usuario,
                         nombre_usuario: currentUser.nombre,
                         accion: 'Pedido Confirmado',
-                        detalle: `Pedido procesado por ${currentUser.nombre} (${currentUser.rol}). Origen: ${initialShopifyOrderId ? 'shopify' : 'manual'}`
+                        detalle: `Pedido procesado por ${currentUser.nombre} (${currentUser.rol}). Origen: ${source || 'manual'}`
                     }
                 ],
                 fechas_clave: {
@@ -327,17 +312,18 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
                     observaciones_internas: '',
                     motivo_anulacion: null,
                 },
-                source: initialShopifyOrderId ? 'shopify' : 'manual',
-                shopify_order_id: initialShopifyOrderId || undefined,
+                source: source as Order['source'] || 'manual',
+                shopify_order_id: source === 'shopify' ? leadId! : undefined,
             };
 
             batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
         
-            // Step 3: Update original lead status to 'VENTA_CONFIRMADA'
-            const leadId = form.getValues('cliente.id');
-            if (leadId) {
-                const leadRef = doc(db, 'clients', leadId);
-                batch.update(leadRef, { call_status: 'VENTA_CONFIRMADA' });
+            // Step 3: Delete the original lead (from 'clients' or 'shopify_leads')
+            if (leadId && source) {
+                const collectionName = source === 'shopify' ? 'shopify_leads' : 'clients';
+                const leadRef = doc(db, collectionName, leadId);
+                // Instead of updating, we delete it from the queue.
+                batch.delete(leadRef);
             }
 
             await batch.commit();
@@ -426,5 +412,3 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
         </div>
     );
 }
-
-    
