@@ -11,8 +11,7 @@ export default function CreateOrderPage({
 }: {
   searchParams: { [key: string]: string | string[] | undefined };
 }) {
-  const clientId = typeof searchParams.clientId === 'string' ? searchParams.clientId : null;
-  const clientData = typeof searchParams.clientData === 'string' ? searchParams.clientData : null;
+  const shopifyOrderId = typeof searchParams.shopifyOrderId === 'string' ? searchParams.shopifyOrderId : null;
 
   return (
     // The Suspense boundary is crucial for this pattern to work correctly.
@@ -35,7 +34,7 @@ export default function CreateOrderPage({
             </div>
         </div>
     }>
-        <CreateOrderForm initialClientId={clientId} initialClientData={clientData} />
+        <CreateOrderForm initialShopifyOrderId={shopifyOrderId} />
     </Suspense>
   );
 }

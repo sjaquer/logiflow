@@ -23,9 +23,16 @@ async function handleShopifyWebhook(data: Record<string, any>) {
     const shippingAddress = data.shipping_address || {};
     const customer = data.customer || {};
     
-    // Use a temporary DNI if not available, can be confirmed by agent
-    const dni = String(shippingAddress.company || `temp-shopify-${data.id}`).trim();
+    // The DNI is not provided by Shopify and must be filled in by the agent.
+    // We will leave it empty.
+    const dni = '';
     
+    const shopifyOrderId = String(data.id);
+    if (!shopifyOrderId) {
+        console.error("Shopify webhook processing stopped: Order ID is missing from payload.");
+        return NextResponse.json({ success: false, message: 'Shopify Order ID is missing.' }, { status: 400 });
+    }
+
     let clientName = shippingAddress.name || '';
     if (!clientName && (customer.first_name || customer.last_name)) {
         clientName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
@@ -49,7 +56,7 @@ async function handleShopifyWebhook(data: Record<string, any>) {
     };
 
     const newClientLead: Omit<Client, 'id'> = {
-        dni,
+        dni, // DNI is initially empty
         nombres: clientName,
         celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
         email: customer.email || data.email || '',
@@ -61,17 +68,18 @@ async function handleShopifyWebhook(data: Record<string, any>) {
         call_status: 'NUEVO', // New leads from Shopify start here
         first_interaction_at: new Date().toISOString(),
         tienda_origen: 'Dearel' as Shop, // Can be improved later
-        shopify_order_id: String(data.id),
+        shopify_order_id: shopifyOrderId,
         shopify_items: shopifyItems,
         shopify_payment_details: shopifyPaymentDetails,
     };
+    
+    // Use the Shopify Order ID as the document ID for the lead in the 'clients' collection
+    const clientRef = db.collection('clients').doc(shopifyOrderId);
+    await clientRef.set(newClientLead);
 
-    const clientsRef = db.collection('clients');
-    const newClientRef = await clientsRef.add(newClientLead);
+    console.log(`Successfully created/updated lead from Shopify in call center queue. Document ID: ${shopifyOrderId}`);
 
-    console.log(`Successfully created new lead from Shopify in call center queue. Client ID: ${newClientRef.id}`);
-
-    return NextResponse.json({ success: true, message: 'Shopify lead created in call center queue.', clientId: newClientRef.id });
+    return NextResponse.json({ success: true, message: 'Shopify lead processed for call center queue.', clientId: shopifyOrderId });
 }
 
 
@@ -166,15 +174,19 @@ export async function POST(request: Request) {
     try {
         const payload = await request.json();
         
+        // Shopify payload check
         if (payload.id && payload.line_items && payload.order_number) {
             return await handleShopifyWebhook(payload);
-        } else if (payload['leads[status][0][id]']) {
+        } 
+        // Kommo form-data check (comes as JSON from Vercel)
+        else if (payload['leads[status][0][id]']) {
             return await handleKommoWebhook(payload);
         } else {
             console.log("Webhook received, but it's not a recognized Shopify or Kommo format. Ignoring.", payload);
             return NextResponse.json({ success: true, message: "Payload not recognized, ignored." });
         }
     } catch (error) {
+        // Fallback for true form-data payloads (e.g. from local testing)
         try {
             const formData = await request.formData();
             const data = Object.fromEntries(formData.entries());

@@ -98,7 +98,6 @@ export default function CallCenterQueuePage() {
           updateData.first_interaction_at = new Date().toISOString();
         }
         
-        // 1. Update the document in Firestore and WAIT for it to complete.
         await updateDoc(clientRef, updateData);
 
         toast({
@@ -106,12 +105,9 @@ export default function CallCenterQueuePage() {
           description: `Ahora estás a cargo de ${client.nombres}.`,
         });
         
-        // 2. Create updated client object with the new data
-        const updatedClient = { ...client, ...updateData };
-        
-        // 3. Pass the complete client data via URL state to avoid race conditions
-        const clientDataParam = encodeURIComponent(JSON.stringify(updatedClient));
-        router.push(`/create-order?clientId=${client.id}&clientData=${clientDataParam}`);
+        // Use the stable shopify_order_id if it exists, otherwise fall back to the Firestore ID
+        const navigationId = client.shopify_order_id || client.id;
+        router.push(`/create-order?shopifyOrderId=${navigationId}`);
 
     } catch (error) {
         console.error("Error processing client:", error);

@@ -56,14 +56,8 @@ export function ClientForm({ form, clients, onSaveClient, isSavingClient }: Clie
         setTimeout(() => {
             form.setValue('envio.distrito', client.distrito || '');
         }, 0);
-    } else {
-      // Clear client-specific fields if DNI doesn't match any existing client
-      form.setValue('cliente.id', undefined);
-      form.setValue('cliente.nombres', '');
-      form.setValue('cliente.celular', '');
-      form.setValue('cliente.email', '');
-      form.setValue('envio.direccion', '');
     }
+    // If client is not found, do nothing, allowing the agent to fill the form manually.
   }
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
