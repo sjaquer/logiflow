@@ -8,13 +8,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-
+import { isToday } from 'date-fns';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Phone, Search } from 'lucide-react';
+import { Phone, Search, CheckCircle } from 'lucide-react';
 import { QueueTable } from './components/queue-table';
+import { ManagedQueueTable } from './components/managed-queue-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { SHOPS } from '@/lib/constants';
 
@@ -26,7 +27,8 @@ export default function CallCenterQueuePage() {
   const { user: authUser } = useAuth();
   const router = useRouter();
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [leads, setLeads] = useState<Client[]>([]);
+  const [pendingLeads, setPendingLeads] = useState<Client[]>([]);
+  const [managedLeads, setManagedLeads] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<CallStatus | 'TODOS'>('TODOS');
@@ -43,37 +45,54 @@ export default function CallCenterQueuePage() {
     }
   }, [authUser]);
 
+  const processLeads = useCallback((leads: Client[]) => {
+      const pending: Client[] = [];
+      const managed: Client[] = [];
+
+      leads.forEach(lead => {
+          if (lead.call_status === 'VENTA_CONFIRMADA' && isToday(new Date(lead.last_updated))) {
+              managed.push(lead);
+          } else if (lead.call_status !== 'VENTA_CONFIRMADA' && lead.call_status !== 'HIBERNACION') {
+              pending.push(lead);
+          }
+      });
+      
+      pending.sort((a, b) => new Date(b.first_interaction_at || b.last_updated).getTime() - new Date(a.first_interaction_at || a.last_updated).getTime());
+      managed.sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+      
+      return { pending, managed };
+  }, []);
+
   useEffect(() => {
     setLoading(true);
-    // Listen to both permanent clients (for manual/Kommo leads) and temporary Shopify leads
+    const allLeadsMap = new Map<string, Client>();
+
+    const updateState = () => {
+        const allLeads = Array.from(allLeadsMap.values());
+        const { pending, managed } = processLeads(allLeads);
+        setPendingLeads(pending);
+        setManagedLeads(managed);
+        setLoading(false);
+    };
+
     const unsubClients = listenToCollection<Client>('clients', (clientLeads) => {
-      setLeads(currentLeads => {
-        const otherLeads = currentLeads.filter(l => l.source !== 'kommo' && l.source !== 'manual');
-        const updatedLeads = [...otherLeads, ...clientLeads.filter(c => c.call_status !== 'VENTA_CONFIRMADA' && c.call_status !== 'HIBERNACION')];
-        updatedLeads.sort((a, b) => new Date(b.first_interaction_at || b.last_updated).getTime() - new Date(a.first_interaction_at || a.last_updated).getTime());
-        return updatedLeads;
-      });
-      setLoading(false);
+        clientLeads.forEach(lead => allLeadsMap.set(lead.id, lead));
+        updateState();
     });
 
     const unsubShopify = listenToCollection<Client>('shopify_leads', (shopifyLeads) => {
-       setLeads(currentLeads => {
-        const otherLeads = currentLeads.filter(l => l.source !== 'shopify');
-        const updatedLeads = [...otherLeads, ...shopifyLeads];
-        updatedLeads.sort((a, b) => new Date(b.first_interaction_at || b.last_updated).getTime() - new Date(a.first_interaction_at || a.last_updated).getTime());
-        return updatedLeads;
-      });
-      setLoading(false);
+        shopifyLeads.forEach(lead => allLeadsMap.set(lead.id, lead));
+        updateState();
     });
 
     return () => {
       unsubClients();
       unsubShopify();
     };
-  }, []);
+  }, [processLeads]);
 
-  const filteredLeads = useMemo(() => {
-    return leads.filter(lead => {
+  const filteredPendingLeads = useMemo(() => {
+    return pendingLeads.filter(lead => {
         const searchInput = searchQuery.toLowerCase();
         const matchesSearch = lead.nombres.toLowerCase().includes(searchInput) ||
           (lead.celular && lead.celular.includes(searchInput)) ||
@@ -84,7 +103,15 @@ export default function CallCenterQueuePage() {
         
         return matchesSearch && matchesStatus && matchesShop;
     });
-  }, [leads, searchQuery, statusFilter, shopFilter]);
+  }, [pendingLeads, searchQuery, statusFilter, shopFilter]);
+  
+  const filteredManagedLeads = useMemo(() => {
+     return managedLeads.filter(lead => {
+        const searchInput = searchQuery.toLowerCase();
+        return lead.nombres.toLowerCase().includes(searchInput) ||
+          (lead.assigned_agent_name && lead.assigned_agent_name.toLowerCase().includes(searchInput));
+     });
+  }, [managedLeads, searchQuery]);
 
   const handleProcessClient = useCallback(async (client: Client) => {
     if (!currentUser) {
@@ -109,10 +136,6 @@ export default function CallCenterQueuePage() {
             last_updated: new Date().toISOString(),
         };
 
-        if (!client.first_interaction_at) {
-          updateData.first_interaction_at = new Date().toISOString();
-        }
-        
         await updateDoc(clientRef, updateData);
 
         toast({
@@ -158,6 +181,7 @@ export default function CallCenterQueuePage() {
               assigned_agent_id: null,
               assigned_agent_name: null,
               assigned_agent_avatar: null,
+              last_updated: new Date().toISOString()
           });
            toast({
               title: 'Estado Actualizado',
@@ -175,14 +199,23 @@ export default function CallCenterQueuePage() {
   
    if (!currentUser && loading) {
     return (
-       <div className="p-4 md:p-6 lg:p-8">
+       <div className="p-4 md:p-6 lg:p-8 space-y-6">
         <Card>
           <CardHeader>
             <Skeleton className="h-8 w-1/3" />
             <Skeleton className="h-4 w-2/3" />
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-96 w-full" />
+            <Skeleton className="h-64 w-full" />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <Skeleton className="h-8 w-1/4" />
+            <Skeleton className="h-4 w-1/2" />
+          </CardHeader>
+          <CardContent>
+            <Skeleton className="h-48 w-full" />
           </CardContent>
         </Card>
       </div>
@@ -210,7 +243,6 @@ export default function CallCenterQueuePage() {
     <div className="space-y-6 p-4 md:p-6 lg:p-8">
       <Card>
         <CardHeader>
-          <div>
             <CardTitle className="flex items-center gap-2">
                 <Phone />
                 Bandeja de Entrada de Llamadas
@@ -218,7 +250,6 @@ export default function CallCenterQueuePage() {
             <CardDescription>
                 Lista de clientes potenciales (de Kommo y Shopify) para contactar, confirmar datos y crear un pedido.
             </CardDescription>
-          </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -258,13 +289,28 @@ export default function CallCenterQueuePage() {
           </div>
           <div className="overflow-x-auto">
             <QueueTable
-              leads={filteredLeads}
+              leads={filteredPendingLeads}
               onProcess={handleProcessClient}
               onDelete={(clientId, source) => handleDeleteLead(clientId, source)}
               onStatusChange={(clientId, status, source) => handleStatusChange(clientId, status, source)}
               currentUserId={currentUser?.id_usuario}
             />
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+                <CheckCircle />
+                Leads Gestionados Hoy
+            </CardTitle>
+            <CardDescription>
+                Resumen de los leads que han sido confirmados como venta durante el día de hoy.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            <ManagedQueueTable leads={filteredManagedLeads} />
         </CardContent>
       </Card>
     </div>

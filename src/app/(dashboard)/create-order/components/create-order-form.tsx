@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Loader2, Save } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { collection, doc, setDoc, updateDoc, writeBatch, getDocs, query, where, addDoc, getDoc, deleteDoc } from 'firebase/firestore';
+import { collection, doc, writeBatch, getDocs, query, where, addDoc, updateDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { listenToCollection, getCollectionData, getDocumentData } from '@/lib/firebase/firestore-client';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, Client } from '@/lib/types';
@@ -25,6 +25,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 
 const createOrderSchema = z.object({
+    leadId: z.string().optional(),
+    leadSource: z.enum(['shopify', 'kommo', 'manual']).optional(),
     tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }).optional(),
     cliente: z.object({
         id: z.string().optional(),
@@ -86,6 +88,8 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
     const form = useForm<CreateOrderFormValues>({
         resolver: zodResolver(createOrderSchema),
         defaultValues: {
+            leadId: leadId || undefined,
+            leadSource: source as CreateOrderFormValues['leadSource'],
             cliente: { id: '', dni: '', nombres: '', celular: '', email: '' },
             items: [],
             pago: { subtotal: 0, monto_total: 0 },
@@ -128,8 +132,8 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
 
                 if (leadDoc) {
                     if (isDevMode) console.log("SUCCESS: Found initial lead document:", leadDoc);
-                    form.setValue('cliente.id', leadDoc.id); // This could be the shopify_order_id or a Firestore ID
-                    form.setValue('cliente.dni', ''); // DNI is NEVER set from the lead, it's entered by the agent.
+                    form.setValue('cliente.id', leadDoc.id); 
+                    form.setValue('cliente.dni', leadDoc.dni || '');
                     form.setValue('cliente.nombres', leadDoc.nombres || '');
                     form.setValue('cliente.celular', leadDoc.celular || '');
                     form.setValue('cliente.email', leadDoc.email || '');
@@ -181,7 +185,9 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
           return () => unsubUser();
         }
       }, [authUser]);
-
+    
+    // This is the single source of truth for saving a client.
+    // It returns the definitive client ID.
     const saveOrUpdateClient = async (clientData: CreateOrderFormValues['cliente'], shippingData: CreateOrderFormValues['envio']): Promise<string> => {
         const clientsRef = collection(db, 'clients');
         
@@ -207,7 +213,6 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
             return existingClientDoc.id;
         } else {
             // Client does not exist, create a new one.
-            // Add source and other first-time fields.
             const newClientPayload = {
                 ...clientPayload,
                 source: source as 'shopify' | 'kommo' | 'manual',
@@ -228,8 +233,9 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                 setIsSavingClient(false);
                 return;
             }
-            const clientId = await saveOrUpdateClient(cliente, envio);
-            // Don't update the form's client.id. The lead ID and the final client ID are different things.
+            const finalClientId = await saveOrUpdateClient(cliente, envio);
+            form.setValue('cliente.id', finalClientId);
+            
             toast({ title: 'Cliente Guardado', description: 'Los datos del cliente se han guardado en la base de datos de clientes.' });
         } catch (error) {
             console.error("Error saving client:", error);
@@ -318,12 +324,14 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
 
             batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
         
-            // Step 3: Delete the original lead (from 'clients' or 'shopify_leads')
+            // Step 3: Update the original lead (from 'clients' or 'shopify_leads')
             if (leadId && source) {
                 const collectionName = source === 'shopify' ? 'shopify_leads' : 'clients';
                 const leadRef = doc(db, collectionName, leadId);
-                // Instead of updating, we delete it from the queue.
-                batch.delete(leadRef);
+                batch.update(leadRef, {
+                    call_status: 'VENTA_CONFIRMADA',
+                    last_updated: new Date().toISOString()
+                });
             }
 
             await batch.commit();

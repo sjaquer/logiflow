@@ -1,9 +1,12 @@
+
 import type { Order, InventoryItem, User, Client } from '@/lib/types';
 import { z } from 'zod';
 
 export type { Client };
 
 export type CreateOrderFormValues = {
+    leadId?: string;
+    leadSource?: 'shopify' | 'kommo' | 'manual';
     tienda?: Order['tienda']['nombre'];
     cliente: {
         id?: string; // Client document ID
