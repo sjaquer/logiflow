@@ -1,3 +1,4 @@
+
 'use client';
 
 import { usePathname } from 'next/navigation';
@@ -36,14 +37,21 @@ interface AppSidebarProps {
   currentUser: User | null;
 }
 
-const menuItems: { href: string; label: string; icon: React.ElementType; requiredRoles?: UserRole[] }[] = [
-  { href: '/orders', label: 'Pedidos', icon: LayoutDashboard },
-  { href: '/call-center-queue', label: 'Call Center', icon: Phone, requiredRoles: ['Call Center', 'Admin', 'Desarrolladores'] },
-  { href: '/create-order', label: 'Procesar Pedido', icon: PackagePlus, requiredRoles: ['Call Center', 'Admin', 'Desarrolladores'] },
-  { href: '/clients', label: 'Clientes', icon: Users },
-  { href: '/inventory', label: 'Inventario', icon: Box },
-  { href: '/reports', label: 'Reportes', icon: BarChart3 },
-  { href: '/staff', label: 'Roles y Personal', icon: Users, requiredRoles: ['Admin', 'Desarrolladores'] },
+type MenuItem = {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+  permissionKey: keyof User['permisos']['puede_ver'];
+}
+
+const menuItems: MenuItem[] = [
+  { href: '/orders', label: 'Pedidos', icon: LayoutDashboard, permissionKey: 'pedidos' },
+  { href: '/call-center-queue', label: 'Call Center', icon: Phone, permissionKey: 'call_center' },
+  { href: '/create-order', label: 'Procesar Pedido', icon: PackagePlus, permissionKey: 'procesar_pedido' },
+  { href: '/clients', label: 'Clientes', icon: Users, permissionKey: 'clientes' },
+  { href: '/inventory', label: 'Inventario', icon: Box, permissionKey: 'inventario' },
+  { href: '/reports', label: 'Reportes', icon: BarChart3, permissionKey: 'reportes' },
+  { href: '/staff', label: 'Roles y Personal', icon: Users, permissionKey: 'staff' },
 ];
 
 export function AppSidebar({ currentUser }: AppSidebarProps) {
@@ -58,10 +66,13 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
   };
 
   const filterItems = (items: typeof menuItems) => {
+      if (!currentUser) return [];
+      // Admins and Devs see everything, regardless of individual permissions
+      if (currentUser.rol === 'Admin' || currentUser.rol === 'Desarrolladores') {
+          return items;
+      }
       return items.filter(item => {
-        if (!item.requiredRoles) return true; // No roles required, show to everyone
-        if (!currentUser) return false; // If no user, don't show role-restricted items
-        return item.requiredRoles.includes(currentUser.rol);
+        return currentUser.permisos.puede_ver?.[item.permissionKey] === true;
       });
   }
 

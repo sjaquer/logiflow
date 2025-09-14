@@ -31,6 +31,15 @@ const userSchema = z.object({
     puede_anular: z.boolean(),
     puede_gestionar_inventario: z.boolean(),
     puede_ver_reportes: z.boolean(),
+    puede_ver: z.object({
+        pedidos: z.boolean(),
+        call_center: z.boolean(),
+        procesar_pedido: z.boolean(),
+        clientes: z.boolean(),
+        inventario: z.boolean(),
+        reportes: z.boolean(),
+        staff: z.boolean(),
+    }),
   }),
 });
 
@@ -61,6 +70,15 @@ export function StaffDialog({ isOpen, onOpenChange, onSave, user, currentUser }:
         puede_anular: false,
         puede_gestionar_inventario: false,
         puede_ver_reportes: false,
+        puede_ver: {
+            pedidos: true,
+            call_center: true,
+            procesar_pedido: true,
+            clientes: true,
+            inventario: true,
+            reportes: true,
+            staff: false,
+        }
       },
     },
   });
@@ -93,6 +111,15 @@ export function StaffDialog({ isOpen, onOpenChange, onSave, user, currentUser }:
                 puede_anular: false,
                 puede_gestionar_inventario: false,
                 puede_ver_reportes: false,
+                puede_ver: {
+                    pedidos: true,
+                    call_center: true,
+                    procesar_pedido: true,
+                    clientes: false,
+                    inventario: false,
+                    reportes: false,
+                    staff: false,
+                }
             },
           });
         }
@@ -167,11 +194,32 @@ export function StaffDialog({ isOpen, onOpenChange, onSave, user, currentUser }:
                 </div>
 
                 <Separator />
+                
+                <div>
+                    <h3 className="text-base font-medium mb-4">Visibilidad de Secciones</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                       {Object.keys(form.getValues('permisos.puede_ver')).map((key) => (
+                           <FormField
+                            key={key}
+                            control={form.control}
+                            name={`permisos.puede_ver.${key as keyof User['permisos']['puede_ver']}`}
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <FormLabel className="text-sm capitalize">{key.replace(/_/g, ' ')}</FormLabel>
+                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                </FormItem>
+                            )}
+                           />
+                       ))}
+                    </div>
+                </div>
+
+                <Separator />
 
                 <div>
                     <h3 className="text-base font-medium mb-4">Permisos Específicos</h3>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                       {Object.keys(form.getValues('permisos')).map((key) => (
+                       {Object.keys(form.getValues('permisos')).filter(k => k !== 'puede_ver').map((key) => (
                            <FormField
                             key={key}
                             control={form.control}
@@ -179,7 +227,7 @@ export function StaffDialog({ isOpen, onOpenChange, onSave, user, currentUser }:
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                     <FormLabel className="text-sm capitalize">{key.replace(/_/g, ' ').replace('puede ', '')}</FormLabel>
-                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    <FormControl><Switch checked={field.value as boolean} onCheckedChange={field.onChange} /></FormControl>
                                 </FormItem>
                             )}
                            />

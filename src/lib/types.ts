@@ -130,6 +130,7 @@ export interface User {
   rol: UserRole;
   activo: boolean;
   permisos: {
+    // Permisos de acciones
     puede_crear_pedido: boolean;
     puede_preparar: boolean;
     puede_despachar: boolean;
@@ -137,6 +138,16 @@ export interface User {
     puede_anular: boolean;
     puede_gestionar_inventario: boolean;
     puede_ver_reportes: boolean;
+    // Permisos de visibilidad de secciones
+    puede_ver: {
+      pedidos: boolean;
+      call_center: boolean;
+      procesar_pedido: boolean;
+      clientes: boolean;
+      inventario: boolean;
+      reportes: boolean;
+      staff: boolean;
+    };
   };
   avatar?: string;
 }
@@ -145,7 +156,7 @@ export type CallStatus = 'NUEVO' | 'CONTACTADO' | 'NO_CONTESTA' | 'NUMERO_EQUIVO
 
 export interface Client {
     id: string; // Document ID from Firestore (unique, auto-generated)
-    dni: string;
+    dni?: string;
     nombres: string;
     celular: string;
     email?: string;

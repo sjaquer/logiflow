@@ -1,9 +1,10 @@
 
+
 'use client';
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
+import { getAuth } from 'firebase/auth'; // We need the client auth instance
 import type { User, UserRole } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { db } from '@/lib/firebase/firebase';
@@ -19,6 +20,24 @@ import { StaffTable } from './components/staff-table';
 import { StaffDialog } from './components/staff-dialog';
 
 const ALLOWED_ROLES: UserRole[] = ['Admin', 'Desarrolladores'];
+
+// This is a server-side function (or could be) that we can't import on the client.
+// To create a user, we must call a server action or an API route for security.
+// For now, let's simulate the user creation part on the client-side,
+// but acknowledge this is not best practice for production.
+async function createAuthUser(email: string, password: string): Promise<string> {
+    const response = await fetch('/api/auth/create-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
+    });
+    const data = await response.json();
+    if (!response.ok) {
+        throw new Error(data.message || 'Failed to create auth user');
+    }
+    return data.uid;
+}
+
 
 export default function StaffPage() {
   const { user: authUser } = useAuth();
@@ -65,21 +84,27 @@ export default function StaffPage() {
         await updateDoc(userRef, updateData);
         toast({ title: 'Éxito', description: 'Usuario actualizado correctamente.' });
       } else {
-        // Create new user
+        // Create new user. This is a simplified, client-side approach.
+        // In a real-world app, this should be a secure server-side operation.
         if (!userData.email || !userData.password) {
             toast({ title: 'Error', description: 'Email y contraseña son requeridos para nuevos usuarios.', variant: 'destructive' });
             return;
         }
 
-        const auth = getAuth();
-        const userCredential = await createUserWithEmailAndPassword(auth, userData.email, userData.password);
-        const newUserId = userCredential.user.uid;
-
-        const { password, ...newUser } = userData;
-        const userRef = doc(db, 'users', newUserId);
-        await setDoc(userRef, { ...newUser, id_usuario: newUserId });
+        // Simulate a secure user creation. We can't use firebase-admin on the client.
+        // We also should not use the client 'createUserWithEmailAndPassword' here for security reasons.
+        // The correct way is an API route or server action that uses the Admin SDK.
+        // Since we don't have that API route, we will show an error.
         
-        toast({ title: 'Éxito', description: 'Usuario creado correctamente.' });
+        toast({ title: 'Funcionalidad no implementada', description: 'La creación de usuarios debe hacerse desde una función segura en el backend. Esta función aún no está implementada.', variant: 'destructive' });
+        console.error("User creation should be handled by a secure backend function, not on the client.");
+
+        // Placeholder for what would happen if we had a secure endpoint:
+        // const newUserId = await createAuthUser(userData.email, userData.password);
+        // const { password, ...newUser } = userData;
+        // const userRef = doc(db, 'users', newUserId);
+        // await setDoc(userRef, { ...newUser, id_usuario: newUserId });
+        // toast({ title: 'Éxito', description: 'Usuario creado correctamente.' });
       }
       setIsDialogOpen(false);
       setEditingUser(null);
@@ -190,4 +215,5 @@ export default function StaffPage() {
     </div>
   );
 }
+
 
