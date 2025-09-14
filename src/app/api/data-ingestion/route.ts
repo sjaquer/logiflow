@@ -23,8 +23,7 @@ async function handleShopifyWebhook(data: Record<string, any>) {
     const shippingAddress = data.shipping_address || {};
     const customer = data.customer || {};
     
-    // The DNI is not provided by Shopify and must be filled in by the agent.
-    // We will leave it empty.
+    // The DNI is not provided by Shopify and must be filled in by the agent. We will leave it empty.
     const dni = '';
     
     const shopifyOrderId = String(data.id);
@@ -73,13 +72,12 @@ async function handleShopifyWebhook(data: Record<string, any>) {
         shopify_payment_details: shopifyPaymentDetails,
     };
     
-    // Use the Shopify Order ID as the document ID for the lead in the 'clients' collection
-    const clientRef = db.collection('clients').doc(shopifyOrderId);
-    await clientRef.set(newClientLead);
+    // Add the new lead to the 'clients' collection with an auto-generated ID
+    const clientRef = await db.collection('clients').add(newClientLead);
 
-    console.log(`Successfully created/updated lead from Shopify in call center queue. Document ID: ${shopifyOrderId}`);
+    console.log(`Successfully created lead from Shopify in call center queue. Document ID: ${clientRef.id}`);
 
-    return NextResponse.json({ success: true, message: 'Shopify lead processed for call center queue.', clientId: shopifyOrderId });
+    return NextResponse.json({ success: true, message: 'Shopify lead processed for call center queue.', clientId: clientRef.id });
 }
 
 
@@ -201,3 +199,5 @@ export async function POST(request: Request) {
         }
     }
 }
+
+    

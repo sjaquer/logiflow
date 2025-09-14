@@ -105,9 +105,13 @@ export default function CallCenterQueuePage() {
           description: `Ahora estás a cargo de ${client.nombres}.`,
         });
         
-        // Use the stable shopify_order_id if it exists, otherwise fall back to the Firestore ID
-        const navigationId = client.shopify_order_id || client.id;
-        router.push(`/create-order?shopifyOrderId=${navigationId}`);
+        // Use the stable shopify_order_id for navigation
+        if (client.shopify_order_id) {
+            router.push(`/create-order?shopifyOrderId=${client.shopify_order_id}`);
+        } else {
+             // Fallback for non-shopify leads, although the primary flow is shopify
+            router.push(`/create-order?clientId=${client.id}`);
+        }
 
     } catch (error) {
         console.error("Error processing client:", error);
@@ -255,3 +259,5 @@ export default function CallCenterQueuePage() {
     </div>
   );
 }
+
+    

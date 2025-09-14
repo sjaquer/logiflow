@@ -108,16 +108,21 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
                 const inventoryPromise = getCollectionData<InventoryItem>('inventory');
                 const clientsPromise = getCollectionData<Client>('clients');
                 
-                let initialClientPromise: Promise<Client | null> = Promise.resolve(null);
+                let initialLeadPromise: Promise<Client | null> = Promise.resolve(null);
                 if (initialShopifyOrderId) { // Lead from Call Center Queue
                     if (isDevMode) console.log("Fetching lead data by Shopify Order ID:", initialShopifyOrderId);
-                    initialClientPromise = getDocumentData<Client>('clients', initialShopifyOrderId);
+                    const leadsQuery = query(collection(db, 'clients'), where('shopify_order_id', '==', initialShopifyOrderId));
+                    const leadsSnapshot = await getDocs(leadsQuery);
+                    if (!leadsSnapshot.empty) {
+                        const leadDoc = leadsSnapshot.docs[0];
+                        initialLeadPromise = Promise.resolve({ ...leadDoc.data(), id: leadDoc.id } as Client);
+                    }
                 }
 
                 const [inventoryData, clientsData, leadDoc] = await Promise.all([
                     inventoryPromise,
                     clientsPromise,
-                    initialClientPromise
+                    initialLeadPromise
                 ]);
 
                 setInventory(inventoryData);
@@ -184,8 +189,8 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
     const saveOrUpdateClient = async (clientData: CreateOrderFormValues['cliente'], shippingData: CreateOrderFormValues['envio']): Promise<string> => {
         const clientsRef = collection(db, 'clients');
         
-        // Use client ID from form if it exists (meaning it was pre-loaded)
-        if (clientData.id && clientData.id !== initialShopifyOrderId) {
+        // Use client ID from form if it exists (meaning it was pre-loaded or found by DNI)
+        if (clientData.id) {
              const clientRef = doc(db, 'clients', clientData.id);
              const clientSnap = await getDoc(clientRef);
              if (clientSnap.exists()) {
@@ -327,8 +332,9 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
             batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
         
             // Update original lead status to 'VENTA_CONFIRMADA'
-            if (initialShopifyOrderId) {
-                const leadRef = doc(db, 'clients', initialShopifyOrderId);
+            const leadId = form.getValues('cliente.id');
+            if (leadId) {
+                const leadRef = doc(db, 'clients', leadId);
                 batch.update(leadRef, { call_status: 'VENTA_CONFIRMADA' });
             }
 
@@ -418,3 +424,5 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
         </div>
     );
 }
+
+    
