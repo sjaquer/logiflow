@@ -9,18 +9,18 @@ const deleteUserSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  const json = await request.json();
+  const { uid } = json;
+    
   try {
     const db = getAdminDb();
     const auth = admin.auth();
-    const json = await request.json();
 
     const parsedData = deleteUserSchema.safeParse(json);
     if (!parsedData.success) {
       return NextResponse.json({ message: 'Datos inválidos.', errors: parsedData.error.errors }, { status: 400 });
     }
     
-    const { uid } = parsedData.data;
-
     // 1. Delete user from Firebase Authentication
     await auth.deleteUser(uid);
     
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ success: true, message: `Usuario con UID ${uid} eliminado correctamente.` }, { status: 200 });
 
   } catch (error: any) {
-    console.error(`Error eliminando usuario ${error.uid}:`, error);
+    console.error(`Error eliminando usuario ${uid}:`, error);
     let message = 'Error interno del servidor.';
      if (error.code === 'auth/user-not-found') {
       message = 'El usuario no fue encontrado en Firebase Authentication.';
@@ -39,4 +39,3 @@ export async function POST(request: Request) {
     return NextResponse.json({ message }, { status: 500 });
   }
 }
-
