@@ -189,7 +189,7 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
     const saveOrUpdateClient = async (clientData: CreateOrderFormValues['cliente'], shippingData: CreateOrderFormValues['envio']): Promise<string> => {
         const clientsRef = collection(db, 'clients');
         
-        // Use client ID from form if it exists (meaning it was pre-loaded or found by DNI)
+        // If the lead from the queue has an ID, we prioritize updating it.
         if (clientData.id) {
              const clientRef = doc(db, 'clients', clientData.id);
              const clientSnap = await getDoc(clientRef);
@@ -198,17 +198,18 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
                     nombres: clientData.nombres,
                     celular: clientData.celular,
                     email: clientData.email,
-                    dni: clientData.dni,
+                    dni: clientData.dni, // DNI is now being saved
                     direccion: shippingData.direccion,
                     distrito: shippingData.distrito,
                     provincia: shippingData.provincia,
                     last_updated: new Date().toISOString(),
+                    // We can also mark it as confirmed or move it to a more permanent state here if needed
                 });
                 return clientData.id;
              }
         }
 
-        // If no ID, check if client exists by DNI
+        // If no ID, it might be a new client or an existing one found by DNI
         const q = query(clientsRef, where("dni", "==", clientData.dni));
         const querySnapshot = await getDocs(q);
 
@@ -221,8 +222,8 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
             distrito: shippingData.distrito,
             provincia: shippingData.provincia,
             last_updated: new Date().toISOString(),
-            source: 'manual', // If created from form, it's manual
-            call_status: 'VENTA_CONFIRMADA',
+            source: 'manual', // Any client saved from the form is considered manual/confirmed
+            call_status: 'VENTA_CONFIRMADA', // Mark as confirmed
             first_interaction_at: new Date().toISOString(),
         };
 
@@ -263,11 +264,12 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
         setIsSubmitting(true);
         
         try {
+            // Step 1: Save/Update the client and get the definitive client ID.
             const finalClientId = await saveOrUpdateClient(data.cliente, data.envio);
 
             const batch = writeBatch(db);
 
-            // --- Order Creation ---
+            // Step 2: Create the order with the final client ID.
             const orderId = `PED-${Date.now()}`;
             const orderRef = doc(db, 'orders', orderId);
 
@@ -331,7 +333,7 @@ export function CreateOrderForm({ initialShopifyOrderId }: CreateOrderFormProps)
 
             batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
         
-            // Update original lead status to 'VENTA_CONFIRMADA'
+            // Step 3: Update original lead status to 'VENTA_CONFIRMADA'
             const leadId = form.getValues('cliente.id');
             if (leadId) {
                 const leadRef = doc(db, 'clients', leadId);
