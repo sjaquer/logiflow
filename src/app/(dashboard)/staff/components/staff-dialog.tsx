@@ -15,6 +15,7 @@ import { USER_ROLES } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
 
 const userSchema = z.object({
   nombre: z.string().min(3, 'El nombre es requerido.'),
