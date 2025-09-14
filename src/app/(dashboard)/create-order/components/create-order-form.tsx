@@ -11,7 +11,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { collection, doc, setDoc, updateDoc, writeBatch, getDocs, query, where, addDoc, getDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import { listenToCollection } from '@/lib/firebase/firestore-client';
+import { listenToCollection, getCollectionData, getDocumentData } from '@/lib/firebase/firestore-client';
 import type { Order, User, Shop, PaymentMethod, Courier, UserRole, InventoryItem, Client } from '@/lib/types';
 import type { CreateOrderFormValues } from '../types';
 import { SHOPS } from '@/lib/constants';
@@ -21,6 +21,8 @@ import { ClientForm } from './client-form';
 import { ItemsForm } from './items-form';
 import { PaymentForm } from './payment-form';
 import { useRouter } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 const createOrderSchema = z.object({
     tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }).optional(),
@@ -61,12 +63,11 @@ const createOrderSchema = z.object({
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
 interface CreateOrderFormProps {
-    inventory: InventoryItem[];
-    clients: Client[];
-    initialClient: Client | null;
+    initialClientId: string | null;
+    initialClientData: string | null; // From call-center flow
 }
 
-export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrderFormProps) {
+export function CreateOrderForm({ initialClientId, initialClientData }: CreateOrderFormProps) {
     const { user: authUser } = useAuth();
     const { toast } = useToast();
     const { isDevMode } = useDevMode();
@@ -75,6 +76,12 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
     const [currentUser, setCurrentUser] = useState<User | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isSavingClient, setIsSavingClient] = useState(false);
+
+    // Data state
+    const [inventory, setInventory] = useState<InventoryItem[]>([]);
+    const [clients, setClients] = useState<Client[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
     
     const form = useForm<CreateOrderFormValues>({
         resolver: zodResolver(createOrderSchema),
@@ -86,46 +93,108 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             notas: { nota_pedido: '' }
         },
     });
-    
+
     useEffect(() => {
-        if (isDevMode) {
-          console.group("DEV MODE: CreateOrderForm Data Population");
-          console.log("Timestamp:", new Date().toISOString());
-          console.log("Received initialClient prop:", initialClient);
-        }
-        
-        if (initialClient) {
-            if(isDevMode) console.log("Populating form from initialClient...");
-            form.setValue('cliente.id', initialClient.id);
-            form.setValue('cliente.dni', initialClient.dni || '');
-            form.setValue('cliente.nombres', initialClient.nombres || '');
-            form.setValue('cliente.celular', initialClient.celular || '');
-            form.setValue('cliente.email', initialClient.email || '');
-            form.setValue('envio.direccion', initialClient.direccion || '');
-            form.setValue('envio.provincia', initialClient.provincia || 'Lima');
-            form.setValue('envio.distrito', initialClient.distrito || '');
-            form.setValue('tienda', initialClient.tienda_origen);
+        async function fetchData() {
+            setLoading(true);
+            setError(null);
             
-            if (initialClient.source === 'shopify' && initialClient.shopify_items) {
-                 if(isDevMode) console.log("Shopify items found, populating cart:", initialClient.shopify_items);
-                form.setValue('items', initialClient.shopify_items);
+            if (isDevMode) {
+              console.group("DEV MODE: CreateOrderForm Data Fetching");
+              console.log("Timestamp:", new Date().toISOString());
+              console.log("Received initialClientId:", initialClientId);
+              console.log("Received initialClientData:", initialClientData);
+            }
 
-                const subtotal = initialClient.shopify_items.reduce((acc, item) => acc + item.subtotal, 0);
-                form.setValue('pago.subtotal', subtotal);
-
-                if (initialClient.shopify_payment_details) {
-                    const shipping = initialClient.shopify_payment_details.total_shipping;
-                    form.setValue('envio.costo_envio', shipping);
-                    form.setValue('pago.monto_total', subtotal + shipping);
+            try {
+                const inventoryPromise = getCollectionData<InventoryItem>('inventory');
+                const clientsPromise = getCollectionData<Client>('clients');
+                
+                let parsedClient: Client | null = null;
+                
+                if (initialClientData) { // From Call Center Queue
+                    try {
+                        parsedClient = JSON.parse(decodeURIComponent(initialClientData));
+                        if (isDevMode) console.log("SUCCESS: Using passed client data from Call Center flow:", parsedClient);
+                    } catch (e) {
+                        if (isDevMode) console.warn("Could not parse clientData, falling back to fetch by ID:", e);
+                    }
                 }
-                 toast({ title: 'Lead de Shopify Cargado', description: `Datos y productos de ${initialClient.nombres} listos para confirmar.` });
-            } else {
-                 toast({ title: 'Cliente Precargado', description: `Datos de ${initialClient.nombres} listos para confirmar.` });
+                
+                let initialClientPromise: Promise<Client | null> = Promise.resolve(parsedClient);
+                if (!parsedClient && initialClientId) { // From Kanban Board (Shopify Order)
+                    if (isDevMode) console.log("Fetching client by ID as fallback...");
+                    initialClientPromise = getDocumentData<Client>('clients', initialClientId);
+                }
+
+                const [inventoryData, clientsData, clientDoc] = await Promise.all([
+                    inventoryPromise,
+                    clientsPromise,
+                    initialClientPromise
+                ]);
+
+                setInventory(inventoryData);
+                setClients(clientsData);
+
+                if (clientDoc) {
+                    if (isDevMode) console.log("SUCCESS: Found initial client document:", clientDoc);
+                     // This is the client to pre-fill the form
+                    form.setValue('cliente.id', clientDoc.id);
+                    form.setValue('cliente.dni', clientDoc.dni || '');
+                    form.setValue('cliente.nombres', clientDoc.nombres || '');
+                    form.setValue('cliente.celular', clientDoc.celular || '');
+                    form.setValue('cliente.email', clientDoc.email || '');
+                    form.setValue('envio.direccion', clientDoc.direccion || '');
+                    form.setValue('envio.provincia', clientDoc.provincia || 'Lima');
+                    form.setValue('envio.distrito', clientDoc.distrito || '');
+                    form.setValue('tienda', clientDoc.tienda_origen);
+                    
+                    // Specific logic for Call Center flow (which passes the full client data)
+                    if (parsedClient && parsedClient.source === 'shopify' && parsedClient.shopify_items) {
+                        if(isDevMode) console.log("Shopify items found, populating cart:", parsedClient.shopify_items);
+                        form.setValue('items', parsedClient.shopify_items);
+                        const subtotal = parsedClient.shopify_items.reduce((acc, item) => acc + item.subtotal, 0);
+                        form.setValue('pago.subtotal', subtotal);
+                        if (parsedClient.shopify_payment_details) {
+                            const shipping = parsedClient.shopify_payment_details.total_shipping;
+                            form.setValue('envio.costo_envio', shipping);
+                            form.setValue('pago.monto_total', subtotal + shipping);
+                        }
+                        toast({ title: 'Lead de Shopify Cargado', description: `Datos y productos de ${clientDoc.nombres} listos para confirmar.` });
+                    } else if (clientDoc.source === 'shopify') {
+                         // Logic for Shopify orders coming from Kanban (must fetch order details separately)
+                        const orderId = `SHOPIFY-${clientDoc.shopify_order_id?.replace('gid://shopify/Order/', '')}`; // Reconstruct order ID if needed
+                        const orderSnapshot = await getDocumentData<Order>('orders', `SHOPIFY-${clientDoc.shopify_order_id}`);
+                        if(orderSnapshot) {
+                            form.setValue('items', orderSnapshot.items);
+                            const subtotal = orderSnapshot.items.reduce((acc, item) => acc + item.subtotal, 0);
+                            form.setValue('pago.subtotal', subtotal);
+                            form.setValue('envio.costo_envio', orderSnapshot.envio.costo_envio);
+                             form.setValue('pago.monto_total', orderSnapshot.pago.monto_total);
+                             toast({ title: 'Pedido de Shopify Cargado', description: `Datos y productos de ${clientDoc.nombres} listos para confirmar.` });
+                        } else {
+                            toast({ title: 'Cliente Precargado', description: `Datos de ${clientDoc.nombres} listos. Agregue productos.` });
+                        }
+                    }
+                    else {
+                        toast({ title: 'Cliente Precargado', description: `Datos de ${clientDoc.nombres} listos para confirmar.` });
+                    }
+                } else if (initialClientId) {
+                    setError(`Error: No se encontró ningún cliente/lead con el ID: ${initialClientId}`);
+                    if (isDevMode) console.error(`FAILED: Could not find client with ID: ${initialClientId}`);
+                }
+
+
+            } catch (err: any) {
+                if (isDevMode) console.error("FATAL: Error during initial data fetch:", err);
+                setError("Error al cargar los datos necesarios para crear el pedido.");
+            } finally {
+                if (isDevMode) console.groupEnd();
+                setLoading(false);
             }
         }
-
-        if (isDevMode) console.groupEnd();
-    }, [initialClient, form, toast, isDevMode]);
+        fetchData();
+    }, [initialClientId, initialClientData, isDevMode, form, toast]);
 
 
     useEffect(() => {
@@ -224,7 +293,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
             const orderRef = doc(db, 'orders', orderId);
 
             const finalOrderData: Omit<Order, 'id_pedido'> = {
-                id_interno: initialClient?.shopify_order_id ? `SHOPIFY-${initialClient.shopify_order_id}` : `MANUAL-${Date.now()}`,
+                id_interno: initialClientId ? `MANUAL-${Date.now()}` : `MANUAL-${Date.now()}`,
                 tienda: { id_tienda: data.tienda || 'Trazto', nombre: data.tienda || 'Trazto' },
                 estado_actual: 'EN_PREPARACION', 
                 cliente: { 
@@ -259,7 +328,7 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                         id_usuario: currentUser.id_usuario,
                         nombre_usuario: currentUser.nombre,
                         accion: 'Pedido Confirmado',
-                        detalle: `Pedido procesado por ${currentUser.nombre} (${currentUser.rol}). Origen: ${initialClient?.source || 'manual'}`
+                        detalle: `Pedido procesado por ${currentUser.nombre} (${currentUser.rol}). Origen: ${initialClientId ? 'shopify' : 'manual'}`
                     }
                 ],
                 fechas_clave: {
@@ -277,15 +346,15 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
                     observaciones_internas: '',
                     motivo_anulacion: null,
                 },
-                source: initialClient?.source || 'manual',
-                shopify_order_id: initialClient?.shopify_order_id || undefined,
+                source: initialClientId ? 'shopify' : 'manual',
+                shopify_order_id: initialClientId || undefined,
             };
 
             batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
         
             // Update client status in a separate write if it came from the queue
-            if (initialClient?.id) {
-                const clientRef = doc(db, 'clients', initialClient.id);
+            if (initialClientData) {
+                const clientRef = doc(db, 'clients', finalClientId);
                 batch.update(clientRef, { call_status: 'VENTA_CONFIRMADA' });
             }
 
@@ -307,6 +376,32 @@ export function CreateOrderForm({ inventory, clients, initialClient }: CreateOrd
           event.preventDefault();
         }
       };
+
+    if (loading) {
+       return (
+             <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
+                 <div className="flex items-center justify-between mb-8">
+                    <Skeleton className="h-10 w-1/4" />
+                    <div className="flex gap-4">
+                        <Skeleton className="h-11 w-52" />
+                    </div>
+                 </div>
+                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div className="lg:col-span-2 space-y-8">
+                        <Skeleton className="h-96 w-full" />
+                    </div>
+                    <div className="lg:col-span-1 space-y-8">
+                        <Skeleton className="h-[550px] w-full" />
+                        <Skeleton className="h-64 w-full" />
+                    </div>
+                </div>
+            </div>
+        )
+    }
+
+    if (error) {
+        return <div className="text-center text-destructive p-8">{error}</div>;
+    }
     
     if (currentUser && !ALLOWED_ROLES.includes(currentUser.rol)) {
         return (

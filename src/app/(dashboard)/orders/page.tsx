@@ -60,9 +60,8 @@ export default function OrdersPage() {
   }, []);
 
   const handleProcessShopifyOrder = (order: Order) => {
-      // This is deprecated, the flow is now handled in Call Center
-      // but we leave the function here in case it's needed in the future.
-      console.warn("handleProcessShopifyOrder is deprecated. Flow moved to Call Center.");
+      // For Shopify orders in 'PENDIENTE', we redirect to the create-order page
+      // to confirm and process them. We pass the client ID to pre-fill the form.
       router.push(`/create-order?clientId=${order.cliente.id_cliente}`);
   }
 

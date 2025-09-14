@@ -2,7 +2,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/firebase-admin';
 import { getContactDetails, getLeadDetails } from '@/lib/kommo';
-import type { OrderItem, Client } from '@/lib/types';
+import type { OrderItem, Client, Order } from '@/lib/types';
 
 
 function formatPhoneNumber(phone: string | null | undefined): string {
@@ -17,20 +17,79 @@ function formatPhoneNumber(phone: string | null | undefined): string {
 }
 
 async function handleShopifyWebhook(data: Record<string, any>) {
-    console.info("--- Processing Shopify Payload for Call Center Queue ---");
-    const db = getAdminDb(); // Initialize DB inside the handler
+    console.info("--- Processing Shopify Payload to create separate Order and Client ---");
+    const db = getAdminDb();
 
+    // 1. Process and find/create client
     const shippingAddress = data.shipping_address || {};
     const customer = data.customer || {};
+    const dni = String(shippingAddress.company || `temp-shopify-${data.id}`).trim();
     
-    const dniRaw = shippingAddress.company || `temp-shopify-${data.id}`;
-    const dni = String(dniRaw).trim();
-
     let clientName = shippingAddress.name || '';
     if (!clientName && (customer.first_name || customer.last_name)) {
         clientName = `${customer.first_name || ''} ${customer.last_name || ''}`.trim();
     }
 
+    const clientsRef = db.collection('clients');
+    const q = clientsRef.where("dni", "==", dni);
+    const querySnapshot = await q.get();
+
+    let clientId: string;
+    let clientDataForOrder: { id_cliente: string, nombres: string, dni: string, celular: string, email?: string };
+
+    if (!querySnapshot.empty) {
+        const existingClientDoc = querySnapshot.docs[0];
+        clientId = existingClientDoc.id;
+        const existingClientData = existingClientDoc.data() as Client;
+        
+        // Update client with potentially new data from Shopify
+        await existingClientDoc.ref.update({
+            nombres: clientName,
+            celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
+            email: customer.email || data.email || '',
+            direccion: shippingAddress.address1 || '',
+            distrito: shippingAddress.city || '',
+            provincia: shippingAddress.province || 'Lima',
+            last_updated: new Date().toISOString(),
+        });
+
+        clientDataForOrder = {
+            id_cliente: clientId,
+            nombres: clientName,
+            dni: dni,
+            celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
+            email: customer.email || data.email || ''
+        };
+        console.log(`Found and updated existing client. Client ID: ${clientId}`);
+
+    } else {
+        const newClientPayload: Omit<Client, 'id'> = {
+            dni,
+            nombres: clientName,
+            celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
+            email: customer.email || data.email || '',
+            direccion: shippingAddress.address1 || '',
+            distrito: shippingAddress.city || '',
+            provincia: shippingAddress.province || 'Lima',
+            source: 'shopify',
+            last_updated: new Date().toISOString(),
+            call_status: 'VENTA_CONFIRMADA', // Client is confirmed by default from a sale
+            first_interaction_at: new Date().toISOString(),
+        };
+        const newClientRef = await clientsRef.add(newClientPayload);
+        clientId = newClientRef.id;
+
+        clientDataForOrder = {
+            id_cliente: clientId,
+            nombres: newClientPayload.nombres,
+            dni: newClientPayload.dni,
+            celular: newClientPayload.celular,
+            email: newClientPayload.email
+        };
+        console.log(`Created new client from Shopify order. Client ID: ${clientId}`);
+    }
+
+    // 2. Create the Order document
     const shopifyItems: OrderItem[] = data.line_items.map((item: any) => ({
       sku: item.sku || 'N/A',
       nombre: item.title || 'Producto sin nombre',
@@ -40,49 +99,69 @@ async function handleShopifyWebhook(data: Record<string, any>) {
       subtotal: parseFloat(item.price) * item.quantity,
       estado_item: 'PENDIENTE' as const,
     }));
-    
-    const shippingCost = parseFloat(data.total_shipping_price_set?.shop_money?.amount || '0');
-    
-    const clientsRef = db.collection('clients');
-    const q = clientsRef.where("dni", "==", dni);
-    const querySnapshot = await q.get();
 
-    const clientLeadPayload: Omit<Client, 'id'> = {
-      dni: dni,
-      nombres: clientName,
-      celular: formatPhoneNumber(shippingAddress.phone || data.phone || customer.phone),
-      email: customer.email || data.email || '',
-      direccion: shippingAddress.address1 || '',
-      distrito: shippingAddress.city || '',
-      provincia: shippingAddress.province || 'Lima',
-      source: 'shopify',
-      tienda_origen: 'Dearel',
-      last_updated: new Date().toISOString(),
-      call_status: 'NUEVO',
-      first_interaction_at: new Date().toISOString(),
-      shopify_order_id: String(data.id),
-      shopify_items: shopifyItems,
-      shopify_payment_details: {
-        total_price: parseFloat(data.total_price),
-        subtotal_price: parseFloat(data.subtotal_price),
-        total_shipping: shippingCost,
-        payment_gateway: data.payment_gateway_names?.[0] || 'Desconocido',
-      }
+    const orderId = `SHOPIFY-${data.order_number}`;
+    const orderRef = db.collection('orders').doc(orderId);
+
+    const newOrderPayload: Omit<Order, 'id_pedido'> = {
+        id_interno: `Shopify #${data.order_number}`,
+        tienda: { id_tienda: 'Dearel', nombre: 'Dearel' }, // Assuming default shop, can be improved
+        estado_actual: 'PENDIENTE',
+        cliente: clientDataForOrder,
+        items: shopifyItems,
+        pago: {
+            monto_total: parseFloat(data.total_price),
+            monto_pendiente: data.financial_status === 'paid' ? 0 : parseFloat(data.total_outstanding),
+            metodo_pago_previsto: data.payment_gateway_names?.[0] || 'Desconocido',
+            estado_pago: data.financial_status === 'paid' ? 'PAGADO' : 'PENDIENTE',
+            comprobante_url: null,
+            fecha_pago: data.processed_at,
+        },
+        envio: {
+            tipo: (shippingAddress.province || 'LIMA').toUpperCase() === 'LIMA' ? 'LIMA' : 'PROVINCIA',
+            provincia: shippingAddress.province || 'Lima',
+            distrito: shippingAddress.city || '',
+            direccion: shippingAddress.address1 || '',
+            courier: 'URBANO', // Default courier
+            agencia_shalom: null,
+            nro_guia: null,
+            link_seguimiento: null,
+            costo_envio: parseFloat(data.total_shipping_price_set?.shop_money?.amount || '0'),
+        },
+        asignacion: { // Default assignment, can be changed later in the UI
+            id_usuario_actual: 'SYSTEM',
+            nombre_usuario_actual: 'Sistema (Shopify)',
+        },
+        historial: [{
+            fecha: new Date().toISOString(),
+            id_usuario: 'SYSTEM',
+            nombre_usuario: 'Sistema (Shopify)',
+            accion: 'Creación de Pedido',
+            detalle: 'Pedido creado automáticamente desde Shopify.'
+        }],
+        fechas_clave: {
+            creacion: data.created_at,
+            confirmacion_llamada: null,
+            procesamiento_iniciado: null,
+            preparacion: null,
+            despacho: null,
+            entrega_estimada: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 days estimate
+            entrega_real: null,
+            anulacion: data.cancelled_at,
+        },
+        notas: {
+            nota_pedido: data.note || '',
+            observaciones_internas: '',
+            motivo_anulacion: data.cancel_reason,
+        },
+        source: 'shopify',
+        shopify_order_id: String(data.id),
     };
 
-    let clientId: string;
-    if (!querySnapshot.empty) {
-        const existingClientDoc = querySnapshot.docs[0];
-        await existingClientDoc.ref.update(clientLeadPayload as { [x: string]: any });
-        clientId = existingClientDoc.id;
-        console.log(`Successfully updated existing client from Shopify order. Client ID: ${clientId}`);
-    } else {
-        const newClientRef = await clientsRef.add(clientLeadPayload);
-        clientId = newClientRef.id;
-        console.log(`Successfully created new client from Shopify order. Client ID: ${clientId}`);
-    }
+    await orderRef.set({ ...newOrderPayload, id_pedido: orderId });
+    console.log(`Successfully created new order. Order ID: ${orderId}`);
 
-    return NextResponse.json({ success: true, message: 'Shopify order processed into a client lead for Call Center.', clientId: clientId });
+    return NextResponse.json({ success: true, message: 'Shopify order processed into a separate client and order.', clientId: clientId, orderId: orderId });
 }
 
 
