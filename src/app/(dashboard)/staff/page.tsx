@@ -4,11 +4,10 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
-import { getAuth } from 'firebase/auth'; // We need the client auth instance
 import type { User, UserRole } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { db } from '@/lib/firebase/firebase';
-import { doc, setDoc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -21,21 +20,18 @@ import { StaffDialog } from './components/staff-dialog';
 
 const ALLOWED_ROLES: UserRole[] = ['Admin', 'Desarrolladores'];
 
-// This is a server-side function (or could be) that we can't import on the client.
-// To create a user, we must call a server action or an API route for security.
-// For now, let's simulate the user creation part on the client-side,
-// but acknowledge this is not best practice for production.
-async function createAuthUser(email: string, password: string): Promise<string> {
-    const response = await fetch('/api/auth/create-user', {
+
+async function callUserApi(endpoint: string, body: any) {
+    const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(body),
     });
     const data = await response.json();
     if (!response.ok) {
-        throw new Error(data.message || 'Failed to create auth user');
+        throw new Error(data.message || 'Error en la operación de usuario');
     }
-    return data.uid;
+    return data;
 }
 
 
@@ -78,45 +74,26 @@ export default function StaffPage() {
   const handleSaveUser = async (userData: Partial<User> & { password?: string }) => {
     try {
       if (editingUser) {
-        // Update existing user
+        // Update existing user in Firestore
         const userRef = doc(db, 'users', editingUser.id_usuario);
         const { password, ...updateData } = userData; // Exclude password from update
-        await updateDoc(userRef, updateData);
+        await updateDoc(userRef, updateData as any);
         toast({ title: 'Éxito', description: 'Usuario actualizado correctamente.' });
       } else {
-        // Create new user. This is a simplified, client-side approach.
-        // In a real-world app, this should be a secure server-side operation.
+        // Create new user via secure API
         if (!userData.email || !userData.password) {
             toast({ title: 'Error', description: 'Email y contraseña son requeridos para nuevos usuarios.', variant: 'destructive' });
             return;
         }
 
-        // Simulate a secure user creation. We can't use firebase-admin on the client.
-        // We also should not use the client 'createUserWithEmailAndPassword' here for security reasons.
-        // The correct way is an API route or server action that uses the Admin SDK.
-        // Since we don't have that API route, we will show an error.
-        
-        toast({ title: 'Funcionalidad no implementada', description: 'La creación de usuarios debe hacerse desde una función segura en el backend. Esta función aún no está implementada.', variant: 'destructive' });
-        console.error("User creation should be handled by a secure backend function, not on the client.");
-
-        // Placeholder for what would happen if we had a secure endpoint:
-        // const newUserId = await createAuthUser(userData.email, userData.password);
-        // const { password, ...newUser } = userData;
-        // const userRef = doc(db, 'users', newUserId);
-        // await setDoc(userRef, { ...newUser, id_usuario: newUserId });
-        // toast({ title: 'Éxito', description: 'Usuario creado correctamente.' });
+        const apiResponse = await callUserApi('/api/auth/create-user', userData);
+        toast({ title: 'Éxito', description: `Usuario ${apiResponse.email} creado correctamente.` });
       }
       setIsDialogOpen(false);
       setEditingUser(null);
     } catch (error: any) {
       console.error('Error saving user:', error);
-       if (error.code === 'auth/email-already-in-use') {
-         toast({ title: 'Error', description: 'El correo electrónico ya está en uso.', variant: 'destructive' });
-      } else if (error.code === 'auth/weak-password') {
-          toast({ title: 'Error', description: 'La contraseña debe tener al menos 6 caracteres.', variant: 'destructive' });
-      } else {
-         toast({ title: 'Error', description: 'No se pudo guardar el usuario.', variant: 'destructive' });
-      }
+       toast({ title: 'Error', description: error.message || 'No se pudo guardar el usuario.', variant: 'destructive' });
     }
   };
 
@@ -125,15 +102,14 @@ export default function StaffPage() {
         toast({ title: 'Error', description: 'No puedes eliminarte a ti mismo.', variant: 'destructive' });
         return;
     }
-    if (!confirm('¿Estás seguro de que quieres eliminar este usuario? Esta acción es permanente y no se puede deshacer.')) return;
+    if (!confirm('¿Estás seguro de que quieres eliminar este usuario? Esta acción es permanente y eliminará al usuario de la autenticación y la base de datos.')) return;
+    
     try {
-      // Note: Deleting from Firebase Auth is a more complex operation that should be handled
-      // via a backend function for security reasons. Here we just delete from Firestore.
-      await deleteDoc(doc(db, 'users', userId));
-      toast({ title: 'Éxito', description: 'Usuario eliminado de Firestore.' });
-    } catch (error) {
+      await callUserApi('/api/auth/delete-user', { uid: userId });
+      toast({ title: 'Éxito', description: 'Usuario eliminado de forma permanente.' });
+    } catch (error: any) {
       console.error('Error deleting user:', error);
-      toast({ title: 'Error', description: 'No se pudo eliminar el usuario.', variant: 'destructive' });
+      toast({ title: 'Error', description: error.message || 'No se pudo eliminar el usuario.', variant: 'destructive' });
     }
   };
   
@@ -215,5 +191,4 @@ export default function StaffPage() {
     </div>
   );
 }
-
 
