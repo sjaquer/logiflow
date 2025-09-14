@@ -122,7 +122,7 @@ export function CreateOrderForm({ initialClientId, initialClientData }: CreateOr
                 }
                 
                 let initialClientPromise: Promise<Client | null> = Promise.resolve(parsedClient);
-                if (!parsedClient && initialClientId) { // From Kanban Board (Shopify Order)
+                if (!parsedClient && initialClientId) { // Fallback for safety
                     if (isDevMode) console.log("Fetching client by ID as fallback...");
                     initialClientPromise = getDocumentData<Client>('clients', initialClientId);
                 }
@@ -149,32 +149,19 @@ export function CreateOrderForm({ initialClientId, initialClientData }: CreateOr
                     form.setValue('envio.distrito', clientDoc.distrito || '');
                     form.setValue('tienda', clientDoc.tienda_origen);
                     
-                    // Specific logic for Call Center flow (which passes the full client data)
-                    if (parsedClient && parsedClient.source === 'shopify' && parsedClient.shopify_items) {
-                        if(isDevMode) console.log("Shopify items found, populating cart:", parsedClient.shopify_items);
-                        form.setValue('items', parsedClient.shopify_items);
-                        const subtotal = parsedClient.shopify_items.reduce((acc, item) => acc + item.subtotal, 0);
+                    if (clientDoc.source === 'shopify' && clientDoc.shopify_items) {
+                        if(isDevMode) console.log("Shopify items found, populating cart:", clientDoc.shopify_items);
+                        form.setValue('items', clientDoc.shopify_items);
+                        
+                        const subtotal = clientDoc.shopify_items.reduce((acc, item) => acc + item.subtotal, 0);
                         form.setValue('pago.subtotal', subtotal);
-                        if (parsedClient.shopify_payment_details) {
-                            const shipping = parsedClient.shopify_payment_details.total_shipping;
+                        
+                        if (clientDoc.shopify_payment_details) {
+                            const shipping = clientDoc.shopify_payment_details.total_shipping;
                             form.setValue('envio.costo_envio', shipping);
                             form.setValue('pago.monto_total', subtotal + shipping);
                         }
                         toast({ title: 'Lead de Shopify Cargado', description: `Datos y productos de ${clientDoc.nombres} listos para confirmar.` });
-                    } else if (clientDoc.source === 'shopify') {
-                         // Logic for Shopify orders coming from Kanban (must fetch order details separately)
-                        const orderId = `SHOPIFY-${clientDoc.shopify_order_id?.replace('gid://shopify/Order/', '')}`; // Reconstruct order ID if needed
-                        const orderSnapshot = await getDocumentData<Order>('orders', `SHOPIFY-${clientDoc.shopify_order_id}`);
-                        if(orderSnapshot) {
-                            form.setValue('items', orderSnapshot.items);
-                            const subtotal = orderSnapshot.items.reduce((acc, item) => acc + item.subtotal, 0);
-                            form.setValue('pago.subtotal', subtotal);
-                            form.setValue('envio.costo_envio', orderSnapshot.envio.costo_envio);
-                             form.setValue('pago.monto_total', orderSnapshot.pago.monto_total);
-                             toast({ title: 'Pedido de Shopify Cargado', description: `Datos y productos de ${clientDoc.nombres} listos para confirmar.` });
-                        } else {
-                            toast({ title: 'Cliente Precargado', description: `Datos de ${clientDoc.nombres} listos. Agregue productos.` });
-                        }
                     }
                     else {
                         toast({ title: 'Cliente Precargado', description: `Datos de ${clientDoc.nombres} listos para confirmar.` });

@@ -60,8 +60,9 @@ export default function OrdersPage() {
   }, []);
 
   const handleProcessShopifyOrder = (order: Order) => {
-      // For Shopify orders in 'PENDIENTE', we redirect to the create-order page
-      // to confirm and process them. We pass the client ID to pre-fill the form.
+      console.warn("handleProcessShopifyOrder should not be called with the new Call Center flow.");
+      // This logic is deprecated as Shopify orders now go to the call center queue.
+      // Kept for safety, but should not be triggered.
       router.push(`/create-order?clientId=${order.cliente.id_cliente}`);
   }
 

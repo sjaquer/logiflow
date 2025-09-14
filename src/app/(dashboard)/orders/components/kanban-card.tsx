@@ -25,28 +25,15 @@ export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrd
   const getInitials = (name: string) => name ? name.split(' ').map(n => n[0]).join('') : '?';
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
-    // Only allow dragging for non-Shopify orders in "PENDIENTE" state
-    if (order.source === 'shopify' && order.estado_actual === 'PENDIENTE') {
-        e.preventDefault();
-        return;
-    }
     e.dataTransfer.setData('orderId', order.id_pedido);
     e.dataTransfer.effectAllowed = 'move';
   };
   
-  const isShopifyPending = order.source === 'shopify' && order.estado_actual === 'PENDIENTE';
+  const isShopifyPending = false; // This logic is now deprecated with the new flow.
 
   return (
-    <div draggable={!isShopifyPending} onDragStart={handleDragStart} className={isShopifyPending ? "cursor-default" : "cursor-grab active:cursor-grabbing"}>
+    <div draggable onDragStart={handleDragStart} className="cursor-grab active:cursor-grabbing">
       <Card className="hover:bg-card/95 hover:shadow-lg transition-all border-l-4 border-primary/50 relative">
-        {isShopifyPending && (
-            <div className="absolute inset-0 bg-background/60 backdrop-blur-sm flex items-center justify-center z-10 rounded-md">
-                 <Button onClick={() => onProcessShopifyOrder(order)}>
-                    <PhoneForwarded className="mr-2 h-4 w-4" />
-                    Procesar Pedido Shopify
-                </Button>
-            </div>
-        )}
         <OrderDetailsModal 
           order={order}
           users={users}
@@ -54,7 +41,7 @@ export function KanbanCard({ order, users, inventory, onOrderStatusChange, onOrd
           onOrderStatusChange={onOrderStatusChange}
           onOrderItemsChange={onOrderItemsChange}
         >
-          <div className={isShopifyPending ? 'pointer-events-none' : ''}>
+          <div>
               <CardHeader className="pb-3 pt-4 px-4">
                   <div className="flex justify-between items-start">
                       <h4 className="font-semibold text-sm">{order.id_interno}</h4>
