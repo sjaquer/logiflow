@@ -1,39 +1,20 @@
 
 import { NextResponse } from 'next/server';
 import { getAdminDb } from '@/lib/firebase/firebase-admin';
-import * as formidable from 'formidable';
-import * as fs from 'fs';
 import * as xlsx from 'xlsx';
 import type { InventoryItem } from '@/lib/types';
 import { SHOPS } from '@/lib/constants';
 
-// Disable the default body parser
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-const parseForm = (req: Request): Promise<{ fields: formidable.Fields; files: formidable.Files }> => {
-    return new Promise((resolve, reject) => {
-        const form = formidable({});
-        form.parse(req as any, (err, fields, files) => {
-            if (err) return reject(err);
-            resolve({ fields, files });
-        });
-    });
-};
-
 export async function POST(request: Request) {
     try {
-        const { files } = await parseForm(request);
-        const file = Array.isArray(files.file) ? files.file[0] : files.file;
+        const formData = await request.formData();
+        const file = formData.get('file') as File | null;
 
         if (!file) {
             return NextResponse.json({ message: 'No file uploaded.' }, { status: 400 });
         }
 
-        const buffer = fs.readFileSync(file.filepath);
+        const buffer = await file.arrayBuffer();
         const workbook = xlsx.read(buffer, { type: 'buffer' });
         
         const sheetName = 'Inventario';
@@ -52,14 +33,14 @@ export async function POST(request: Request) {
         for (const row of data) {
             const sku = row.sku?.toString().trim();
             if (!sku) {
-                console.warn('Row skipped: SKU is missing.', row);
-                continue;
+                // Now we stop and inform the user if a SKU is missing.
+                return NextResponse.json({ message: `Se encontró una fila sin SKU. Todas las filas deben tener un SKU único. Fila problemática: ${JSON.stringify(row)}` }, { status: 400 });
             }
 
             const inventoryRef = db.collection('inventory').doc(sku);
-            const doc = await inventoryRef.get();
+            const docSnap = await inventoryRef.get();
 
-            const itemData: Partial<InventoryItem> = {
+            const itemData: Partial<InventoryItem> & { 'precios.compra'?: number; 'precios.venta'?: number; 'proveedor.nombre'?: string } = {
                 sku,
                 nombre: row.nombre?.toString() || 'Nombre no especificado',
                 descripcion: row.descripcion?.toString() || '',
@@ -71,13 +52,13 @@ export async function POST(request: Request) {
                 },
                 tienda: SHOPS.includes(row.tienda) ? row.tienda : SHOPS[0],
                 proveedor: {
-                    id_proveedor: row['proveedor.id_proveedor']?.toString() || 'N/A',
+                    id_proveedor: 'N/A', // We can't know the ID from just the name
                     nombre: row['proveedor.nombre']?.toString() || 'N/A',
                 },
                 ubicacion_almacen: row.ubicacion_almacen?.toString() || '',
             };
 
-            if (doc.exists) {
+            if (docSnap.exists) {
                 // Update existing document
                 batch.update(inventoryRef, itemData);
                 updatedCount++;
@@ -106,6 +87,7 @@ export async function POST(request: Request) {
 
     } catch (error) {
         console.error('Error processing bulk upload:', error);
-        return NextResponse.json({ message: 'Error interno del servidor.', error: (error as Error).message }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : 'Ocurrió un error desconocido.';
+        return NextResponse.json({ message: 'Error interno del servidor.', error: errorMessage }, { status: 500 });
     }
 }
