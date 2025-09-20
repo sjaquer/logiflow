@@ -385,7 +385,9 @@ export default function CallCenterQueuePage() {
             </Select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredPendingLeads.length > 0 ? filteredPendingLeads.map(lead => {
+              {loading ? (
+                  [...Array(8)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)
+              ) : filteredPendingLeads.length > 0 ? filteredPendingLeads.map(lead => {
                   const timeInQueue = formatDistanceToNow(new Date(lead.first_interaction_at || lead.last_updated), { addSuffix: true, locale: es });
                   const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
@@ -551,3 +553,5 @@ export default function CallCenterQueuePage() {
     </div>
   );
 }
+
+    
