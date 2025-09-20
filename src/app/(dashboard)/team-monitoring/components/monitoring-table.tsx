@@ -39,14 +39,16 @@ export function MonitoringTable({ leads }: MonitoringTableProps) {
       <TableHeader>
         <TableRow>
           <TableHead className="w-[120px]">Progreso</TableHead>
-          <TableHead>Fecha de Creación</TableHead>
-          <TableHead>Última Modificación</TableHead>
-          <TableHead>Nombre del Lead</TableHead>
+          <TableHead>DNI/RUC</TableHead>
           <TableHead>Contacto Principal</TableHead>
-          <TableHead>Teléfono (Contacto)</TableHead>
+          <TableHead>Teléfono</TableHead>
           <TableHead>Provincia</TableHead>
           <TableHead>Dirección</TableHead>
-          <TableHead>Producto</TableHead>
+          <TableHead>Producto(s)</TableHead>
+          <TableHead>Embudo Kommo</TableHead>
+          <TableHead>Embudo Shopify</TableHead>
+          <TableHead>Fecha de Creación</TableHead>
+          <TableHead>Última Modificación</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -70,13 +72,7 @@ export function MonitoringTable({ leads }: MonitoringTableProps) {
                     </Tooltip>
                   </TooltipProvider>
                 </TableCell>
-                <TableCell className="text-xs">{formatDate(lead.first_interaction_at)}</TableCell>
-                <TableCell className="text-xs">{formatDate(lead.last_updated)}</TableCell>
-                <TableCell>
-                    <span className="font-medium text-primary cursor-pointer hover:underline">
-                        {formatLeadName(lead)}
-                    </span>
-                </TableCell>
+                <TableCell>{lead.dni || 'N/A'}</TableCell>
                 <TableCell>{lead.nombres || 'N/A'}</TableCell>
                 <TableCell>{lead.celular || 'N/A'}</TableCell>
                 <TableCell>{lead.provincia || 'N/A'}</TableCell>
@@ -86,12 +82,16 @@ export function MonitoringTable({ leads }: MonitoringTableProps) {
                     ? lead.shopify_items.map(item => item.nombre).join(', ')
                     : lead.producto || 'N/A'}
                 </TableCell>
+                <TableCell className="text-xs">{lead.etapa_kommo || 'N/A'}</TableCell>
+                <TableCell className="text-xs">{lead.etapa_shopify || 'N/A'}</TableCell>
+                <TableCell className="text-xs">{formatDate(lead.first_interaction_at)}</TableCell>
+                <TableCell className="text-xs">{formatDate(lead.last_updated)}</TableCell>
               </TableRow>
             );
           })
         ) : (
           <TableRow>
-            <TableCell colSpan={9} className="h-24 text-center">
+            <TableCell colSpan={11} className="h-24 text-center">
               No se encontraron leads con los filtros actuales.
             </TableCell>
           </TableRow>
