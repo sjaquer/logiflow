@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { useDropzone } from 'react-dropzone';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, UploadCloud, File, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, UploadCloud, File, CheckCircle, AlertCircle, Loader2, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 
@@ -67,7 +67,7 @@ export default function InventoryImportPage() {
     }
   };
   
-  const templateHeaders = [ 'sku', 'nombre', 'stock_actual', 'stock_minimo', 'precios.compra', 'precios.venta', 'tienda', 'proveedor.nombre', 'ubicacion_almacen'];
+  const templateHeaders = [ 'sku', 'nombre', 'descripcion', 'stock_actual', 'stock_minimo', 'precios.compra', 'precios.venta', 'tienda', 'proveedor.nombre', 'ubicacion_almacen'];
 
   return (
     <div className="space-y-6 p-4 md:p-6 lg:p-8">
@@ -135,6 +135,7 @@ export default function InventoryImportPage() {
                    <ul className="space-y-3 text-sm text-muted-foreground list-disc list-inside">
                         <li><span className="font-semibold text-foreground">sku (Obligatorio):</span> Identificador único del producto. Si ya existe, se actualiza; si no, se crea.</li>
                         <li><span className="font-semibold text-foreground">nombre (Obligatorio):</span> Nombre completo del producto.</li>
+                        <li><span className="font-semibold text-foreground">descripcion (Opcional):</span> Texto descriptivo del producto.</li>
                         <li><span className="font-semibold text-foreground">stock_actual (Obligatorio):</span> Cantidad de stock. Debe ser un número.</li>
                         <li><span className="font-semibold text-foreground">stock_minimo (Obligatorio):</span> Número para alertas de bajo stock.</li>
                         <li><span className="font-semibold text-foreground">precios.compra (Obligatorio):</span> Costo del producto. Usa punto (`.`) para decimales.</li>

@@ -62,6 +62,7 @@ export async function POST(request: Request) {
             const itemData: Partial<InventoryItem> = {
                 sku,
                 nombre: row.nombre?.toString() || 'Nombre no especificado',
+                descripcion: row.descripcion?.toString() || '',
                 stock_actual: Number(row.stock_actual) || 0,
                 stock_minimo: Number(row.stock_minimo) || 0,
                 precios: {
@@ -84,7 +85,6 @@ export async function POST(request: Request) {
                 // Create new document with default fields
                 const newItem: InventoryItem = {
                     id_producto_base: `P-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
-                    descripcion: '',
                     estado: 'ACTIVO',
                     variantes: [],
                     historial_stock: [],
