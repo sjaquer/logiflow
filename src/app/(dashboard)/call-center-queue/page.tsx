@@ -393,12 +393,10 @@ export default function CallCenterQueuePage() {
                                               <AlertTriangle className="mr-2 h-4 w-4" />
                                               <span>Número Equivocado</span>
                                           </DropdownMenuItem>
-                                          <AlertDialogTrigger asChild>
-                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setLeadToDelete(lead)} className="text-destructive">
-                                                <Trash2 className="mr-2 h-4 w-4" />
-                                                <span>Eliminar</span>
-                                            </DropdownMenuItem>
-                                          </AlertDialogTrigger>
+                                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setLeadToDelete(lead)} className="text-destructive">
+                                              <Trash2 className="mr-2 h-4 w-4" />
+                                              <span>Eliminar</span>
+                                          </DropdownMenuItem>
                                       </DropdownMenuContent>
                                   </DropdownMenu>
                               </div>
@@ -536,7 +534,3 @@ export default function CallCenterQueuePage() {
     </div>
   );
 }
-
-    
-
-    
