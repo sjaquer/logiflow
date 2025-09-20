@@ -48,6 +48,7 @@ export default function CallCenterQueuePage() {
   const [pinValue, setPinValue] = useState('');
   const [pinError, setPinError] = useState('');
   const [isClearing, setIsClearing] = useState(false);
+  const [leadToDelete, setLeadToDelete] = useState<Client | null>(null);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -166,13 +167,12 @@ export default function CallCenterQueuePage() {
     }
   }, [currentUser, router, toast]);
 
-  const handleDeleteLead = async (clientId: string, source: Client['source']) => {
-    if (!confirm('¿Estás seguro de que quieres eliminar este lead? Esta acción es permanente.')) {
-      return;
-    }
+  const handleDeleteLead = async () => {
+    if (!leadToDelete) return;
+    
     try {
-      const collectionName = source === 'shopify' ? 'shopify_leads' : 'clients';
-      await deleteDoc(doc(db, collectionName, clientId));
+      const collectionName = leadToDelete.source === 'shopify' ? 'shopify_leads' : 'clients';
+      await deleteDoc(doc(db, collectionName, leadToDelete.id));
       toast({
         title: 'Lead Eliminado',
         description: 'El lead ha sido eliminado de la cola.',
@@ -184,6 +184,8 @@ export default function CallCenterQueuePage() {
         description: 'No se pudo eliminar el lead.',
         variant: 'destructive',
       });
+    } finally {
+        setLeadToDelete(null);
     }
   };
 
@@ -391,10 +393,12 @@ export default function CallCenterQueuePage() {
                                               <AlertTriangle className="mr-2 h-4 w-4" />
                                               <span>Número Equivocado</span>
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleDeleteLead(lead.id, lead.source)} className="text-destructive">
-                                              <Trash2 className="mr-2 h-4 w-4" />
-                                              <span>Eliminar</span>
-                                          </DropdownMenuItem>
+                                          <AlertDialogTrigger asChild>
+                                            <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setLeadToDelete(lead)} className="text-destructive">
+                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                <span>Eliminar</span>
+                                            </DropdownMenuItem>
+                                          </AlertDialogTrigger>
                                       </DropdownMenuContent>
                                   </DropdownMenu>
                               </div>
@@ -511,8 +515,24 @@ export default function CallCenterQueuePage() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {/* Delete Lead Dialog */}
+         <AlertDialog open={!!leadToDelete} onOpenChange={(isOpen) => !isOpen && setLeadToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás seguro de que quieres eliminar este lead?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        Esta acción eliminará permanentemente el lead de <span className="font-bold">{leadToDelete?.nombres}</span>. No podrás deshacer esta acción.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteLead} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Sí, Eliminar Lead
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
-
-    
