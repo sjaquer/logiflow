@@ -99,17 +99,30 @@ Kommo no proporciona el token de larga duración directamente. Debes generarlo a
 
 ---
 
-## 4. Capacidades Actuales y Posibles Mejoras
+## 4. Capacidades Actuales y Sincronización Bidireccional
 
-### Lo que la integración SÍ hace:
+### Lo que la integración SÍ hace (Kommo -> LogiFlow):
 
 -   **Crea un nuevo cliente** en Firestore cuando un lead cambia de estado en Kommo.
 -   **Actualiza un cliente existente** si el webhook se dispara para un cliente (identificado por DNI) que ya existe en Firestore.
 -   **Extrae campos personalizados** del contacto en Kommo (DNI, Celular, Email, Dirección, Distrito).
 
-### Posibles Mejoras y Expansiones (Lo que SE PUEDE hacer):
+### Sincronización Bidireccional (LogiFlow -> Kommo)
 
--   **Sincronización Bidireccional:** Se podría configurar un webhook en LogiFlow (usando la sección de "Gestión de Webhooks") para que, cuando un pedido se marca como "Entregado", se actualice el estado del lead correspondiente en Kommo a "Ganado".
--   **Creación de Pedidos desde Kommo:** Se podría expandir la lógica para que, además de crear el cliente, se cree un "borrador de pedido" en LogiFlow, asignado al cliente recién creado. Esto requeriría campos personalizados adicionales en el lead de Kommo (ej. "SKU del Producto", "Tienda de Origen").
--   **Manejo de Múltiples Contactos:** La lógica actual solo toma el primer contacto asociado al lead. Se podría mejorar para manejar leads que tengan múltiples contactos.
--   **Registro de Errores Avanzado:** Aunque los errores se registran en los logs de Vercel, se podría implementar un sistema para enviar notificaciones (ej. por email) si un webhook falla repetidamente, para alertar a un administrador.
+Para enviar actualizaciones desde LogiFlow de vuelta a Kommo (por ejemplo, cuando un pedido se confirma y quieres cambiar la etapa del lead en Kommo), se recomienda usar un servicio intermediario como **Make.com** o **Zapier**.
+
+El flujo es el siguiente:
+
+1.  **Evento en LogiFlow:** Un agente confirma un pedido en el formulario "Procesar Pedido". Esto dispara el evento `ORDER_CREATED`.
+2.  **Webhook de Salida de LogiFlow:** LogiFlow tiene una sección en **Settings > Webhooks** donde puedes configurar webhooks que se disparen en ciertos eventos.
+3.  **Recepción en Make/Zapier:**
+    *   Creas un escenario en Make que comience con un "Custom Webhook". Make te dará una URL.
+    *   En la configuración de Webhooks de LogiFlow, creas un nuevo webhook, pegas la URL de Make y lo configuras para que se dispare con el evento `ORDER_CREATED`.
+4.  **Acción en Kommo:**
+    *   El webhook de LogiFlow envía todos los datos del pedido a Make (incluyendo el `kommo_lead_id` si el cliente vino originalmente de Kommo).
+    *   En Make, añades un módulo de "Kommo" que:
+        a.  Use el `kommo_lead_id` para encontrar el lead correcto.
+        b.  Actualice los campos necesarios del lead o del contacto.
+        c.  **Cambie la etapa del lead** a una nueva (ej. "Venta Confirmada en LogiFlow").
+
+Este enfoque permite una automatización completa y robusta, manteniendo ambos sistemas sincronizados sin necesidad de código adicional complejo en LogiFlow para cada acción específica.
