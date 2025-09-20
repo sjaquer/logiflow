@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Search, FileUp, List } from 'lucide-react';
+import { Search, FileUp } from 'lucide-react';
 import { InventoryCardGrid } from './components/inventory-card-grid';
 
 export type SortConfig = {
@@ -89,12 +89,6 @@ export default function InventoryPage() {
             <CardDescription>Ver y gestionar stock, ubicación, precios e información de proveedores.</CardDescription>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-             <Button asChild variant="outline">
-              <Link href="/inventory/quick-entry">
-                <List className="mr-2 h-4 w-4" />
-                Editor Rápido
-              </Link>
-            </Button>
             <Button asChild variant="outline">
               <Link href="/inventory/import">
                 <FileUp className="mr-2 h-4 w-4" />
