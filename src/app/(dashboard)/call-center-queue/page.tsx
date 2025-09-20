@@ -6,22 +6,27 @@ import type { Client, User, UserRole, CallStatus } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { isToday } from 'date-fns';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Phone, Search, CheckCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle } from 'lucide-react';
 import { QueueTable } from './components/queue-table';
 import { ManagedQueueTable } from './components/managed-queue-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 import { SHOPS } from '@/lib/constants';
 
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
 const STATUS_FILTERS: CallStatus[] = ['NUEVO', 'CONTACTADO', 'NO_CONTESTA', 'EN_SEGUIMIENTO', 'NUMERO_EQUIVOCADO'];
+const PIN_CODE = '901230';
 
 export default function CallCenterQueuePage() {
   const { user: authUser } = useAuth();
@@ -33,6 +38,10 @@ export default function CallCenterQueuePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<CallStatus | 'TODOS'>('TODOS');
   const [shopFilter, setShopFilter] = useState<string | 'TODAS'>('TODAS');
+  const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
+  const [pinValue, setPinValue] = useState('');
+  const [pinError, setPinError] = useState('');
+  const [isClearing, setIsClearing] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -196,6 +205,38 @@ export default function CallCenterQueuePage() {
           });
       }
   };
+
+  const handleClearQueue = async () => {
+    if (pinValue !== PIN_CODE) {
+        setPinError('PIN incorrecto. Por favor, inténtalo de nuevo.');
+        return;
+    }
+
+    setIsClearing(true);
+    setPinError('');
+
+    try {
+        const batch = writeBatch(db);
+        pendingLeads.forEach(lead => {
+            const collectionName = lead.source === 'shopify' ? 'shopify_leads' : 'clients';
+            const leadRef = doc(db, collectionName, lead.id);
+            batch.delete(leadRef);
+        });
+
+        await batch.commit();
+        
+        toast({ title: 'Bandeja Vaciada', description: `Se han eliminado ${pendingLeads.length} leads pendientes.` });
+        setIsPinDialogOpen(false);
+
+    } catch (error) {
+        console.error("Error clearing queue:", error);
+        toast({ title: 'Error', description: 'No se pudo vaciar la bandeja de entrada.', variant: 'destructive' });
+    } finally {
+        setIsClearing(false);
+        setPinValue('');
+    }
+};
+
   
    if (!currentUser && loading) {
     return (
@@ -243,13 +284,42 @@ export default function CallCenterQueuePage() {
     <div className="space-y-6 p-4 md:p-6 lg:p-8">
       <Card>
         <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-                <Phone />
-                Bandeja de Entrada de Llamadas
-            </CardTitle>
-            <CardDescription>
-                Lista de clientes potenciales (de Kommo y Shopify) para contactar, confirmar datos y crear un pedido.
-            </CardDescription>
+            <div className="flex justify-between items-start">
+                <div>
+                    <CardTitle className="flex items-center gap-2">
+                        <Phone />
+                        Bandeja de Entrada de Llamadas
+                    </CardTitle>
+                    <CardDescription>
+                        Lista de clientes potenciales (de Kommo y Shopify) para contactar, confirmar datos y crear un pedido.
+                    </CardDescription>
+                </div>
+                {currentUser.rol !== 'Call Center' && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm">
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Vaciar Bandeja
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                            <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Esta acción eliminará permanentemente todos los leads pendientes de la bandeja de entrada.
+                                Esta acción no se puede deshacer.
+                            </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => setIsPinDialogOpen(true)}>
+                                Sí, estoy seguro
+                            </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
+            </div>
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4 mb-4">
@@ -313,6 +383,46 @@ export default function CallCenterQueuePage() {
             <ManagedQueueTable leads={filteredManagedLeads} />
         </CardContent>
       </Card>
+
+        {/* PIN Dialog */}
+        <Dialog open={isPinDialogOpen} onOpenChange={setIsPinDialogOpen}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Confirmación Final Requerida</DialogTitle>
+                    <DialogDescription>
+                        Para evitar un borrado accidental, por favor ingresa el PIN de seguridad para vaciar la bandeja de entrada.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 py-4">
+                    <Label htmlFor="pin-input">PIN de Seguridad</Label>
+                    <Input
+                        id="pin-input"
+                        type="password"
+                        value={pinValue}
+                        onChange={(e) => {
+                            setPinValue(e.target.value);
+                            if (pinError) setPinError('');
+                        }}
+                        placeholder="Ingresa el PIN"
+                    />
+                    {pinError && (
+                        <p className="text-sm text-destructive flex items-center gap-2">
+                            <AlertTriangle className="h-4 w-4" /> 
+                            {pinError}
+                        </p>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button variant="ghost" onClick={() => setIsPinDialogOpen(false)}>Cancelar</Button>
+                    <Button variant="destructive" onClick={handleClearQueue} disabled={isClearing}>
+                        {isClearing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Confirmar y Vaciar Definitivamente
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
+
+    
