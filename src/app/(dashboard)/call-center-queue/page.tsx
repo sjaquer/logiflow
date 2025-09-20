@@ -300,7 +300,7 @@ export default function CallCenterQueuePage() {
                         Lista de clientes potenciales (de Kommo y Shopify) para contactar, confirmar datos y crear un pedido.
                     </CardDescription>
                 </div>
-                {currentUser.rol !== 'Call Center' && (
+                {currentUser?.rol !== 'Call Center' && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button variant="destructive" size="sm">
@@ -383,15 +383,15 @@ export default function CallCenterQueuePage() {
                                           </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NO_CONTESTA', lead.source)}>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NO_CONTESTA', lead.source)}>
                                               <PhoneOff className="mr-2 h-4 w-4" />
                                               <span>No Contesta</span>
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NUMERO_EQUIVOCADO', lead.source)}>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NUMERO_EQUIVOCADO', lead.source)}>
                                               <AlertTriangle className="mr-2 h-4 w-4" />
                                               <span>Número Equivocado</span>
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => onDelete(lead.id, lead.source)} className="text-destructive">
+                                          <DropdownMenuItem onClick={() => handleDeleteLead(lead.id, lead.source)} className="text-destructive">
                                               <Trash2 className="mr-2 h-4 w-4" />
                                               <span>Eliminar</span>
                                           </DropdownMenuItem>
