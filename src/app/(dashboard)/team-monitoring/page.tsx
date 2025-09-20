@@ -36,7 +36,7 @@ export default function TeamMonitoringPage() {
 
     const updateState = () => {
         const leads = Array.from(allLeadsMap.values());
-        leads.sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
+        leads.sort((a, b) => new Date(b.first_interaction_at || 0).getTime() - new Date(a.first_interaction_at || 0).getTime());
         setAllLeads(leads);
         setLoading(false);
     };

@@ -187,12 +187,12 @@ export interface Client {
     assigned_agent_id?: string;
     assigned_agent_name?: string;
     assigned_agent_avatar?: string;
-    agent_notes?: string;
     first_interaction_at?: string; 
     
     // For leads coming from Kommo
     kommo_lead_id?: string;
     kommo_contact_id?: number;
+    etapa_kommo?: string; // e.g. "Llamada inicial"
 
     // For leads coming from Shopify
     shopify_order_id?: string;
@@ -203,6 +203,11 @@ export interface Client {
       total_shipping: number;
       payment_gateway: string;
     }
+    etapa_shopify?: string; // e.g. "unfulfilled"
+
+    // Generic fields
+    producto?: string;
+    notas_agente?: string;
 }
 
 
