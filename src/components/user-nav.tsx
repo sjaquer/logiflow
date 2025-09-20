@@ -17,7 +17,7 @@ import {
 import type { User } from "@/lib/types"
 import { useAuth } from "@/context/auth-context"
 import { useRouter } from "next/navigation"
-import { CreditCard, LifeBuoy, Settings, User as UserIcon } from "lucide-react"
+import { LogOut, User as UserIcon } from "lucide-react"
 
 interface UserNavProps {
     user: User
@@ -56,19 +56,11 @@ export function UserNav({ user }: UserNavProps) {
             <UserIcon className="mr-2 h-4 w-4" />
             <span>Perfil</span>
           </DropdownMenuItem>
-          <DropdownMenuItem>
-            <CreditCard className="mr-2 h-4 w-4" />
-            <span>Facturación</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Settings className="mr-2 h-4 w-4" />
-            <span>Ajustes</span>
-          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-         <DropdownMenuItem>
-          <LifeBuoy className="mr-2 h-4 w-4" />
-          <span>Soporte</span>
+         <DropdownMenuItem onClick={() => logout().then(() => router.push('/login'))}>
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>Cerrar sesión</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
