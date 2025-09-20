@@ -412,7 +412,7 @@ export default function CallCenterQueuePage() {
                                           <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NUMERO_EQUIVOCADO', lead.source)}><AlertTriangle className="mr-2 h-4 w-4" /><span>Número Equivocado</span></DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'LEAD_NO_CONTACTABLE', lead.source)}><PhoneMissed className="mr-2 h-4 w-4" /><span>No Contactable</span></DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'LEAD_PERDIDO', lead.source)}><Frown className="mr-2 h-4 w-4" /><span>Lead Perdido</span></DropdownMenuItem>
-                                          <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setLeadToDelete(lead)} className="text-destructive">
+                                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setLeadToDelete(lead); }} className="text-destructive">
                                               <Trash2 className="mr-2 h-4 w-4" />
                                               <span>Eliminar</span>
                                           </DropdownMenuItem>
