@@ -1,77 +1,95 @@
 
 'use client';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Checkbox } from '@/components/ui/checkbox';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Client } from '@/lib/types';
-import { format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { calculateLeadProgress } from '@/lib/utils';
+import { CALL_STATUS_BADGE_MAP } from '@/lib/constants';
 
 interface MonitoringTableProps {
   leads: Client[];
 }
 
 export function MonitoringTable({ leads }: MonitoringTableProps) {
-
-  const formatLeadDate = (dateString?: string) => {
-    if (!dateString) return 'N/A';
-    try {
-      const date = new Date(dateString);
-      const today = new Date();
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-
-      if (date.toDateString() === today.toDateString()) {
-        return `Hoy ${format(date, 'HH:mm', { locale: es })}`;
-      }
-      if (date.toDateString() === yesterday.toDateString()) {
-        return `Ayer ${format(date, 'HH:mm', { locale: es })}`;
-      }
-      return format(date, 'dd MMM HH:mm', { locale: es });
-    } catch (e) {
-      return dateString;
-    }
-  };
+  
+  const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
   return (
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="w-[50px]">
-             <Checkbox />
-          </TableHead>
-          <TableHead>Fecha de Creación</TableHead>
-          <TableHead>Última Modificación</TableHead>
-          <TableHead>Nombre del Lead</TableHead>
-          <TableHead>Teléfono (Contacto)</TableHead>
-          <TableHead>Contacto Principal</TableHead>
-          <TableHead>Provincia</TableHead>
-          <TableHead>Dirección</TableHead>
-          <TableHead>Producto</TableHead>
+          <TableHead className="w-[150px]">Progreso</TableHead>
+          <TableHead>Agente</TableHead>
+          <TableHead>Estado (Llamada)</TableHead>
+          <TableHead>Antigüedad</TableHead>
+          <TableHead>Origen</TableHead>
+          <TableHead>Nombre Cliente</TableHead>
+          <TableHead>Teléfono</TableHead>
+          <TableHead>DNI</TableHead>
+          <TableHead>Productos</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {leads.length > 0 ? (
-          leads.map((lead) => (
-            <TableRow key={lead.id}>
-              <TableCell>
-                <Checkbox />
-              </TableCell>
-              <TableCell className="text-muted-foreground">{formatLeadDate(lead.first_interaction_at)}</TableCell>
-              <TableCell className="text-muted-foreground">{formatLeadDate(lead.last_updated)}</TableCell>
-              <TableCell>
-                <a href="#" className="text-blue-500 hover:underline font-medium">#{lead.kommo_lead_id || lead.shopify_order_id || lead.id.substring(0, 5)}-{lead.tienda_origen || 'N/A'}</a>
-              </TableCell>
-              <TableCell>
-                 <a href={`tel:${lead.celular}`} className="text-blue-500 hover:underline">+51 {lead.celular}</a>
-              </TableCell>
-              <TableCell>
-                 <a href="#" className="text-blue-500 hover:underline">{lead.nombres}</a>
-              </TableCell>
-              <TableCell>{lead.provincia || 'N/A'}</TableCell>
-              <TableCell className="max-w-xs truncate">{lead.direccion || 'N/A'}</TableCell>
-              <TableCell className="max-w-xs truncate">{lead.producto || 'N/A'}</TableCell>
-            </TableRow>
-          ))
+          leads.map((lead) => {
+            const progress = calculateLeadProgress(lead);
+            const timeInQueue = formatDistanceToNow(new Date(lead.first_interaction_at || lead.last_updated), { addSuffix: true, locale: es });
+            return (
+              <TableRow key={lead.id}>
+                <TableCell>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Progress value={progress} className="h-2" />
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{progress}% completado</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </TableCell>
+                <TableCell>
+                  {lead.assigned_agent_name ? (
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger>
+                           <Avatar className="h-8 w-8">
+                            <AvatarImage src={lead.assigned_agent_avatar} />
+                            <AvatarFallback>{getInitials(lead.assigned_agent_name)}</AvatarFallback>
+                          </Avatar>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>{lead.assigned_agent_name}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  ) : (
+                    <span className="text-muted-foreground">N/A</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  <Badge variant={CALL_STATUS_BADGE_MAP[lead.call_status]} className="capitalize">
+                    {lead.call_status.replace(/_/g, ' ').toLowerCase()}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-muted-foreground text-xs">{timeInQueue}</TableCell>
+                <TableCell className="capitalize">{lead.tienda_origen || lead.source}</TableCell>
+                <TableCell className="font-medium">{lead.nombres}</TableCell>
+                <TableCell>{lead.celular || 'N/A'}</TableCell>
+                <TableCell>{lead.dni || 'N/A'}</TableCell>
+                <TableCell className="max-w-xs truncate">
+                  {lead.shopify_items && lead.shopify_items.length > 0
+                    ? lead.shopify_items.map(item => item.nombre).join(', ')
+                    : lead.producto || 'N/A'}
+                </TableCell>
+              </TableRow>
+            );
+          })
         ) : (
           <TableRow>
             <TableCell colSpan={9} className="h-24 text-center">
