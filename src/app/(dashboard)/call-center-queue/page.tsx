@@ -8,20 +8,26 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
 import { doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
-import { isToday } from 'date-fns';
+import { formatDistanceToNow, isToday } from 'date-fns';
+import { es } from 'date-fns/locale';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle } from 'lucide-react';
-import { QueueTable } from './components/queue-table';
+import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon } from 'lucide-react';
 import { ManagedQueueTable } from './components/managed-queue-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { SHOPS } from '@/lib/constants';
+import { SHOPS, CALL_STATUS_BADGE_MAP } from '@/lib/constants';
+import { cn } from '@/lib/utils';
+import { Badge } from '@/components/ui/badge';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
@@ -66,7 +72,7 @@ export default function CallCenterQueuePage() {
           }
       });
       
-      pending.sort((a, b) => new Date(b.first_interaction_at || b.last_updated).getTime() - new Date(a.first_interaction_at || a.last_updated).getTime());
+      pending.sort((a, b) => new Date(a.first_interaction_at || a.last_updated).getTime() - new Date(b.first_interaction_at || b.last_updated).getTime());
       managed.sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
       
       return { pending, managed };
@@ -322,7 +328,7 @@ export default function CallCenterQueuePage() {
             </div>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
@@ -357,14 +363,98 @@ export default function CallCenterQueuePage() {
                 </SelectContent>
             </Select>
           </div>
-          <div className="overflow-x-auto">
-            <QueueTable
-              leads={filteredPendingLeads}
-              onProcess={handleProcessClient}
-              onDelete={(clientId, source) => handleDeleteLead(clientId, source)}
-              onStatusChange={(clientId, status, source) => handleStatusChange(clientId, status, source)}
-              currentUserId={currentUser?.id_usuario}
-            />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              {filteredPendingLeads.length > 0 ? filteredPendingLeads.map(lead => {
+                  const isAssignedToOther = lead.assigned_agent_id && lead.assigned_agent_id !== currentUser?.id_usuario;
+                  const timeInQueue = formatDistanceToNow(new Date(lead.first_interaction_at || lead.last_updated), { addSuffix: true, locale: es });
+                  const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
+
+                  return (
+                      <Card key={lead.id} className={cn("flex flex-col", isAssignedToOther && "opacity-60")}>
+                          <CardHeader className="p-4">
+                              <div className="flex justify-between items-start">
+                                  <Badge variant={CALL_STATUS_BADGE_MAP[lead.call_status]} className="capitalize w-28 justify-center text-xs">
+                                      {lead.call_status.replace(/_/g, ' ').toLowerCase()}
+                                  </Badge>
+                                   <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-7 w-7">
+                                              <MoreVertical className="h-4 w-4" />
+                                          </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                          <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NO_CONTESTA', lead.source)}>
+                                              <PhoneOff className="mr-2 h-4 w-4" />
+                                              <span>No Contesta</span>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => onStatusChange(lead.id, 'NUMERO_EQUIVOCADO', lead.source)}>
+                                              <AlertTriangle className="mr-2 h-4 w-4" />
+                                              <span>Número Equivocado</span>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => onDelete(lead.id, lead.source)} className="text-destructive">
+                                              <Trash2 className="mr-2 h-4 w-4" />
+                                              <span>Eliminar</span>
+                                          </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                  </DropdownMenu>
+                              </div>
+                               <CardTitle className="text-lg pt-2">{lead.nombres}</CardTitle>
+                               <CardDescription>{lead.celular}</CardDescription>
+                          </CardHeader>
+                          <CardContent className="p-4 flex-grow space-y-3 text-sm">
+                              <div className="flex items-center gap-2 text-muted-foreground">
+                                  {lead.tienda_origen ? (
+                                      <>
+                                          <ShoppingCart className="h-4 w-4 text-primary" />
+                                          <span className="font-medium capitalize text-foreground">{lead.tienda_origen}</span>
+                                      </>
+                                  ) : (
+                                      <>
+                                          <Globe className="h-4 w-4" />
+                                          <span className="capitalize">{lead.source}</span>
+                                      </>
+                                  )}
+                              </div>
+                               <div className="flex items-center gap-2 text-muted-foreground">
+                                  <Clock className="h-4 w-4" />
+                                  <span>{timeInQueue}</span>
+                              </div>
+                              {lead.assigned_agent_name && (
+                                   <div className="flex items-center gap-2 text-muted-foreground">
+                                      <UserIcon className="h-4 w-4" />
+                                       <TooltipProvider>
+                                          <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                  <div className="flex items-center gap-2">
+                                                      <Avatar className="h-6 w-6">
+                                                          <AvatarImage src={lead.assigned_agent_avatar} />
+                                                          <AvatarFallback>{getInitials(lead.assigned_agent_name)}</AvatarFallback>
+                                                      </Avatar>
+                                                      <span className="font-medium text-foreground">{lead.assigned_agent_name}</span>
+                                                  </div>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                  <p>Asignado a {lead.assigned_agent_name}</p>
+                                              </TooltipContent>
+                                          </Tooltip>
+                                      </TooltipProvider>
+                                  </div>
+                              )}
+                          </CardContent>
+                          <CardFooter className="p-4">
+                              <Button className="w-full" onClick={() => handleProcessClient(lead)} disabled={isAssignedToOther}>
+                                  <PhoneForwarded className="mr-2 h-4 w-4" />
+                                  {lead.call_status === 'NUEVO' ? 'Procesar Lead' : 'Continuar Gestión'}
+                              </Button>
+                          </CardFooter>
+                      </Card>
+                  )
+              }) : (
+                 <div className="col-span-full text-center py-16">
+                     <p className="text-lg font-semibold">¡Bandeja de entrada limpia!</p>
+                     <p className="text-muted-foreground">Felicidades, no hay clientes pendientes por llamar.</p>
+                 </div>
+              )}
           </div>
         </CardContent>
       </Card>
