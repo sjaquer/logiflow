@@ -15,10 +15,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon, Repeat, Repeat1, Repeat2, Repeat3, PhoneMissed, Frown } from 'lucide-react';
+import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon, Repeat, PhoneMissed, Frown } from 'lucide-react';
 import { ManagedQueueTable } from './components/managed-queue-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { SHOPS, CALL_STATUS_BADGE_MAP } from '@/lib/constants';
@@ -405,9 +405,9 @@ export default function CallCenterQueuePage() {
                                           </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_1', lead.source)}><Repeat1 className="mr-2 h-4 w-4" /><span>Intento 1</span></DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_2', lead.source)}><Repeat2 className="mr-2 h-4 w-4" /><span>Intento 2</span></DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_3', lead.source)}><Repeat3 className="mr-2 h-4 w-4" /><span>Intento 3</span></DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_1', lead.source)}><Repeat className="mr-2 h-4 w-4" /><span>Intento 1</span></DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_2', lead.source)}><Repeat className="mr-2 h-4 w-4" /><span>Intento 2</span></DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_3', lead.source)}><Repeat className="mr-2 h-4 w-4" /><span>Intento 3</span></DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NO_CONTESTA', lead.source)}><PhoneOff className="mr-2 h-4 w-4" /><span>No Contesta</span></DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NUMERO_EQUIVOCADO', lead.source)}><AlertTriangle className="mr-2 h-4 w-4" /><span>Número Equivocado</span></DropdownMenuItem>
                                           <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'LEAD_NO_CONTACTABLE', lead.source)}><PhoneMissed className="mr-2 h-4 w-4" /><span>No Contactable</span></DropdownMenuItem>
