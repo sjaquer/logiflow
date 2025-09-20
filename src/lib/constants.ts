@@ -36,6 +36,12 @@ export const CALL_STATUS_BADGE_MAP: Record<CallStatus, 'default' | 'success' | '
     EN_SEGUIMIENTO: 'outline',
     VENTA_CONFIRMADA: 'success',
     HIBERNACION: 'secondary',
+    INTENTO_1: 'default',
+    INTENTO_2: 'default',
+    INTENTO_3: 'default',
+    INTENTO_4: 'default',
+    LEAD_NO_CONTACTABLE: 'destructive',
+    LEAD_PERDIDO: 'destructive',
 };
 
 export const SHOPS: Shop[] = ['Blumi', 'Cumbre', 'Dearel', 'Trazto'];

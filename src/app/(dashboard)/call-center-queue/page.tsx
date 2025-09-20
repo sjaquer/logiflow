@@ -15,10 +15,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon } from 'lucide-react';
+import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon, Repeat, Repeat1, Repeat2, Repeat3, PhoneMissed, Frown } from 'lucide-react';
 import { ManagedQueueTable } from './components/managed-queue-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { SHOPS, CALL_STATUS_BADGE_MAP } from '@/lib/constants';
@@ -31,8 +31,10 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
-const STATUS_FILTERS: CallStatus[] = ['NUEVO', 'CONTACTADO', 'NO_CONTESTA', 'EN_SEGUIMIENTO', 'NUMERO_EQUIVOCADO'];
+const STATUS_FILTERS: CallStatus[] = ['NUEVO', 'CONTACTADO', 'INTENTO_1', 'INTENTO_2', 'INTENTO_3', 'INTENTO_4', 'NO_CONTESTA', 'EN_SEGUIMIENTO', 'NUMERO_EQUIVOCADO', 'LEAD_NO_CONTACTABLE', 'LEAD_PERDIDO'];
 const PIN_CODE = '901230';
+type SortOrder = 'newest' | 'oldest';
+
 
 export default function CallCenterQueuePage() {
   const { user: authUser } = useAuth();
@@ -44,6 +46,8 @@ export default function CallCenterQueuePage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<CallStatus | 'TODOS'>('TODOS');
   const [shopFilter, setShopFilter] = useState<string | 'TODAS'>('TODAS');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('newest');
+
   const [isPinDialogOpen, setIsPinDialogOpen] = useState(false);
   const [pinValue, setPinValue] = useState('');
   const [pinError, setPinError] = useState('');
@@ -73,11 +77,17 @@ export default function CallCenterQueuePage() {
           }
       });
       
-      pending.sort((a, b) => new Date(a.first_interaction_at || a.last_updated).getTime() - new Date(b.first_interaction_at || b.last_updated).getTime());
+      const sortFunction = (a: Client, b: Client) => {
+        const timeA = new Date(a.first_interaction_at || a.last_updated).getTime();
+        const timeB = new Date(b.first_interaction_at || b.last_updated).getTime();
+        return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
+      };
+
+      pending.sort(sortFunction);
       managed.sort((a, b) => new Date(b.last_updated).getTime() - new Date(a.last_updated).getTime());
       
       return { pending, managed };
-  }, []);
+  }, [sortOrder]);
 
   useEffect(() => {
     setLoading(true);
@@ -134,11 +144,6 @@ export default function CallCenterQueuePage() {
         toast({ title: 'Error', description: 'No se pudo identificar al usuario.', variant: 'destructive' });
         return;
     }
-    
-    if (client.assigned_agent_id && client.assigned_agent_id !== currentUser.id_usuario) {
-        toast({ title: 'Lead Asignado', description: `${client.assigned_agent_name} ya está trabajando en este lead.`, variant: 'destructive'});
-        return;
-    }
 
     try {
         const collectionName = client.source === 'shopify' ? 'shopify_leads' : 'clients';
@@ -193,13 +198,18 @@ export default function CallCenterQueuePage() {
       const collectionName = source === 'shopify' ? 'shopify_leads' : 'clients';
       const clientRef = doc(db, collectionName, clientId);
       try {
-          await updateDoc(clientRef, {
-              call_status: status,
-              assigned_agent_id: null,
-              assigned_agent_name: null,
-              assigned_agent_avatar: null,
-              last_updated: new Date().toISOString()
-          });
+        const updatePayload: any = {
+            call_status: status,
+            last_updated: new Date().toISOString()
+        };
+        // Reset agent assignment only if moving to a non-contact status
+        if (status === 'NO_CONTESTA' || status === 'NUMERO_EQUIVOCADO' || status === 'LEAD_NO_CONTACTABLE' || status === 'LEAD_PERDIDO' || status.startsWith('INTENTO')) {
+            updatePayload.assigned_agent_id = null;
+            updatePayload.assigned_agent_name = null;
+            updatePayload.assigned_agent_avatar = null;
+        }
+
+          await updateDoc(clientRef, updatePayload);
            toast({
               title: 'Estado Actualizado',
               description: `El lead ha sido marcado como "${status.replace(/_/g, ' ').toLowerCase()}".`,
@@ -340,6 +350,15 @@ export default function CallCenterQueuePage() {
                 className="pl-9"
               />
             </div>
+             <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as any)}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                    <SelectValue placeholder="Ordenar por..." />
+                </SelectTrigger>
+                <SelectContent>
+                    <SelectItem value="newest">Más Recientes</SelectItem>
+                    <SelectItem value="oldest">Más Antiguos</SelectItem>
+                </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
               <SelectTrigger className="w-full sm:w-[200px]">
                 <SelectValue placeholder="Filtrar por estado" />
@@ -367,15 +386,14 @@ export default function CallCenterQueuePage() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {filteredPendingLeads.length > 0 ? filteredPendingLeads.map(lead => {
-                  const isAssignedToOther = lead.assigned_agent_id && lead.assigned_agent_id !== currentUser?.id_usuario;
                   const timeInQueue = formatDistanceToNow(new Date(lead.first_interaction_at || lead.last_updated), { addSuffix: true, locale: es });
                   const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
                   return (
-                      <Card key={lead.id} className={cn("flex flex-col", isAssignedToOther && "opacity-60")}>
+                      <Card key={lead.id} className={cn("flex flex-col")}>
                           <CardHeader className="p-4">
                               <div className="flex justify-between items-start">
-                                  <Badge variant={CALL_STATUS_BADGE_MAP[lead.call_status]} className="capitalize w-28 justify-center text-xs">
+                                  <Badge variant={CALL_STATUS_BADGE_MAP[lead.call_status]} className="capitalize w-fit justify-center text-xs">
                                       {lead.call_status.replace(/_/g, ' ').toLowerCase()}
                                   </Badge>
                                    <DropdownMenu>
@@ -385,14 +403,13 @@ export default function CallCenterQueuePage() {
                                           </Button>
                                       </DropdownMenuTrigger>
                                       <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NO_CONTESTA', lead.source)}>
-                                              <PhoneOff className="mr-2 h-4 w-4" />
-                                              <span>No Contesta</span>
-                                          </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NUMERO_EQUIVOCADO', lead.source)}>
-                                              <AlertTriangle className="mr-2 h-4 w-4" />
-                                              <span>Número Equivocado</span>
-                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_1', lead.source)}><Repeat1 className="mr-2 h-4 w-4" /><span>Intento 1</span></DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_2', lead.source)}><Repeat2 className="mr-2 h-4 w-4" /><span>Intento 2</span></DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_3', lead.source)}><Repeat3 className="mr-2 h-4 w-4" /><span>Intento 3</span></DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NO_CONTESTA', lead.source)}><PhoneOff className="mr-2 h-4 w-4" /><span>No Contesta</span></DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NUMERO_EQUIVOCADO', lead.source)}><AlertTriangle className="mr-2 h-4 w-4" /><span>Número Equivocado</span></DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'LEAD_NO_CONTACTABLE', lead.source)}><PhoneMissed className="mr-2 h-4 w-4" /><span>No Contactable</span></DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'LEAD_PERDIDO', lead.source)}><Frown className="mr-2 h-4 w-4" /><span>Lead Perdido</span></DropdownMenuItem>
                                           <DropdownMenuItem onSelect={(e) => e.preventDefault()} onClick={() => setLeadToDelete(lead)} className="text-destructive">
                                               <Trash2 className="mr-2 h-4 w-4" />
                                               <span>Eliminar</span>
@@ -444,7 +461,7 @@ export default function CallCenterQueuePage() {
                               )}
                           </CardContent>
                           <CardFooter className="p-4">
-                              <Button className="w-full" onClick={() => handleProcessClient(lead)} disabled={isAssignedToOther}>
+                              <Button className="w-full" onClick={() => handleProcessClient(lead)}>
                                   <PhoneForwarded className="mr-2 h-4 w-4" />
                                   {lead.call_status === 'NUEVO' ? 'Procesar Lead' : 'Continuar Gestión'}
                               </Button>

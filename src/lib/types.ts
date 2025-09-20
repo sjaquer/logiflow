@@ -152,7 +152,21 @@ export interface User {
   avatar?: string;
 }
 
-export type CallStatus = 'NUEVO' | 'CONTACTADO' | 'NO_CONTESTA' | 'NUMERO_EQUIVOCADO' | 'EN_SEGUIMIENTO' | 'VENTA_CONFIRMADA' | 'HIBERNACION';
+export type CallStatus = 
+  | 'NUEVO' 
+  | 'CONTACTADO' 
+  | 'NO_CONTESTA' 
+  | 'NUMERO_EQUIVOCADO' 
+  | 'EN_SEGUIMIENTO' 
+  | 'VENTA_CONFIRMADA' 
+  | 'HIBERNACION'
+  | 'INTENTO_1'
+  | 'INTENTO_2'
+  | 'INTENTO_3'
+  | 'INTENTO_4'
+  | 'LEAD_NO_CONTACTABLE'
+  | 'LEAD_PERDIDO';
+
 
 export interface Client {
     id: string; // Document ID from Firestore (unique, auto-generated)
