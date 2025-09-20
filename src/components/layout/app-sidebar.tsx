@@ -25,6 +25,7 @@ import {
   Phone,
   PackagePlus,
   FileUp,
+  Activity,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
@@ -48,6 +49,7 @@ type MenuItem = {
 const menuItems: MenuItem[] = [
   { href: '/orders', label: 'Pedidos', icon: LayoutDashboard, permissionKey: 'pedidos' },
   { href: '/call-center-queue', label: 'Call Center', icon: Phone, permissionKey: 'call_center' },
+  { href: '/team-monitoring', label: 'Monitor de Equipo', icon: Activity, permissionKey: 'call_center' },
   { href: '/create-order', label: 'Procesar Pedido', icon: PackagePlus, permissionKey: 'procesar_pedido' },
   { href: '/clients', label: 'Clientes', icon: Users, permissionKey: 'clientes' },
   { href: '/inventory', label: 'Inventario', icon: Box, permissionKey: 'inventario' },
@@ -73,7 +75,8 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
           return items;
       }
       return items.filter(item => {
-        return currentUser.permisos.puede_ver?.[item.permissionKey] === true;
+        // A user might not have the 'puede_ver' permission object yet, so we safely check for it.
+        return currentUser.permisos?.puede_ver?.[item.permissionKey] === true;
       });
   }
 

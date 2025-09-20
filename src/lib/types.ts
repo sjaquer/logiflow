@@ -1,5 +1,6 @@
 
 
+
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
 export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo' | 'Transferencia Bancaria' | 'Desconocido';
@@ -139,14 +140,14 @@ export interface User {
     puede_gestionar_inventario: boolean;
     puede_ver_reportes: boolean;
     // Permisos de visibilidad de secciones
-    puede_ver: {
-      pedidos: boolean;
-      call_center: boolean;
-      procesar_pedido: boolean;
-      clientes: boolean;
-      inventario: boolean;
-      reportes: boolean;
-      staff: boolean;
+    puede_ver?: {
+      pedidos?: boolean;
+      call_center?: boolean;
+      procesar_pedido?: boolean;
+      clientes?: boolean;
+      inventario?: boolean;
+      reportes?: boolean;
+      staff?: boolean;
     };
   };
   avatar?: string;

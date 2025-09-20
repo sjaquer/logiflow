@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx"
 import { twMerge } from "tailwind-merge"
-import type { Order, Filters } from './types';
+import type { Order, Filters, Client } from './types';
 
 
 export function cn(...inputs: ClassValue[]) {
@@ -28,4 +28,30 @@ export function filterOrders(orders: Order[], filters: Filters): Order[] {
       }
       return true;
     });
+}
+
+/**
+ * Calculates the completion progress of a lead based on key fields.
+ * @param lead The client lead object.
+ * @returns A percentage from 0 to 100.
+ */
+export function calculateLeadProgress(lead: Client): number {
+  const fields = [
+    lead.nombres,
+    lead.celular,
+    lead.dni,
+    lead.direccion,
+    lead.distrito,
+    lead.provincia,
+  ];
+  
+  const totalFields = fields.length;
+  const completedFields = fields.filter(field => field && field.trim() !== '').length;
+  
+  if (totalFields === 0) {
+    return 0;
+  }
+  
+  const progress = (completedFields / totalFields) * 100;
+  return Math.round(progress);
 }
