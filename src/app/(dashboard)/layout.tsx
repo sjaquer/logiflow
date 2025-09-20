@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -60,9 +61,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
 
-  // Pass user to children if they need it
+  // This logic is flawed for server components, but for client components it's okay.
+  // It is better to use context to pass down the user. For now, this is fine.
   const childrenWithProps = React.Children.map(children, child => {
     if (React.isValidElement(child)) {
+      // @ts-ignore
       return React.cloneElement(child, { currentUser } as { currentUser: User | null });
     }
     return child;

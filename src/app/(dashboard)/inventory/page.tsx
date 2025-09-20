@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { Edit, Settings, Search, Plus, Trash2 } from 'lucide-react';
+import { Edit, Settings, Search, Plus, Trash2, FileUp } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
@@ -170,6 +170,13 @@ export default function InventoryPage() {
               </SheetContent>
             </Sheet>
             
+            <Button asChild variant="outline">
+              <Link href="/inventory/import">
+                <FileUp className="mr-2 h-4 w-4" />
+                Importar desde Excel
+              </Link>
+            </Button>
+
             <Button asChild>
               <Link href="/inventory/quick-entry">
                 <Edit className="mr-2 h-4 w-4" />

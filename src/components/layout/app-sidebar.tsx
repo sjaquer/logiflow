@@ -24,6 +24,7 @@ import {
   Users,
   Phone,
   PackagePlus,
+  FileUp,
 } from 'lucide-react';
 import type { User, UserRole } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
