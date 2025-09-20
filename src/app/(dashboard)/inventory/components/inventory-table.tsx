@@ -1,99 +1,81 @@
 
 'use client';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
+import { useState } from 'react';
 import type { InventoryItem } from '@/lib/types';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowUpDown } from 'lucide-react';
-import type { SortConfig } from '../page';
+import { Badge } from '@/components/ui/badge';
+import { Edit } from 'lucide-react';
+import { QuickEditForm } from './quick-edit-form';
 
-interface InventoryTableProps {
-  inventory: InventoryItem[];
-  requestSort: (key: keyof InventoryItem | 'precios.venta' | 'precios.compra') => void;
-  sortConfig: SortConfig | null;
+interface InventoryCardProps {
+  item: InventoryItem;
 }
 
-export function InventoryTable({ inventory, requestSort, sortConfig }: InventoryTableProps) {
+export function InventoryCard({ item }: InventoryCardProps) {
+  const [isEditing, setIsEditing] = useState(false);
+
   const getStockStatus = (item: InventoryItem): { text: string; variant: 'success' | 'destructive' | 'secondary' | 'outline' | 'accent' } => {
-    if (item.estado === 'DESCONTINUADO') {
-      return { text: 'Descontinuado', variant: 'outline' };
-    }
-    if (item.stock_actual === 0) {
-      return { text: 'Sin Stock', variant: 'destructive' };
-    }
-    if (item.stock_actual < 5) {
-      return { text: 'Stock Crítico', variant: 'destructive' };
-    }
-    if (item.stock_actual <= item.stock_minimo) {
-      return { text: 'Stock Bajo', variant: 'accent' }; 
-    }
+    if (item.estado === 'DESCONTINUADO') return { text: 'Descontinuado', variant: 'outline' };
+    if (item.stock_actual === 0) return { text: 'Sin Stock', variant: 'destructive' };
+    if (item.stock_actual <= item.stock_minimo) return { text: 'Stock Bajo', variant: 'accent' };
     return { text: 'En Stock', variant: 'success' };
   };
 
-  const getSortIndicator = (key: keyof InventoryItem | 'precios.venta' | 'precios.compra') => {
-    if (!sortConfig || sortConfig.key !== key) {
-      return null;
-    }
-    return sortConfig.direction === 'ascending' ? '▲' : '▼';
-  };
+  const status = getStockStatus(item);
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
-             <Button variant="ghost" onClick={() => requestSort('sku')}>
-                SKU <ArrowUpDown className="ml-2 h-4 w-4" />
-             </Button>
-          </TableHead>
-          <TableHead>
-            <Button variant="ghost" onClick={() => requestSort('nombre')}>
-                Nombre <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-          </TableHead>
-          <TableHead>
-            <Button variant="ghost" onClick={() => requestSort('tienda')}>
-                Tienda <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-          </TableHead>
-          <TableHead>Proveedor</TableHead>
-          <TableHead className="text-right">
-            <Button variant="ghost" onClick={() => requestSort('stock_actual')}>
-                Stock <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-          </TableHead>
-          <TableHead>Estado</TableHead>
-          <TableHead className="text-right">
-            <Button variant="ghost" onClick={() => requestSort('precios.compra')}>
-                Precio Compra <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-          </TableHead>
-          <TableHead className="text-right">
-            <Button variant="ghost" onClick={() => requestSort('precios.venta')}>
-                Precio Venta <ArrowUpDown className="ml-2 h-4 w-4" />
-            </Button>
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {inventory.map((item) => {
-          const status = getStockStatus(item);
-          return (
-            <TableRow key={item.sku}>
-              <TableCell className="font-medium">{item.sku}</TableCell>
-              <TableCell>{item.nombre}</TableCell>
-              <TableCell>{item.tienda}</TableCell>
-              <TableCell>{item.proveedor.nombre}</TableCell>
-              <TableCell className="text-right">{item.stock_actual}</TableCell>
-              <TableCell>
-                <Badge variant={status.variant} className="capitalize">{status.text}</Badge>
-              </TableCell>
-              <TableCell className="text-right">S/ {item.precios.compra.toFixed(2)}</TableCell>
-              <TableCell className="text-right">S/ {item.precios.venta.toFixed(2)}</TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <Card className="flex flex-col">
+      <CardHeader>
+        <div className="flex justify-between items-start gap-2">
+            <CardTitle className="text-base leading-tight">{item.nombre}</CardTitle>
+            <Badge variant="secondary">{item.sku}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="flex-grow space-y-3">
+        {isEditing ? (
+            <QuickEditForm item={item} onFinished={() => setIsEditing(false)} />
+        ) : (
+            <>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Stock Actual</span>
+                    <span className="font-bold text-lg">{item.stock_actual}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Tienda</span>
+                    <span className="font-medium">{item.tienda}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Ubicación</span>
+                    <span className="font-mono text-sm">{item.ubicacion_almacen || 'N/A'}</span>
+                </div>
+                 <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground">Proveedor</span>
+                    <span className="font-medium text-sm">{item.proveedor.nombre || 'N/A'}</span>
+                </div>
+            </>
+        )}
+      </CardContent>
+      <CardFooter className="flex flex-col items-stretch gap-2 pt-4">
+         {!isEditing && (
+            <>
+                <div className="flex justify-between items-baseline">
+                    <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground">Compra</span>
+                        <span className="font-semibold">S/ {item.precios.compra.toFixed(2)}</span>
+                    </div>
+                    <div className="flex flex-col text-right">
+                        <span className="text-xs text-muted-foreground">Venta</span>
+                        <span className="font-bold text-lg text-primary">S/ {item.precios.venta.toFixed(2)}</span>
+                    </div>
+                </div>
+                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edición Rápida
+                </Button>
+            </>
+         )}
+      </CardFooter>
+    </Card>
   );
 }
