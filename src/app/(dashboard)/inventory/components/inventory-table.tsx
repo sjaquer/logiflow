@@ -25,51 +25,55 @@ export function InventoryCard({ item }: InventoryCardProps) {
   const status = getStockStatus(item);
 
   return (
-    <Card className="flex flex-col">
-      <CardHeader>
+    <Card className="flex flex-col aspect-square">
+      <CardHeader className="p-3">
         <div className="flex justify-between items-start gap-2">
-            <CardTitle className="text-base leading-tight">{item.nombre}</CardTitle>
-            <Badge variant="secondary">{item.sku}</Badge>
+            <CardTitle className="text-sm leading-tight line-clamp-2">{item.nombre}</CardTitle>
+            <Badge variant="secondary" className="text-xs">{item.sku}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="flex-grow space-y-3">
+      <CardContent className="flex-grow p-3 space-y-2.5">
         {isEditing ? (
             <QuickEditForm item={item} onFinished={() => setIsEditing(false)} />
         ) : (
             <>
                 <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Stock Actual</span>
+                    <span className="text-xs text-muted-foreground">Stock</span>
                     <span className="font-bold text-lg">{item.stock_actual}</span>
                 </div>
-                <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Tienda</span>
-                    <span className="font-medium">{item.tienda}</span>
+                 <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">Estado</span>
+                    <Badge variant={status.variant} className="text-xs">{status.text}</Badge>
                 </div>
                 <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Ubicación</span>
-                    <span className="font-mono text-sm">{item.ubicacion_almacen || 'N/A'}</span>
+                    <span className="text-xs text-muted-foreground">Tienda</span>
+                    <span className="font-medium text-xs">{item.tienda}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                    <span className="text-xs text-muted-foreground">Ubicación</span>
+                    <span className="font-mono text-xs">{item.ubicacion_almacen || 'N/A'}</span>
                 </div>
                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Proveedor</span>
-                    <span className="font-medium text-sm">{item.proveedor.nombre || 'N/A'}</span>
+                    <span className="text-xs text-muted-foreground">Proveedor</span>
+                    <span className="font-medium text-xs truncate">{item.proveedor.nombre || 'N/A'}</span>
                 </div>
             </>
         )}
       </CardContent>
-      <CardFooter className="flex flex-col items-stretch gap-2 pt-4">
+      <CardFooter className="flex flex-col items-stretch gap-2 p-3 mt-auto">
          {!isEditing && (
             <>
-                <div className="flex justify-between items-baseline">
+                <div className="flex justify-between items-baseline pt-2 border-t">
                     <div className="flex flex-col">
                         <span className="text-xs text-muted-foreground">Compra</span>
-                        <span className="font-semibold">S/ {item.precios.compra.toFixed(2)}</span>
+                        <span className="font-semibold text-sm">S/ {item.precios.compra.toFixed(2)}</span>
                     </div>
                     <div className="flex flex-col text-right">
                         <span className="text-xs text-muted-foreground">Venta</span>
-                        <span className="font-bold text-lg text-primary">S/ {item.precios.venta.toFixed(2)}</span>
+                        <span className="font-bold text-base text-primary">S/ {item.precios.venta.toFixed(2)}</span>
                     </div>
                 </div>
-                <Button variant="outline" onClick={() => setIsEditing(true)}>
+                <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
                     <Edit className="mr-2 h-4 w-4" />
                     Edición Rápida
                 </Button>
