@@ -14,7 +14,7 @@ import { CheckCircle2, Package, User as UserIcon, Calendar, MapPin, Truck, Credi
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 
 interface OrderDetailsModalProps {
@@ -40,41 +40,59 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
   };
   
  const handleReturnToCallCenter = async () => {
-    const { source, cliente, shopify_order_id } = order;
+    const { source, cliente, shopify_order_id, id_pedido } = order;
 
     let leadRef;
+    let leadCollection: 'clients' | 'shopify_leads' | null = null;
+    let leadId: string | undefined = undefined;
 
     if (source === 'shopify' && shopify_order_id) {
-        leadRef = doc(db, 'shopify_leads', shopify_order_id);
-    } else if (source === 'kommo' && cliente.id_cliente) {
-        leadRef = doc(db, 'clients', cliente.id_cliente);
-    } else if (source === 'manual' && cliente.id_cliente) {
-         leadRef = doc(db, 'clients', cliente.id_cliente);
+        leadCollection = 'shopify_leads';
+        leadId = shopify_order_id;
+    } else if ((source === 'kommo' || source === 'manual') && cliente.id_cliente) {
+        leadCollection = 'clients';
+        leadId = cliente.id_cliente;
     }
     
-    if (!leadRef) {
+    if (!leadCollection || !leadId) {
         toast({
-            title: 'Error',
-            description: 'No se pudo encontrar el origen del lead para este pedido.',
+            title: 'Error de Origen',
+            description: 'No se pudo identificar el lead original para este pedido.',
             variant: 'destructive'
         });
         return;
     }
 
     try {
-        await updateDoc(leadRef, {
+        const batch = writeBatch(db);
+        
+        // 1. Update the original lead to send it back to the queue
+        const originalLeadRef = doc(db, leadCollection, leadId);
+        batch.update(originalLeadRef, {
             call_status: 'EN_SEGUIMIENTO',
             last_updated: new Date().toISOString(),
         });
+        
+        // 2. Update the order status to "RETENIDO"
+        const orderRef = doc(db, 'orders', id_pedido);
+        batch.update(orderRef, {
+            estado_actual: 'RETENIDO'
+        });
+
+        await batch.commit();
+        
+        // Update local state to reflect the change immediately
+        setOrder(prev => ({...prev, estado_actual: 'RETENIDO'}));
+
         toast({
-            title: 'Enviado a Call Center',
-            description: 'El lead ha sido devuelto a la bandeja para seguimiento.'
+            title: 'Acción Completada',
+            description: 'El lead fue devuelto a Call Center y el pedido fue marcado como "Retenido".'
         });
     } catch (error) {
         console.error("Error returning lead to call center:", error);
         toast({
             title: 'Error',
-            description: 'No se pudo devolver el lead al Call Center.',
+            description: 'No se pudo completar la acción. Inténtalo de nuevo.',
             variant: 'destructive'
         });
     }
