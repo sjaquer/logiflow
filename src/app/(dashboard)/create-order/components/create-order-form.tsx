@@ -348,23 +348,22 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
             
             toast({ title: "¡Éxito!", description: `Pedido ${orderId} creado y guardado.` });
 
-            // Step 4: Fire webhook AFTER successful commit
-            if (finalOrderData) {
+            // Step 4: Fire Kommo update directly if applicable
+            if (finalOrderData && finalOrderData.kommo_lead_id) {
                 try {
-                    await fetch(`/api/notify?devMode=${isDevMode}`, {
+                    await fetch(`/api/kommo/update-lead`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
-                            event: 'ORDER_CREATED',
-                            payload: finalOrderData
+                            order: finalOrderData
                         })
                     });
-                     if (isDevMode) console.log("SUCCESS: ORDER_CREATED webhook trigger attempted.");
-                } catch (webhookError) {
-                    console.error("Failed to trigger ORDER_CREATED webhook:", webhookError);
+                     if (isDevMode) console.log("SUCCESS: Direct Kommo update API call attempted.");
+                } catch (kommoError) {
+                    console.error("Failed to trigger direct Kommo update:", kommoError);
                     toast({
-                        title: "Advertencia de Webhook",
-                        description: "El pedido se guardó, pero la notificación externa (ej. a Kommo) falló.",
+                        title: "Advertencia de Kommo",
+                        description: "El pedido se guardó, pero la actualización directa a Kommo falló.",
                         variant: "destructive"
                     });
                 }

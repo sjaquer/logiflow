@@ -78,7 +78,7 @@ async function getAccessToken(): Promise<string | null> {
 }
 
 // Generic function to make API calls to Kommo
-async function kommoApiRequest<T>(endpoint: string): Promise<T | null> {
+async function kommoApiRequest<T>(endpoint: string, method: 'GET' | 'POST' | 'PATCH' = 'GET', body: any = null): Promise<T | null> {
     const accessToken = await getAccessToken();
     if (!accessToken) {
         return null;
@@ -89,9 +89,12 @@ async function kommoApiRequest<T>(endpoint: string): Promise<T | null> {
     
     try {
         const response = await fetch(url, {
+            method,
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
+                'Content-Type': 'application/json',
             },
+            body: body ? JSON.stringify(body) : null,
         });
 
         if (!response.ok) {
@@ -100,6 +103,8 @@ async function kommoApiRequest<T>(endpoint: string): Promise<T | null> {
             console.error('Error body:', errorBody);
             return null;
         }
+        // For PATCH requests, Kommo often returns the updated lead, which we can return.
+        // For GET, it returns the requested data.
         return await response.json() as T;
     } catch (error) {
         console.error(`Error fetching from Kommo API endpoint ${endpoint}:`, error);
@@ -107,12 +112,19 @@ async function kommoApiRequest<T>(endpoint: string): Promise<T | null> {
     }
 }
 
+
 // Fetches details for a specific lead
 export async function getLeadDetails(leadId: string): Promise<any | null> {
-    return kommoApiRequest(`leads/${leadId}?with=contacts`);
+    return kommoApiRequest(`leads/${leadId}?with=contacts`, 'GET');
 }
 
 // Fetches details for a specific contact
 export async function getContactDetails(contactId: number): Promise<any | null> {
-    return kommoApiRequest(`contacts/${contactId}?with=leads`);
+    return kommoApiRequest(`contacts/${contactId}?with=leads`, 'GET');
+}
+
+// Updates a lead in Kommo
+export async function updateLead(leadId: string, data: any): Promise<any | null> {
+    // Kommo API expects an array for updates, even if it's a single lead
+    return kommoApiRequest(`leads`, 'PATCH', [data]);
 }
