@@ -15,7 +15,7 @@ LogiFlow es una aplicación web integral diseñada para optimizar y centralizar 
 -   **Reportes y Analíticas:** Un dashboard con KPIs clave (Ingresos, Pedidos Totales), gráficos de estado de pedidos, análisis de ventas por tienda/usuario/courier, y niveles de inventario.
 -   **Gestión de Usuarios y Roles:** Sistema de permisos basado en roles (`Admin`, `Call Center`, `Logistica`, etc.) para controlar el acceso a las diferentes funcionalidades de la aplicación.
 -   **Integraciones Externas vía Webhooks:**
-    -   **Kommo:** Captura leads automáticamente cuando se mueven a una etapa específica del embudo de ventas.
+    -   **Kommo:** Captura leads automáticamente cuando se mueven a una etapa específica del embudo de ventas. Consulta la guía de integración detallada en `KOMMO_INTEGRATION.md`.
     -   **Shopify:** Crea leads en la cola del call center cuando se genera un nuevo pedido en la tienda.
     -   **Sistema de Webhooks Salientes:** Permite notificar a servicios externos (como Make o Zapier) sobre eventos dentro de la aplicación (ej. `ORDER_CREATED`).
 -   **Interfaz Personalizable y Modo Oscuro:** Elige entre diferentes temas de color y alterna entre modo claro/oscuro. Las preferencias se guardan localmente.
@@ -104,7 +104,6 @@ Crea un archivo `.env.local` en la raíz del proyecto. Puedes usar el archivo `.
     ```env
     KOMMO_SUBDOMAIN=...
     KOMMO_ACCESS_TOKEN=...
-    KOMMO_REFRESH_TOKEN=...
     KOMMO_INTEGRATION_ID=...
     KOMMO_SECRET_KEY=...
     ```

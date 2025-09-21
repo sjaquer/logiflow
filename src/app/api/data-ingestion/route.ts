@@ -154,6 +154,26 @@ async function handleKommoWebhook(data: Record<string, any>) {
     return NextResponse.json({ success: true, message: 'Kommo lead processed into a client document.', id: clientId });
 }
 
+
+// This function attempts to parse the body as JSON. If it fails, it returns null.
+async function tryParseJson(request: Request) {
+    try {
+        return await request.json();
+    } catch (e) {
+        return null;
+    }
+}
+
+// This function attempts to parse the body as form data. If it fails, it returns null.
+async function tryParseFormData(request: Request) {
+    try {
+        const formData = await request.formData();
+        return Object.fromEntries(formData.entries());
+    } catch (e) {
+        return null;
+    }
+}
+
 export async function POST(request: Request) {
     const serverApiKey = process.env.MAKE_API_KEY;
     if (!serverApiKey) {
@@ -167,14 +187,31 @@ export async function POST(request: Request) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
+    const contentType = request.headers.get('content-type') || '';
+    let payload: any;
+
+    if (contentType.includes('application/json')) {
+        payload = await tryParseJson(request);
+    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+        payload = await tryParseFormData(request.clone()); // Clone because formData consumes the body
+    } else {
+        // Fallback for unknown content types: try both, JSON first.
+        payload = await tryParseJson(request.clone());
+        if (!payload) {
+            payload = await tryParseFormData(request.clone());
+        }
+    }
+
+    if (!payload) {
+        return NextResponse.json({ success: false, message: "Could not parse request body." }, { status: 400 });
+    }
+
     try {
-        const payload = await request.json();
-        
-        // Shopify payload check
+        // Shopify payload check (always JSON)
         if (payload.id && payload.line_items && payload.order_number) {
             return await handleShopifyWebhook(payload);
-        } 
-        // Kommo form-data check (comes as JSON from Vercel)
+        }
+        // Kommo payload check (can be form-data or JSON)
         else if (payload['leads[status][0][id]']) {
             return await handleKommoWebhook(payload);
         } else {
@@ -182,18 +219,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, message: "Payload not recognized, ignored." });
         }
     } catch (error) {
-        // Fallback for true form-data payloads (e.g. from local testing)
-        try {
-            const formData = await request.formData();
-            const data = Object.fromEntries(formData.entries());
-             if (data['leads[status][0][id]']) {
-                return await handleKommoWebhook(data);
-            }
-             console.log("Webhook received (form-data), but not a recognized format. Ignoring.", data);
-             return NextResponse.json({ success: true, message: "Payload not recognized, ignored." });
-        } catch (formError) {
-             console.error(`Error processing webhook:`, error);
-             return NextResponse.json({ message: 'Internal server error while processing webhook logic.', error: (error as Error).message }, { status: 500 });
-        }
+        console.error(`Error processing webhook:`, error);
+        return NextResponse.json({ message: 'Internal server error while processing webhook logic.', error: (error as Error).message }, { status: 500 });
     }
 }
