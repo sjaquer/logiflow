@@ -79,34 +79,38 @@ async function handleShopifyWebhook(data: Record<string, any>) {
 }
 
 
-async function handleKommoWebhook(data: Record<string, any>) {
+async function handleKommoWebhook(data: Record<string, any>, isDevMode: boolean) {
     const db = getAdminDb();
     
     // Recognize multiple Kommo webhook formats
     const leadId = data['leads[status][0][id]'] 
                || data['unsorted[update][0][data][leads][id]'] 
-               || data['leads[update][0][id]'];
+               || data['leads[update][0][id]']
+               || data['unsorted[update][0][uid]']; // Added this for unsorted updates
     
     if (!leadId) {
-        console.log("Kommo webhook does not contain a recognized lead ID. Ignoring.", data);
+        if (isDevMode) console.log("DEV MODE: Kommo webhook does not contain a recognized lead ID. Ignoring.", data);
         return NextResponse.json({ success: false, message: 'Kommo Lead ID not found in payload.' }, { status: 400 });
     }
 
-    console.log(`Processing Kommo Lead ID: ${leadId}`);
+    if (isDevMode) console.log(`DEV MODE: Processing Kommo Lead ID: ${leadId}`);
 
     // --- Data Extraction via Kommo API ---
     const leadDetails = await getLeadDetails(leadId);
     if (!leadDetails) {
+        if (isDevMode) console.error(`DEV MODE: Could not fetch details for Kommo Lead ID ${leadId}.`);
         return NextResponse.json({ success: false, message: `Could not fetch details for Kommo Lead ID ${leadId}.` }, { status: 404 });
     }
 
     const contactId = leadDetails?._embedded?.contacts?.[0]?.id;
     if (!contactId) {
+        if (isDevMode) console.error(`DEV MODE: No primary contact found for Kommo Lead ID ${leadId}.`);
         return NextResponse.json({ success: false, message: `No primary contact found for Kommo Lead ID ${leadId}.` }, { status: 404 });
     }
     
     const contactDetails = await getContactDetails(contactId);
     if (!contactDetails) {
+         if (isDevMode) console.error(`DEV MODE: Could not fetch details for Kommo Contact ID ${contactId}.`);
         return NextResponse.json({ success: false, message: `Could not fetch details for Kommo Contact ID ${contactId}.` }, { status: 404 });
     }
 
@@ -148,7 +152,7 @@ async function handleKommoWebhook(data: Record<string, any>) {
         const existingClientDoc = querySnapshot.docs[0];
         await existingClientDoc.ref.update(clientDataPayload as { [x: string]: any });
         clientId = existingClientDoc.id;
-        console.log(`Successfully updated existing client from Kommo lead. Client ID: ${clientId}`);
+        if (isDevMode) console.log(`DEV MODE: Successfully updated existing client from Kommo lead. Client ID: ${clientId}`);
     } else {
         const newClientPayload = {
             ...clientDataPayload,
@@ -157,7 +161,7 @@ async function handleKommoWebhook(data: Record<string, any>) {
         };
         const newClientRef = await clientsRef.add(newClientPayload);
         clientId = newClientRef.id;
-        console.log(`Successfully created new client from Kommo lead. Client ID: ${clientId}`);
+        if (isDevMode) console.log(`DEV MODE: Successfully created new client from Kommo lead. Client ID: ${clientId}`);
     }
 
     return NextResponse.json({ success: true, message: 'Kommo lead processed into a client document.', id: clientId });
@@ -189,8 +193,11 @@ export async function POST(request: Request) {
       console.error("MAKE_API_KEY is not configured in environment variables.");
       return NextResponse.json({ message: 'Server configuration error.' }, { status: 500 });
     }
+    
+    const url = new URL(request.url);
+    const apiKeyFromUrl = url.searchParams.get('apiKey');
+    const isDevMode = url.searchParams.get('devMode') === 'true';
 
-    const apiKeyFromUrl = new URL(request.url).searchParams.get('apiKey');
     if (apiKeyFromUrl !== serverApiKey) {
       console.warn("Unauthorized webhook attempt. Ignoring.");
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
@@ -216,14 +223,22 @@ export async function POST(request: Request) {
         return NextResponse.json({ success: false, message: "Could not parse request body." }, { status: 400 });
     }
 
+    if (isDevMode) {
+        console.log("--- DEV MODE: RAW WEBHOOK PAYLOAD RECEIVED ---");
+        console.log(JSON.stringify(payload, null, 2));
+        console.log("--- END RAW PAYLOAD ---");
+    }
+
     try {
         // Shopify payload check (always JSON)
         if (payload.id && payload.line_items && payload.order_number) {
+            if(isDevMode) console.log("DEV MODE: Received JSON data, likely from Shopify.");
             return await handleShopifyWebhook(payload);
         }
         // Kommo payload checks (status change OR unsorted lead OR update)
         else if (payload['leads[status][0][id]'] || payload['unsorted[update][0][uid]'] || payload['leads[update][0][id]']) {
-            return await handleKommoWebhook(payload);
+             if(isDevMode) console.log("DEV MODE: Received form data, likely from Kommo.");
+            return await handleKommoWebhook(payload, isDevMode);
         } else {
             console.log("Webhook received, but it's not a recognized Shopify or Kommo format. Ignoring.", payload);
             return NextResponse.json({ success: true, message: "Payload not recognized, ignored." });

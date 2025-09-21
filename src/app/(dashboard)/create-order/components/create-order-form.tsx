@@ -327,6 +327,11 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
             };
             
             finalOrderData = { ...orderToSave, id_pedido: orderId };
+            if (isDevMode) {
+              console.group("DEV MODE: Order Submission");
+              console.log("Final Order Data to be saved:", finalOrderData);
+              console.groupEnd();
+            }
             batch.set(orderRef, finalOrderData);
         
             // Step 3: Update the original lead (from 'clients' or 'shopify_leads')
@@ -346,7 +351,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
             // Step 4: Fire webhook AFTER successful commit
             if (finalOrderData) {
                 try {
-                    await fetch('/api/notify', {
+                    await fetch(`/api/notify?devMode=${isDevMode}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -354,7 +359,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                             payload: finalOrderData
                         })
                     });
-                     if (isDevMode) console.log("SUCCESS: ORDER_CREATED webhook triggered.");
+                     if (isDevMode) console.log("SUCCESS: ORDER_CREATED webhook trigger attempted.");
                 } catch (webhookError) {
                     console.error("Failed to trigger ORDER_CREATED webhook:", webhookError);
                     toast({
@@ -448,5 +453,3 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
         </div>
     );
 }
-
-    
