@@ -28,6 +28,7 @@ const createOrderSchema = z.object({
     leadId: z.string().optional(),
     leadSource: z.enum(['shopify', 'kommo', 'manual']).optional(),
     kommo_lead_id: z.string().optional(),
+    shopify_order_id: z.string().optional(),
     tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }).optional(),
     cliente: z.object({
         id: z.string().optional(),
@@ -143,6 +144,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                     form.setValue('envio.distrito', leadDoc.distrito || '');
                     form.setValue('tienda', leadDoc.tienda_origen);
                     form.setValue('kommo_lead_id', leadDoc.kommo_lead_id);
+                    form.setValue('shopify_order_id', leadDoc.shopify_order_id);
                     
                     if (leadDoc.source === 'shopify' && leadDoc.shopify_items) {
                         if(isDevMode) console.log("Shopify items found, populating cart:", leadDoc.shopify_items);
@@ -323,7 +325,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                 },
                 source: source as Order['source'] || 'manual',
                 kommo_lead_id: data.kommo_lead_id || null,
-                shopify_order_id: source === 'shopify' ? leadId! : undefined,
+                shopify_order_id: data.shopify_order_id,
             };
             
             finalOrderData = { ...orderToSave, id_pedido: orderId };
@@ -348,25 +350,28 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
             
             toast({ title: "¡Éxito!", description: `Pedido ${orderId} creado y guardado.` });
 
-            // Step 4: Fire Kommo update directly if applicable
-            if (finalOrderData && finalOrderData.kommo_lead_id) {
-                try {
-                    await fetch(`/api/kommo/update-lead`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            order: finalOrderData
-                        })
-                    });
-                     if (isDevMode) console.log("SUCCESS: Direct Kommo update API call attempted.");
-                } catch (kommoError) {
-                    console.error("Failed to trigger direct Kommo update:", kommoError);
-                    toast({
-                        title: "Advertencia de Kommo",
-                        description: "El pedido se guardó, pero la actualización directa a Kommo falló.",
-                        variant: "destructive"
-                    });
+            // Step 4: Fire Kommo update directly
+            if (isDevMode) console.log('DEV MODE: Attempting to call /api/kommo/update-lead...');
+            try {
+                const response = await fetch(`/api/kommo/update-lead`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        order: finalOrderData
+                    })
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.message || 'Unknown error from /api/kommo/update-lead');
                 }
+                 if (isDevMode) console.log("SUCCESS: Direct Kommo update API call successful.", result);
+            } catch (kommoError: any) {
+                console.error("Failed to trigger direct Kommo update:", kommoError);
+                toast({
+                    title: "Advertencia de Kommo",
+                    description: `El pedido se guardó, pero la actualización a Kommo falló: ${kommoError.message}`,
+                    variant: "destructive"
+                });
             }
 
             router.push('/orders');

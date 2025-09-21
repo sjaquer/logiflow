@@ -8,6 +8,7 @@ export type CreateOrderFormValues = {
     leadId?: string;
     leadSource?: 'shopify' | 'kommo' | 'manual';
     kommo_lead_id?: string;
+    shopify_order_id?: string;
     tienda?: Order['tienda']['nombre'];
     cliente: {
         id?: string; // Client document ID
