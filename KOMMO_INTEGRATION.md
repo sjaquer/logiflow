@@ -13,9 +13,9 @@ El flujo de trabajo es el siguiente:
 1.  **Evento en Kommo:** Un usuario mueve un *Lead* (prospecto) a una etapa específica del embudo de ventas (ej. "Venta Confirmada").
 2.  **Disparo del Webhook:** Kommo envía automáticamente una notificación (un *webhook*) a un endpoint específico de la aplicación LogiFlow. Esta notificación es mínima y solo contiene el ID del lead que cambió de estado.
 3.  **Recepción en LogiFlow:** El endpoint `/api/data-ingestion` de LogiFlow recibe el webhook. Primero, verifica una clave secreta en la URL para asegurarse de que la solicitud es legítima.
-4.  **Consulta a la API de Kommo:** Si la solicitud es segura, LogiFlow utiliza el ID del lead para "preguntarle" a la API de Kommo más detalles sobre ese lead.
-5.  **Obtención de Datos del Contacto:** La primera consulta revela el ID del contacto principal asociado al lead. LogiFlow realiza una segunda consulta a la API de Kommo para obtener los detalles completos de ese contacto, incluyendo campos personalizados como DNI, dirección, etc.
-6.  **Guardado en Firestore:** Con toda la información del cliente, LogiFlow la limpia, la organiza y crea o actualiza un documento en la colección `clients` de la base de datos Firestore.
+4.  **Consulta a la API de Kommo (Detalles del Lead):** Si la solicitud es segura, LogiFlow utiliza el `leadId` para "preguntarle" a la API de Kommo más detalles sobre ese lead. Esta primera consulta revela el `contactId` del contacto principal asociado.
+5.  **Consulta a la API de Kommo (Detalles del Contacto):** Con el `contactId` obtenido, LogiFlow realiza una segunda consulta a la API para obtener los detalles completos de ese contacto, incluyendo su nombre, teléfono y todos los campos personalizados (DNI, Dirección, Provincia, etc.).
+6.  **Guardado en Firestore:** Con toda la información del cliente, LogiFlow la limpia, la organiza y **crea o actualiza** un documento en la colección `clients` de la base de datos Firestore, usando el `kommo_lead_id` como identificador único para la sincronización.
 
 ---
 
@@ -89,7 +89,7 @@ Kommo no proporciona el token de larga duración directamente. Debes generarlo a
 ### Paso 4: Configurar el Webhook en Kommo
 
 1.  En Kommo, ve a la configuración del embudo de ventas (**Deals > Setup**).
-2.  Elige la etapa que disparará la acción (ej. "Venta Confirmada").
+2.  Elige la etapa que disparará la acción (ej. "Para Llamar").
 3.  Añade una acción automática del tipo **"Webhook"**.
 4.  En el campo URL, pega la URL de tu endpoint, incluyendo la `MAKE_API_KEY` que creaste:
     ```
@@ -104,12 +104,12 @@ Kommo no proporciona el token de larga duración directamente. Debes generarlo a
 ### Lo que la integración SÍ hace (Kommo -> LogiFlow):
 
 -   **Crea un nuevo cliente** en Firestore cuando un lead cambia de estado en Kommo.
--   **Actualiza un cliente existente** si el webhook se dispara para un cliente (identificado por DNI) que ya existe en Firestore.
--   **Extrae campos personalizados** del contacto en Kommo (DNI, Celular, Email, Dirección, Distrito).
+-   **Actualiza un cliente existente** si el webhook se dispara para un cliente (identificado por `kommo_lead_id`) que ya existe en Firestore.
+-   **Extrae campos estándar y personalizados** del contacto en Kommo (Nombre, Teléfono, Email, DNI, Dirección, etc.) a través de la API de Kommo.
 
 ### Sincronización Bidireccional (LogiFlow -> Kommo)
 
-Para enviar actualizaciones desde LogiFlow de vuelta a Kommo (por ejemplo, cuando un pedido se confirma y quieres cambiar la etapa del lead en Kommo), se recomienda usar un servicio intermediario como **Make.com** o **Zapier**.
+Para enviar actualizaciones desde LogiFlow de vuelta a Kommo (por ejemplo, cuando un pedido se confirma y quieres cambiar la etapa del lead), se recomienda usar un servicio intermediario como **Make.com** o **Zapier**.
 
 El flujo es el siguiente:
 
@@ -119,7 +119,7 @@ El flujo es el siguiente:
     *   Creas un escenario en Make que comience con un "Custom Webhook". Make te dará una URL.
     *   En la configuración de Webhooks de LogiFlow, creas un nuevo webhook, pegas la URL de Make y lo configuras para que se dispare con el evento `ORDER_CREATED`.
 4.  **Acción en Kommo:**
-    *   El webhook de LogiFlow envía todos los datos del pedido a Make (incluyendo el `kommo_lead_id` si el cliente vino originalmente de Kommo).
+    *   El webhook de LogiFlow envía todos los datos del pedido a Make (incluyendo el `kommo_lead_id` que se guardó cuando el cliente vino originalmente de Kommo).
     *   En Make, añades un módulo de "Kommo" que:
         a.  Use el `kommo_lead_id` para encontrar el lead correcto.
         b.  Actualice los campos necesarios del lead o del contacto.

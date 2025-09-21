@@ -94,31 +94,32 @@ async function handleKommoWebhook(data: Record<string, any>) {
 
     console.log(`Processing Kommo Lead ID: ${leadId}`);
 
-    // --- Data Extraction from Webhook Payload ---
-    const customFields = data[`leads[update][0][custom_fields]`] || [];
-    const fieldsMap: Record<string, string> = {};
+    // --- Data Extraction via Kommo API ---
+    const leadDetails = await getLeadDetails(leadId);
+    if (!leadDetails) {
+        return NextResponse.json({ success: false, message: `Could not fetch details for Kommo Lead ID ${leadId}.` }, { status: 404 });
+    }
 
-    for (const key in customFields) {
-        if (customFields.hasOwnProperty(key)) {
-            const field = customFields[key];
-            if (field.name && field.values && field.values[0]) {
-                fieldsMap[field.name.toUpperCase()] = field.values[0].value;
-            }
-        }
+    const contactId = leadDetails?._embedded?.contacts?.[0]?.id;
+    if (!contactId) {
+        return NextResponse.json({ success: false, message: `No primary contact found for Kommo Lead ID ${leadId}.` }, { status: 404 });
     }
     
-    // Attempt to get contact details via API if not in payload
-    let contactDetails: any = {};
-    const leadDetails = await getLeadDetails(leadId);
-    const contactId = leadDetails?._embedded?.contacts?.[0]?.id;
-    if (contactId) {
-        contactDetails = await getContactDetails(contactId) || {};
+    const contactDetails = await getContactDetails(contactId);
+    if (!contactDetails) {
+        return NextResponse.json({ success: false, message: `Could not fetch details for Kommo Contact ID ${contactId}.` }, { status: 404 });
     }
 
-    const clientName = fieldsMap['NOMBRE'] || contactDetails.name || leadDetails.name || 'Lead sin nombre';
-    const clientPhone = formatPhoneNumber(contactDetails?.custom_fields_values?.find((f: any) => f.field_code === 'PHONE')?.values[0]?.value);
-    const clientEmail = contactDetails?.custom_fields_values?.find((f: any) => f.field_code === 'EMAIL')?.values[0]?.value;
-
+    // Helper to get custom field values
+    const getCustomFieldValue = (fieldName: string): string => {
+        const field = contactDetails.custom_fields_values?.find((f: any) => f.field_name.toUpperCase() === fieldName.toUpperCase());
+        return field?.values?.[0]?.value || '';
+    }
+    
+    const getStandardFieldValue = (fieldCode: 'PHONE' | 'EMAIL'): string => {
+        const field = contactDetails.custom_fields_values?.find((f: any) => f.field_code === fieldCode);
+        return field?.values?.[0]?.value || '';
+    }
 
     const clientsRef = db.collection('clients');
     // Use kommo_lead_id as the unique identifier for syncing
@@ -126,21 +127,20 @@ async function handleKommoWebhook(data: Record<string, any>) {
     const querySnapshot = await q.get();
 
     const clientDataPayload: Partial<Client> = {
-      // DNI needs to be a custom field in Kommo and mapped here
-      dni: fieldsMap['DNI'] || '',
-      nombres: clientName,
-      celular: clientPhone,
-      email: clientEmail || '',
-      direccion: fieldsMap['DIRECCION'] || '',
-      distrito: fieldsMap['DISTRITO'] || '',
-      provincia: fieldsMap['PROVINCIA'] || 'Lima',
+      dni: getCustomFieldValue('DNI'),
+      nombres: contactDetails.name || leadDetails.name || 'Lead sin nombre',
+      celular: formatPhoneNumber(getStandardFieldValue('PHONE')),
+      email: getStandardFieldValue('EMAIL'),
+      direccion: getCustomFieldValue('DIRECCION'),
+      distrito: getCustomFieldValue('DISTRITO'),
+      provincia: getCustomFieldValue('PROVINCIA') || 'Lima',
       source: 'kommo',
       last_updated: new Date().toISOString(),
       kommo_lead_id: leadId,
       kommo_contact_id: contactId,
       etapa_kommo: leadDetails?.status?.name || 'No disponible',
-      tienda_origen: fieldsMap['TIENDA'] as Shop || undefined,
-      producto: fieldsMap['PRODUCTO'] || undefined,
+      tienda_origen: getCustomFieldValue('TIENDA') as Shop || undefined,
+      producto: getCustomFieldValue('PRODUCTO') || undefined,
     };
     
     let clientId: string;
