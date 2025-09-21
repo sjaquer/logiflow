@@ -255,6 +255,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
         }
 
         setIsSubmitting(true);
+        let finalOrderData: Order | null = null;
         
         try {
             // Step 1: Save/Update the client and get the definitive client ID.
@@ -266,7 +267,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
             const orderId = `PED-${Date.now()}`;
             const orderRef = doc(db, 'orders', orderId);
 
-            const finalOrderData: Omit<Order, 'id_pedido'> = {
+            const orderToSave: Omit<Order, 'id_pedido'> = {
                 id_interno: source === 'shopify' ? `SHOPIFY-${leadId}` : `MANUAL-${Date.now()}`,
                 tienda: { id_tienda: data.tienda || 'Trazto', nombre: data.tienda || 'Trazto' },
                 estado_actual: 'EN_PREPARACION', 
@@ -324,8 +325,9 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                 kommo_lead_id: data.kommo_lead_id || null,
                 shopify_order_id: source === 'shopify' ? leadId! : undefined,
             };
-
-            batch.set(orderRef, { ...finalOrderData, id_pedido: orderId });
+            
+            finalOrderData = { ...orderToSave, id_pedido: orderId };
+            batch.set(orderRef, finalOrderData);
         
             // Step 3: Update the original lead (from 'clients' or 'shopify_leads')
             if (leadId && source) {
@@ -340,6 +342,29 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
             await batch.commit();
             
             toast({ title: "¡Éxito!", description: `Pedido ${orderId} creado y guardado.` });
+
+            // Step 4: Fire webhook AFTER successful commit
+            if (finalOrderData) {
+                try {
+                    await fetch('/api/notify', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            event: 'ORDER_CREATED',
+                            payload: finalOrderData
+                        })
+                    });
+                     if (isDevMode) console.log("SUCCESS: ORDER_CREATED webhook triggered.");
+                } catch (webhookError) {
+                    console.error("Failed to trigger ORDER_CREATED webhook:", webhookError);
+                    toast({
+                        title: "Advertencia de Webhook",
+                        description: "El pedido se guardó, pero la notificación externa (ej. a Kommo) falló.",
+                        variant: "destructive"
+                    });
+                }
+            }
+
             router.push('/orders');
 
         } catch (error) {
