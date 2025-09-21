@@ -128,3 +128,10 @@ export async function updateLead(leadId: string, data: any): Promise<any | null>
     // Kommo API expects an array for updates, even if it's a single lead
     return kommoApiRequest(`leads`, 'PATCH', [data]);
 }
+
+
+// Searches for leads based on a query string
+export async function searchLeads(query: string): Promise<any | null> {
+    // The query is URL encoded automatically by kommoApiRequest if it's part of the endpoint string
+    return kommoApiRequest(`leads?query=${encodeURIComponent(query)}`, 'GET');
+}

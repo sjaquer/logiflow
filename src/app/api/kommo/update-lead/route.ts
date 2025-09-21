@@ -1,6 +1,6 @@
 
 import { NextResponse } from 'next/server';
-import { updateLead } from '@/lib/kommo';
+import { updateLead, searchLeads } from '@/lib/kommo';
 import type { Order } from '@/lib/types';
 
 // Define field IDs from your Kommo account
@@ -23,8 +23,34 @@ export async function POST(request: Request) {
     try {
         const { order }: { order: Order } = await request.json();
 
-        if (!order || !order.kommo_lead_id) {
-            return NextResponse.json({ message: 'Kommo Lead ID or Order data is missing.' }, { status: 400 });
+        if (!order) {
+            return NextResponse.json({ message: 'Order data is missing.' }, { status: 400 });
+        }
+
+        let leadIdToUpdate = order.kommo_lead_id;
+
+        // If kommo_lead_id is missing, try to find it by shopify_order_id
+        if (!leadIdToUpdate && order.shopify_order_id) {
+            const searchQuery = `#${order.shopify_order_id}`;
+            console.log(`Searching for Kommo lead with name: "${searchQuery}"`);
+            const searchResult = await searchLeads(searchQuery);
+            
+            if (searchResult && searchResult._embedded?.leads?.length > 0) {
+                // Find the lead that best matches the name
+                const foundLead = searchResult._embedded.leads.find((lead: any) => lead.name.includes(searchQuery));
+                 if (foundLead) {
+                    leadIdToUpdate = foundLead.id.toString();
+                    console.log(`Found Kommo lead ID: ${leadIdToUpdate} by searching for Shopify order.`);
+                }
+            }
+             if (!leadIdToUpdate) {
+                console.warn(`Could not find a Kommo lead matching Shopify order: ${searchQuery}`);
+                return NextResponse.json({ success: false, message: `Could not find a Kommo lead for Shopify order ${searchQuery}.` }, { status: 404 });
+            }
+        }
+        
+        if (!leadIdToUpdate) {
+             return NextResponse.json({ message: 'Lead ID is missing and could not be found.' }, { status: 400 });
         }
         
         const custom_fields_values = [
@@ -41,7 +67,7 @@ export async function POST(request: Request) {
         ].filter(field => field.values[0].value); // Filter out fields with no value
 
         const updatePayload = {
-            id: parseInt(order.kommo_lead_id, 10),
+            id: parseInt(leadIdToUpdate, 10),
             price: order.pago.monto_total,
             status_id: KOMMO_PIPELINE_ID_VENTA_CONFIRMADA,
             custom_fields_values,
@@ -52,7 +78,7 @@ export async function POST(request: Request) {
             }
         };
 
-        const result = await updateLead(order.kommo_lead_id, updatePayload);
+        const result = await updateLead(leadIdToUpdate, updatePayload);
 
         if (result) {
             return NextResponse.json({ success: true, message: 'Lead updated in Kommo.', data: result });
