@@ -7,6 +7,7 @@ export type { Client };
 export type CreateOrderFormValues = {
     leadId?: string;
     leadSource?: 'shopify' | 'kommo' | 'manual';
+    kommo_lead_id?: string;
     tienda?: Order['tienda']['nombre'];
     cliente: {
         id?: string; // Client document ID
@@ -33,3 +34,5 @@ export type CreateOrderFormValues = {
         nota_pedido?: string;
     }
 };
+
+    

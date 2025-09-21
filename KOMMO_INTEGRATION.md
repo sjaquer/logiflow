@@ -6,16 +6,31 @@ Este documento detalla el funcionamiento, la configuración y las capacidades de
 
 ## 1. Visión General de la Integración
 
-El objetivo principal de esta integración es **automatizar la creación y actualización de clientes en LogiFlow** basándose en las acciones que ocurren en un embudo de ventas de Kommo.
+El objetivo principal de esta integración es lograr una **sincronización bidireccional inteligente** entre Kommo y LogiFlow.
 
-El flujo de trabajo es el siguiente:
+### Flujo 1: Kommo -> LogiFlow (Nuevos Leads)
 
-1.  **Evento en Kommo:** Un usuario mueve un *Lead* (prospecto) a una etapa específica del embudo de ventas (ej. "Venta Confirmada").
-2.  **Disparo del Webhook:** Kommo envía automáticamente una notificación (un *webhook*) a un endpoint específico de la aplicación LogiFlow. Esta notificación es mínima y solo contiene el ID del lead que cambió de estado.
-3.  **Recepción en LogiFlow:** El endpoint `/api/data-ingestion` de LogiFlow recibe el webhook. Primero, verifica una clave secreta en la URL para asegurarse de que la solicitud es legítima.
-4.  **Consulta a la API de Kommo (Detalles del Lead):** Si la solicitud es segura, LogiFlow utiliza el `leadId` para "preguntarle" a la API de Kommo más detalles sobre ese lead. Esta primera consulta revela el `contactId` del contacto principal asociado.
-5.  **Consulta a la API de Kommo (Detalles del Contacto):** Con el `contactId` obtenido, LogiFlow realiza una segunda consulta a la API para obtener los detalles completos de ese contacto, incluyendo su nombre, teléfono y todos los campos personalizados (DNI, Dirección, Provincia, etc.).
-6.  **Guardado en Firestore:** Con toda la información del cliente, LogiFlow la limpia, la organiza y **crea o actualiza** un documento en la colección `clients` de la base de datos Firestore, usando el `kommo_lead_id` como identificador único para la sincronización.
+1.  **Evento en Kommo:** Un usuario mueve un *Lead* a una etapa específica (ej. "Para Llamar") o se crea un nuevo lead "No Clasificado".
+2.  **Disparo del Webhook:** Kommo envía una notificación a LogiFlow. Esta notificación puede ser mínima.
+3.  **Recepción y Enriquecimiento en LogiFlow:**
+    *   El endpoint `/api/data-ingestion` de LogiFlow recibe el webhook.
+    *   Extrae el `leadId` de la notificación.
+    *   **Consulta a la API de Kommo:** LogiFlow realiza llamadas a la API de Kommo para obtener los detalles completos y actualizados tanto del lead como del contacto principal asociado.
+4.  **Creación/Actualización en LogiFlow:**
+    *   Con los datos completos, LogiFlow busca si ya existe un cliente con el `kommo_lead_id` correspondiente.
+    *   Si existe, **actualiza** sus datos.
+    *   Si no existe, **crea un nuevo cliente** en la base de datos de LogiFlow, que aparecerá en la bandeja de entrada del Call Center.
+
+### Flujo 2: LogiFlow -> Kommo (Pedidos Procesados)
+
+1.  **Evento en LogiFlow:** Un agente confirma y guarda un nuevo pedido en el formulario "Procesar Pedido". Esto dispara el evento `ORDER_CREATED`.
+2.  **Webhook de Salida de LogiFlow:** LogiFlow envía una notificación a un servicio intermediario (como Make.com o Zapier). Este webhook incluye todos los detalles del pedido, **incluyendo el `kommo_lead_id`** que se guardó en el flujo anterior.
+3.  **Acción en Kommo vía Make/Zapier:**
+    *   El escenario en Make/Zapier recibe los datos.
+    *   Utiliza el `kommo_lead_id` para encontrar el lead correcto en Kommo.
+    *   **Actualiza el lead en Kommo:**
+        *   Rellena campos personalizados con la información de LogiFlow (ej. `Courier`, `Monto Total`, `Estado del Pedido`).
+        *   **Cambia la etapa del lead** a una nueva (ej. "Venta Confirmada" o "En Preparación").
 
 ---
 
@@ -23,106 +38,47 @@ El flujo de trabajo es el siguiente:
 
 ### a) Endpoint de LogiFlow (`/api/data-ingestion`)
 
--   **Ubicación del código:** `src/app/api/data-ingestion/route.ts`
--   **Función:** Es un *endpoint* (una URL específica) que actúa como el receptor de las notificaciones de Kommo. Está construido como una *Serverless Function* en Vercel.
+-   **Ubicación:** `src/app/api/data-ingestion/route.ts`
+-   **Función:** Receptor central de webhooks. Su lógica es robusta para manejar múltiples formatos de Kommo (`status`, `update`, `unsorted`) y también de Shopify.
 
-#### Mecanismo de Seguridad
+### b) Lógica de Interacción con la API de Kommo (`/lib/kommo.ts`)
 
-El endpoint está protegido para evitar que cualquiera pueda enviarle datos.
--   **Método:** Autenticación por **API Key en Parámetro de Consulta (Query Parameter)**.
--   **Implementación:** La URL del webhook configurada en Kommo debe incluir una clave secreta.
-    -   `https://[tu-dominio].vercel.app/api/data-ingestion?apiKey=[TU_CLAVE_SECRETA]`
--   **Verificación:** El código del endpoint extrae el valor del parámetro `apiKey` de la URL y lo compara con el valor guardado en la variable de entorno `MAKE_API_KEY` en Vercel. Si no coinciden, la solicitud se rechaza.
-
-### b) Lógica de Interacción con la API de Kommo
-
--   **Ubicación del código:** `src/lib/kommo.ts`
--   **Función:** Este archivo centraliza toda la comunicación con la API de Kommo.
-
-#### Autenticación
-
--   **Método:** La aplicación utiliza un **Token de Acceso de Larga Duración** para autenticarse en cada llamada a la API de Kommo.
--   **Credenciales Requeridas:** Para que la autenticación funcione, las siguientes variables de entorno deben estar configuradas en Vercel:
-    -   `KOMMO_SUBDOMAIN`: El subdominio de tu cuenta de Kommo (ej: `empresa123`).
-    -   `KOMMO_ACCESS_TOKEN`: El token de larga duración.
-    -   `KOMMO_INTEGRATION_ID`: El ID de tu integración privada en Kommo.
-    -   `KOMMO_SECRET_KEY`: La clave secreta de tu integración privada.
+-   **Función:** Centraliza toda la comunicación con la API de Kommo, incluyendo la gestión de tokens de acceso y las llamadas para obtener detalles de leads y contactos.
+-   **Credenciales Requeridas:** Para que funcione, las siguientes variables de entorno deben estar configuradas:
+    -   `KOMMO_SUBDOMAIN`, `KOMMO_ACCESS_TOKEN`, `KOMMO_INTEGRATION_ID`, `KOMMO_SECRET_KEY`.
 
 ---
 
-## 3. Guía de Configuración para una Nueva Cuenta de Kommo
+## 3. Mapeo de Campos para la Sincronización (LogiFlow -> Kommo)
 
-Para replicar esta integración en una cuenta de Kommo diferente, sigue estos pasos:
+Cuando configures tu escenario en **Make/Zapier** para actualizar Kommo, utiliza el siguiente mapeo como referencia. Estos son los datos que LogiFlow envía en el evento `ORDER_CREATED`.
 
-### Paso 1: Crear una Integración Privada en Kommo
+| Campo en Kommo (según tu imagen) | Dato en LogiFlow (Payload del Webhook)            | Ejemplo de Valor         |
+| -------------------------------- | ------------------------------------------------- | ------------------------ |
+| `Usuario resp.`                  | `asignacion.nombre_usuario_actual`                | "Carlos Solis"           |
+| `Presupuesto`                    | `pago.monto_total`                                | 185.00                   |
+| `PEDIDO`                         | `id_pedido`                                       | "PED-1700000000"         |
+| `DIRECCION`                      | `envio.direccion`                                 | "Av. La Marina 123"      |
+| `PRODUCTO`                       | (Iterar sobre `items` y unir los `nombre`)        | "Zapatilla, Mochila"     |
+| `TIENDA`                         | `tienda.nombre`                                   | "Trazto"                 |
+| `NOMBRE`                         | `cliente.nombres`                                 | "Juan Pérez"             |
+| `PROVINCIA`                      | `envio.provincia`                                 | "Lima"                   |
+| `DNI`                            | `cliente.dni`                                     | "45678912"               |
+| `OFIC. SHALOM`                   | `envio.agencia_shalom`                            | "Agencia Arequipa Centro"|
+| `COURIER`                        | `envio.courier`                                   | "SHALOM"                 |
+| `ATENDIDO`                       | `asignacion.nombre_usuario_actual`                | "Carlos Solis"           |
+| `MONTO PEN...` (Monto Pendiente) | `pago.monto_pendiente`                            | 185.00                   |
+| `NOTA`                           | `notas.nota_pedido`                               | "Entregar en portería."  |
+| `LINK SHALOM`                    | `envio.link_seguimiento`                          | "https://shalom.com/..." |
+| `BOLETA SHALOM`                  | `envio.nro_guia`                                  | "SH-55-2023-9876"        |
+| `ETIQUETA 1`                     | `tienda.nombre` (o un campo específico si se crea) | "Trazto"                 |
 
-1.  En tu nueva cuenta de Kommo, ve a **Settings > Integrations**.
-2.  Haz clic en **"Create Integration"** y selecciona **"Private"**.
-3.  **Configura la Integración:**
-    -   **Redirect URI:** `https://[tu-nuevo-dominio-vercel].vercel.app`
-    -   **Grant access to:** Marca todas las casillas (CRM, Files, Notifications, etc.) para asegurar permisos completos.
-    -   **Integration name:** Dale un nombre descriptivo, como "LogiFlow App".
-4.  **Guarda y Obtén las Claves:** Al guardar, Kommo te proporcionará:
-    -   **Secret key**
-    -   **Integration ID**
-    -   **Authorization code**
-
-### Paso 2: Generar el Token de Larga Duración
-
-Kommo no proporciona el token de larga duración directamente. Debes generarlo a través de su interfaz.
-
-1.  Dentro de la configuración de la integración que acabas de crear, ve a la pestaña **"Keys and Scopes"**.
-2.  Busca la sección para generar un "Long-lived access token".
-3.  Copia el token generado. Este será tu `KOMMO_ACCESS_TOKEN`.
-
-### Paso 3: Configurar las Variables de Entorno en Vercel
-
-1.  Ve a tu nuevo proyecto de Vercel.
-2.  Navega a **Settings > Environment Variables**.
-3.  Añade las siguientes variables:
-    -   `KOMMO_SUBDOMAIN`: El subdominio de la nueva cuenta.
-    -   `KOMMO_INTEGRATION_ID`: El ID de integración del Paso 1.
-    -   `KOMMO_SECRET_KEY`: La clave secreta del Paso 1.
-    -   `KOMMO_ACCESS_TOKEN`: El token de larga duración del Paso 2.
-    -   `MAKE_API_KEY`: **Crea una nueva clave secreta** (puedes usar un generador de contraseñas online). Esta clave es para la seguridad entre Kommo y tu app, no la que te da Kommo.
-
-### Paso 4: Configurar el Webhook en Kommo
-
-1.  En Kommo, ve a la configuración del embudo de ventas (**Deals > Setup**).
-2.  Elige la etapa que disparará la acción (ej. "Para Llamar").
-3.  Añade una acción automática del tipo **"Webhook"**.
-4.  En el campo URL, pega la URL de tu endpoint, incluyendo la `MAKE_API_KEY` que creaste:
-    ```
-    https://[tu-nuevo-dominio-vercel].vercel.app/api/data-ingestion?apiKey=[tu-nueva-MAKE_API_KEY]
-    ```
-5.  Guarda todos los cambios.
+**Acción Clave:** Además de mapear estos campos, el paso más importante en Make/Zapier es añadir una acción para **"Cambiar la Etapa de un Lead"**, moviéndolo a la fase correspondiente de tu embudo (ej. "Venta Confirmada en LogiFlow").
 
 ---
 
-## 4. Capacidades Actuales y Sincronización Bidireccional
+## 4. Guía de Configuración
 
-### Lo que la integración SÍ hace (Kommo -> LogiFlow):
+Para configurar todo el sistema desde cero, sigue los pasos de los archivos `README.md` (para la configuración general de Firebase) y la guía detallada en este mismo archivo para obtener las credenciales de Kommo y configurar los webhooks.
 
--   **Crea un nuevo cliente** en Firestore cuando un lead cambia de estado en Kommo.
--   **Actualiza un cliente existente** si el webhook se dispara para un cliente (identificado por `kommo_lead_id`) que ya existe en Firestore.
--   **Extrae campos estándar y personalizados** del contacto en Kommo (Nombre, Teléfono, Email, DNI, Dirección, etc.) a través de la API de Kommo.
-
-### Sincronización Bidireccional (LogiFlow -> Kommo)
-
-Para enviar actualizaciones desde LogiFlow de vuelta a Kommo (por ejemplo, cuando un pedido se confirma y quieres cambiar la etapa del lead), se recomienda usar un servicio intermediario como **Make.com** o **Zapier**.
-
-El flujo es el siguiente:
-
-1.  **Evento en LogiFlow:** Un agente confirma un pedido en el formulario "Procesar Pedido". Esto dispara el evento `ORDER_CREATED`.
-2.  **Webhook de Salida de LogiFlow:** LogiFlow tiene una sección en **Settings > Webhooks** donde puedes configurar webhooks que se disparen en ciertos eventos.
-3.  **Recepción en Make/Zapier:**
-    *   Creas un escenario en Make que comience con un "Custom Webhook". Make te dará una URL.
-    *   En la configuración de Webhooks de LogiFlow, creas un nuevo webhook, pegas la URL de Make y lo configuras para que se dispare con el evento `ORDER_CREATED`.
-4.  **Acción en Kommo:**
-    *   El webhook de LogiFlow envía todos los datos del pedido a Make (incluyendo el `kommo_lead_id` que se guardó cuando el cliente vino originalmente de Kommo).
-    *   En Make, añades un módulo de "Kommo" que:
-        a.  Use el `kommo_lead_id` para encontrar el lead correcto.
-        b.  Actualice los campos necesarios del lead o del contacto.
-        c.  **Cambie la etapa del lead** a una nueva (ej. "Venta Confirmada en LogiFlow").
-
-Este enfoque permite una automatización completa y robusta, manteniendo ambos sistemas sincronizados sin necesidad de código adicional complejo en LogiFlow para cada acción específica.
+    

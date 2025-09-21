@@ -1,6 +1,7 @@
 
 
 
+
 export type OrderStatus = 'PENDIENTE' | 'EN_PREPARACION' | 'EN_TRANSITO_LIMA' | 'EN_TRANSITO_PROVINCIA' | 'ENTREGADO' | 'ANULADO' | 'RETENIDO';
 export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
 export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo' | 'Transferencia Bancaria' | 'Desconocido';
@@ -82,6 +83,7 @@ export interface Order {
     motivo_anulacion: string | null;
   };
   source: 'shopify' | 'kommo' | 'manual';
+  kommo_lead_id?: string;
   shopify_order_id?: string;
 }
 
@@ -240,5 +242,7 @@ export interface Webhook {
     createdAt: string;
 }
 
+
+    
 
     

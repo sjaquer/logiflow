@@ -27,6 +27,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 const createOrderSchema = z.object({
     leadId: z.string().optional(),
     leadSource: z.enum(['shopify', 'kommo', 'manual']).optional(),
+    kommo_lead_id: z.string().optional(),
     tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }).optional(),
     cliente: z.object({
         id: z.string().optional(),
@@ -141,6 +142,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                     form.setValue('envio.provincia', leadDoc.provincia || 'Lima');
                     form.setValue('envio.distrito', leadDoc.distrito || '');
                     form.setValue('tienda', leadDoc.tienda_origen);
+                    form.setValue('kommo_lead_id', leadDoc.kommo_lead_id);
                     
                     if (leadDoc.source === 'shopify' && leadDoc.shopify_items) {
                         if(isDevMode) console.log("Shopify items found, populating cart:", leadDoc.shopify_items);
@@ -319,6 +321,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                     motivo_anulacion: null,
                 },
                 source: source as Order['source'] || 'manual',
+                kommo_lead_id: data.kommo_lead_id,
                 shopify_order_id: source === 'shopify' ? leadId! : undefined,
             };
 
@@ -420,3 +423,5 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
         </div>
     );
 }
+
+    
