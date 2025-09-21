@@ -53,7 +53,7 @@ const createOrderSchema = z.object({
     envio: z.object({
         direccion: z.string().min(1, "Dirección es requerida"),
         provincia: z.string().min(1, "Provincia es requerida"),
-        distrito: z.string().min(1, "Distrito es requerido"),
+        distrito: z.string().min(1, "Distrito es requerida"),
         courier: z.custom<Courier>().optional(),
         agencia_shalom: z.string().optional(),
         costo_envio: z.number().min(0),

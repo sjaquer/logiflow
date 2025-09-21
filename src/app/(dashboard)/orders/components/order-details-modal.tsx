@@ -14,6 +14,8 @@ import { CheckCircle2, Package, User as UserIcon, Calendar, MapPin, Truck, Credi
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { doc, updateDoc } from 'firebase/firestore';
+import { db } from '@/lib/firebase/firebase';
 
 interface OrderDetailsModalProps {
   children: React.ReactNode;
@@ -36,6 +38,27 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
     onOrderStatusChange(order.id_pedido, newStatus);
     setOrder(prev => ({...prev, estado_actual: newStatus}));
   };
+  
+  const handleReturnToCallCenter = async () => {
+      const clientId = order.cliente.id_cliente;
+      if (!clientId) {
+          toast({ title: 'Error', description: 'Este pedido no tiene un cliente asociado para devolver.', variant: 'destructive'});
+          return;
+      }
+
+      try {
+          const clientRef = doc(db, 'clients', clientId);
+          await updateDoc(clientRef, {
+              call_status: 'EN_SEGUIMIENTO',
+              last_updated: new Date().toISOString(),
+          });
+          toast({ title: 'Enviado a Call Center', description: 'El lead ha sido devuelto a la bandeja para seguimiento.'});
+      } catch (error) {
+          console.error("Error returning lead to call center:", error);
+          toast({ title: 'Error', description: 'No se pudo devolver el lead al Call Center.', variant: 'destructive'});
+      }
+  }
+
 
   const handleStockCheck = async () => {
     setIsCheckingStock(true);
@@ -120,6 +143,9 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
                   <Button onClick={handleStockCheck} disabled={isCheckingStock}>
                     {isCheckingStock ? 'Verificando...' : 'Verificar Stock'}
                   </Button>
+                   <Button variant="outline" onClick={handleReturnToCallCenter}>
+                       <Send className="mr-2 h-4 w-4"/> Devolver a Call Center
+                   </Button>
                   <Select onValueChange={(value: OrderStatus) => handleStatusChange(value)} value={order.estado_actual}>
                       <SelectTrigger className="w-auto md:w-[200px]">
                           <SelectValue placeholder="Cambiar Estado" />
