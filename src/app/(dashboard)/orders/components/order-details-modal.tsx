@@ -39,25 +39,46 @@ export function OrderDetailsModal({ children, order: initialOrder, users, invent
     setOrder(prev => ({...prev, estado_actual: newStatus}));
   };
   
-  const handleReturnToCallCenter = async () => {
-      const clientId = order.cliente.id_cliente;
-      if (!clientId) {
-          toast({ title: 'Error', description: 'Este pedido no tiene un cliente asociado para devolver.', variant: 'destructive'});
-          return;
-      }
+ const handleReturnToCallCenter = async () => {
+    const { source, cliente, shopify_order_id } = order;
 
-      try {
-          const clientRef = doc(db, 'clients', clientId);
-          await updateDoc(clientRef, {
-              call_status: 'EN_SEGUIMIENTO',
-              last_updated: new Date().toISOString(),
-          });
-          toast({ title: 'Enviado a Call Center', description: 'El lead ha sido devuelto a la bandeja para seguimiento.'});
-      } catch (error) {
-          console.error("Error returning lead to call center:", error);
-          toast({ title: 'Error', description: 'No se pudo devolver el lead al Call Center.', variant: 'destructive'});
-      }
-  }
+    let leadRef;
+
+    if (source === 'shopify' && shopify_order_id) {
+        leadRef = doc(db, 'shopify_leads', shopify_order_id);
+    } else if (source === 'kommo' && cliente.id_cliente) {
+        leadRef = doc(db, 'clients', cliente.id_cliente);
+    } else if (source === 'manual' && cliente.id_cliente) {
+         leadRef = doc(db, 'clients', cliente.id_cliente);
+    }
+    
+    if (!leadRef) {
+        toast({
+            title: 'Error',
+            description: 'No se pudo encontrar el origen del lead para este pedido.',
+            variant: 'destructive'
+        });
+        return;
+    }
+
+    try {
+        await updateDoc(leadRef, {
+            call_status: 'EN_SEGUIMIENTO',
+            last_updated: new Date().toISOString(),
+        });
+        toast({
+            title: 'Enviado a Call Center',
+            description: 'El lead ha sido devuelto a la bandeja para seguimiento.'
+        });
+    } catch (error) {
+        console.error("Error returning lead to call center:", error);
+        toast({
+            title: 'Error',
+            description: 'No se pudo devolver el lead al Call Center.',
+            variant: 'destructive'
+        });
+    }
+}
 
 
   const handleStockCheck = async () => {
