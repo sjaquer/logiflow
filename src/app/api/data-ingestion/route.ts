@@ -80,10 +80,12 @@ async function handleShopifyWebhook(data: Record<string, any>) {
 
 
 async function handleKommoWebhook(data: Record<string, any>) {
-    const db = getAdminDb(); // Initialize DB inside the handler
+    const db = getAdminDb();
     
-    // Determine if it's a "status changed" lead or an "unsorted" lead
-    const leadId = data['leads[status][0][id]'] || data['unsorted[update][0][data][leads][id]'];
+    // Recognize multiple Kommo webhook formats
+    const leadId = data['leads[status][0][id]'] 
+               || data['unsorted[update][0][data][leads][id]'] 
+               || data['leads[update][0][id]'];
     
     if (!leadId) {
         console.log("Kommo webhook does not contain a recognized lead ID. Ignoring.", data);
@@ -92,56 +94,53 @@ async function handleKommoWebhook(data: Record<string, any>) {
 
     console.log(`Processing Kommo Lead ID: ${leadId}`);
 
-    const leadDetails = await getLeadDetails(leadId);
-    if (!leadDetails) {
-        throw new Error(`Could not fetch details for lead ID: ${leadId}`);
-    }
+    // --- Data Extraction from Webhook Payload ---
+    const customFields = data[`leads[update][0][custom_fields]`] || [];
+    const fieldsMap: Record<string, string> = {};
 
-    const contactId = leadDetails._embedded?.contacts?.[0]?.id;
-    if (!contactId) {
-        throw new Error(`Lead ${leadId} has no associated contact.`);
-    }
-    
-    const contactDetails = await getContactDetails(contactId);
-    if (!contactDetails) {
-      throw new Error(`Could not fetch details for contact ID: ${contactId}`);
-    }
-
-    let clientDNI: string | null = null, clientPhone: string | null = null, clientEmail: string | null = null, clientAddress: string | null = null, clientDistrict: string | null = null;
-    
-    if (contactDetails.custom_fields_values) {
-      for (const field of contactDetails.custom_fields_values) {
-        const value = field.values[0]?.value;
-        switch (field.field_code) {
-          case 'DNI': clientDNI = value; break;
-          case 'PHONE': clientPhone = value; break;
-          case 'EMAIL': clientEmail = value; break;
-          case 'ADDRESS': clientAddress = value; break;
-          case 'DISTRICT': clientDistrict = value; break;
+    for (const key in customFields) {
+        if (customFields.hasOwnProperty(key)) {
+            const field = customFields[key];
+            if (field.name && field.values && field.values[0]) {
+                fieldsMap[field.name.toUpperCase()] = field.values[0].value;
+            }
         }
-      }
     }
     
-    // A DNI is not strictly necessary to create a lead, but it is for a final order.
-    // We will create the lead and it can be completed in the Call Center.
-    const leadName = contactDetails.name || leadDetails.name || 'Lead sin nombre';
+    // Attempt to get contact details via API if not in payload
+    let contactDetails: any = {};
+    const leadDetails = await getLeadDetails(leadId);
+    const contactId = leadDetails?._embedded?.contacts?.[0]?.id;
+    if (contactId) {
+        contactDetails = await getContactDetails(contactId) || {};
+    }
+
+    const clientName = fieldsMap['NOMBRE'] || contactDetails.name || leadDetails.name || 'Lead sin nombre';
+    const clientPhone = formatPhoneNumber(contactDetails?.custom_fields_values?.find((f: any) => f.field_code === 'PHONE')?.values[0]?.value);
+    const clientEmail = contactDetails?.custom_fields_values?.find((f: any) => f.field_code === 'EMAIL')?.values[0]?.value;
+
 
     const clientsRef = db.collection('clients');
+    // Use kommo_lead_id as the unique identifier for syncing
     const q = clientsRef.where("kommo_lead_id", "==", leadId);
     const querySnapshot = await q.get();
 
     const clientDataPayload: Partial<Client> = {
-      dni: clientDNI || '',
-      nombres: leadName,
-      celular: formatPhoneNumber(clientPhone),
+      // DNI needs to be a custom field in Kommo and mapped here
+      dni: fieldsMap['DNI'] || '',
+      nombres: clientName,
+      celular: clientPhone,
       email: clientEmail || '',
-      direccion: clientAddress || '',
-      distrito: clientDistrict || '',
-      provincia: 'Lima', // Default to Lima, can be changed in call center
+      direccion: fieldsMap['DIRECCION'] || '',
+      distrito: fieldsMap['DISTRITO'] || '',
+      provincia: fieldsMap['PROVINCIA'] || 'Lima',
       source: 'kommo',
       last_updated: new Date().toISOString(),
       kommo_lead_id: leadId,
       kommo_contact_id: contactId,
+      etapa_kommo: leadDetails?.status?.name || 'No disponible',
+      tienda_origen: fieldsMap['TIENDA'] as Shop || undefined,
+      producto: fieldsMap['PRODUCTO'] || undefined,
     };
     
     let clientId: string;
@@ -203,7 +202,7 @@ export async function POST(request: Request) {
     // Kommo can send data as 'application/x-www-form-urlencoded', so we must handle it.
     if (contentType.includes('application/json')) {
         payload = await tryParseJson(request);
-    } else if (contentType.includes('application/x-www-form-urlencoded')) {
+    } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
         payload = await tryParseFormData(request.clone()); // Clone because formData consumes the body
     } else {
         // Fallback for unknown content types: try both.
@@ -222,8 +221,8 @@ export async function POST(request: Request) {
         if (payload.id && payload.line_items && payload.order_number) {
             return await handleShopifyWebhook(payload);
         }
-        // Kommo payload checks (status change OR unsorted lead)
-        else if (payload['leads[status][0][id]'] || payload['unsorted[update][0][uid]']) {
+        // Kommo payload checks (status change OR unsorted lead OR update)
+        else if (payload['leads[status][0][id]'] || payload['unsorted[update][0][uid]'] || payload['leads[update][0][id]']) {
             return await handleKommoWebhook(payload);
         } else {
             console.log("Webhook received, but it's not a recognized Shopify or Kommo format. Ignoring.", payload);
