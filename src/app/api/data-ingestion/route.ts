@@ -81,7 +81,15 @@ async function handleShopifyWebhook(data: Record<string, any>) {
 
 async function handleKommoWebhook(data: Record<string, any>) {
     const db = getAdminDb(); // Initialize DB inside the handler
-    const leadId = data['leads[status][0][id]'] as string;
+    
+    // Determine if it's a "status changed" lead or an "unsorted" lead
+    const leadId = data['leads[status][0][id]'] || data['unsorted[update][0][data][leads][id]'];
+    
+    if (!leadId) {
+        console.log("Kommo webhook does not contain a recognized lead ID. Ignoring.", data);
+        return NextResponse.json({ success: false, message: 'Kommo Lead ID not found in payload.' }, { status: 400 });
+    }
+
     console.log(`Processing Kommo Lead ID: ${leadId}`);
 
     const leadDetails = await getLeadDetails(leadId);
@@ -114,27 +122,24 @@ async function handleKommoWebhook(data: Record<string, any>) {
       }
     }
     
-    if (!clientDNI) {
-      console.warn("Kommo webhook processing stopped: DNI not found in contact's custom fields.");
-      return NextResponse.json({ success: false, message: 'DNI not found in custom fields.' }, { status: 400 });
-    }
-    
+    // A DNI is not strictly necessary to create a lead, but it is for a final order.
+    // We will create the lead and it can be completed in the Call Center.
+    const leadName = contactDetails.name || leadDetails.name || 'Lead sin nombre';
+
     const clientsRef = db.collection('clients');
-    const q = clientsRef.where("dni", "==", clientDNI);
+    const q = clientsRef.where("kommo_lead_id", "==", leadId);
     const querySnapshot = await q.get();
 
     const clientDataPayload: Partial<Client> = {
-      dni: clientDNI,
-      nombres: contactDetails.name || '',
+      dni: clientDNI || '',
+      nombres: leadName,
       celular: formatPhoneNumber(clientPhone),
       email: clientEmail || '',
       direccion: clientAddress || '',
       distrito: clientDistrict || '',
-      provincia: 'Lima',
+      provincia: 'Lima', // Default to Lima, can be changed in call center
       source: 'kommo',
       last_updated: new Date().toISOString(),
-      first_interaction_at: new Date().toISOString(),
-      call_status: 'NUEVO',
       kommo_lead_id: leadId,
       kommo_contact_id: contactId,
     };
@@ -146,7 +151,12 @@ async function handleKommoWebhook(data: Record<string, any>) {
         clientId = existingClientDoc.id;
         console.log(`Successfully updated existing client from Kommo lead. Client ID: ${clientId}`);
     } else {
-        const newClientRef = await clientsRef.add(clientDataPayload);
+        const newClientPayload = {
+            ...clientDataPayload,
+            call_status: 'NUEVO',
+            first_interaction_at: new Date().toISOString(),
+        };
+        const newClientRef = await clientsRef.add(newClientPayload);
         clientId = newClientRef.id;
         console.log(`Successfully created new client from Kommo lead. Client ID: ${clientId}`);
     }
@@ -190,12 +200,13 @@ export async function POST(request: Request) {
     const contentType = request.headers.get('content-type') || '';
     let payload: any;
 
+    // Kommo can send data as 'application/x-www-form-urlencoded', so we must handle it.
     if (contentType.includes('application/json')) {
         payload = await tryParseJson(request);
     } else if (contentType.includes('application/x-www-form-urlencoded')) {
         payload = await tryParseFormData(request.clone()); // Clone because formData consumes the body
     } else {
-        // Fallback for unknown content types: try both, JSON first.
+        // Fallback for unknown content types: try both.
         payload = await tryParseJson(request.clone());
         if (!payload) {
             payload = await tryParseFormData(request.clone());
@@ -211,8 +222,8 @@ export async function POST(request: Request) {
         if (payload.id && payload.line_items && payload.order_number) {
             return await handleShopifyWebhook(payload);
         }
-        // Kommo payload check (can be form-data or JSON)
-        else if (payload['leads[status][0][id]']) {
+        // Kommo payload checks (status change OR unsorted lead)
+        else if (payload['leads[status][0][id]'] || payload['unsorted[update][0][uid]']) {
             return await handleKommoWebhook(payload);
         } else {
             console.log("Webhook received, but it's not a recognized Shopify or Kommo format. Ignoring.", payload);
@@ -220,6 +231,7 @@ export async function POST(request: Request) {
         }
     } catch (error) {
         console.error(`Error processing webhook:`, error);
-        return NextResponse.json({ message: 'Internal server error while processing webhook logic.', error: (error as Error).message }, { status: 500 });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ message: 'Internal server error while processing webhook logic.', error: errorMessage }, { status: 500 });
     }
 }
