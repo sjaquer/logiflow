@@ -321,7 +321,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                     motivo_anulacion: null,
                 },
                 source: source as Order['source'] || 'manual',
-                kommo_lead_id: data.kommo_lead_id,
+                kommo_lead_id: data.kommo_lead_id || null,
                 shopify_order_id: source === 'shopify' ? leadId! : undefined,
             };
 
