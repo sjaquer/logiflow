@@ -17,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon, Repeat, PhoneMissed, Frown } from 'lucide-react';
 import { ManagedQueueTable } from './components/managed-queue-table';
+import { CleanLeadsTable } from './components/clean-leads-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -384,99 +385,15 @@ export default function CallCenterQueuePage() {
                 </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {loading ? (
-                  [...Array(8)].map((_, i) => <Skeleton key={i} className="h-80 w-full" />)
-              ) : filteredPendingLeads.length > 0 ? filteredPendingLeads.map(lead => {
-                  const timeInQueue = formatDistanceToNow(new Date(lead.first_interaction_at || lead.last_updated), { addSuffix: true, locale: es });
-                  const getInitials = (name?: string) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
-
-                  return (
-                      <Card key={lead.id} className={cn("flex flex-col")}>
-                          <CardHeader className="p-4">
-                              <div className="flex justify-between items-start">
-                                  <Badge variant={CALL_STATUS_BADGE_MAP[lead.call_status]} className="capitalize w-fit justify-center text-xs">
-                                      {lead.call_status.replace(/_/g, ' ').toLowerCase()}
-                                  </Badge>
-                                   <DropdownMenu>
-                                      <DropdownMenuTrigger asChild>
-                                          <Button variant="ghost" size="icon" className="h-7 w-7">
-                                              <MoreVertical className="h-4 w-4" />
-                                          </Button>
-                                      </DropdownMenuTrigger>
-                                      <DropdownMenuContent align="end">
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_1', lead.source)}><Repeat className="mr-2 h-4 w-4" /><span>Intento 1</span></DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_2', lead.source)}><Repeat className="mr-2 h-4 w-4" /><span>Intento 2</span></DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'INTENTO_3', lead.source)}><Repeat className="mr-2 h-4 w-4" /><span>Intento 3</span></DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NO_CONTESTA', lead.source)}><PhoneOff className="mr-2 h-4 w-4" /><span>No Contesta</span></DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'NUMERO_EQUIVOCADO', lead.source)}><AlertTriangle className="mr-2 h-4 w-4" /><span>Número Equivocado</span></DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'LEAD_NO_CONTACTABLE', lead.source)}><PhoneMissed className="mr-2 h-4 w-4" /><span>No Contactable</span></DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => handleStatusChange(lead.id, 'LEAD_PERDIDO', lead.source)}><Frown className="mr-2 h-4 w-4" /><span>Lead Perdido</span></DropdownMenuItem>
-                                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setLeadToDelete(lead); }} className="text-destructive">
-                                              <Trash2 className="mr-2 h-4 w-4" />
-                                              <span>Eliminar</span>
-                                          </DropdownMenuItem>
-                                      </DropdownMenuContent>
-                                  </DropdownMenu>
-                              </div>
-                               <CardTitle className="text-lg pt-2">{lead.nombres}</CardTitle>
-                               <CardDescription>{lead.celular}</CardDescription>
-                          </CardHeader>
-                          <CardContent className="p-4 flex-grow space-y-3 text-sm">
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                  {lead.tienda_origen ? (
-                                      <>
-                                          <ShoppingCart className="h-4 w-4 text-primary" />
-                                          <span className="font-medium capitalize text-foreground">{lead.tienda_origen}</span>
-                                      </>
-                                  ) : (
-                                      <>
-                                          <Globe className="h-4 w-4" />
-                                          <span className="capitalize">{lead.source}</span>
-                                      </>
-                                  )}
-                              </div>
-                               <div className="flex items-center gap-2 text-muted-foreground">
-                                  <Clock className="h-4 w-4" />
-                                  <span>{timeInQueue}</span>
-                              </div>
-                              {lead.assigned_agent_name && (
-                                   <div className="flex items-center gap-2 text-muted-foreground">
-                                      <UserIcon className="h-4 w-4" />
-                                       <TooltipProvider>
-                                          <Tooltip>
-                                              <TooltipTrigger asChild>
-                                                  <div className="flex items-center gap-2">
-                                                      <Avatar className="h-6 w-6">
-                                                          <AvatarImage src={lead.assigned_agent_avatar} />
-                                                          <AvatarFallback>{getInitials(lead.assigned_agent_name)}</AvatarFallback>
-                                                      </Avatar>
-                                                      <span className="font-medium text-foreground">{lead.assigned_agent_name}</span>
-                                                  </div>
-                                              </TooltipTrigger>
-                                              <TooltipContent>
-                                                  <p>Asignado a {lead.assigned_agent_name}</p>
-                                              </TooltipContent>
-                                          </Tooltip>
-                                      </TooltipProvider>
-                                  </div>
-                              )}
-                          </CardContent>
-                          <CardFooter className="p-4">
-                              <Button className="w-full" onClick={() => handleProcessClient(lead)}>
-                                  <PhoneForwarded className="mr-2 h-4 w-4" />
-                                  {lead.call_status === 'NUEVO' ? 'Procesar Lead' : 'Continuar Gestión'}
-                              </Button>
-                          </CardFooter>
-                      </Card>
-                  )
-              }) : (
-                 <div className="col-span-full text-center py-16">
-                     <p className="text-lg font-semibold">¡Bandeja de entrada limpia!</p>
-                     <p className="text-muted-foreground">Felicidades, no hay clientes pendientes por llamar.</p>
-                 </div>
-              )}
-          </div>
+          
+          {loading ? (
+            <Skeleton className="h-96 w-full" />
+          ) : (
+            <CleanLeadsTable 
+              leads={filteredPendingLeads} 
+              onProcessLead={handleProcessClient}
+            />
+          )}
         </CardContent>
       </Card>
 
