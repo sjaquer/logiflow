@@ -47,14 +47,10 @@ type MenuItem = {
 }
 
 const menuItems: MenuItem[] = [
-  { href: '/orders', label: 'Pedidos', icon: LayoutDashboard, permissionKey: 'pedidos' },
+  // Se han eliminado temporalmente las páginas archivadas: Orders, Monitor de Equipo, Clientes, Reportes, Roles
   { href: '/call-center-queue', label: 'Call Center', icon: Phone, permissionKey: 'call_center' },
-  { href: '/team-monitoring', label: 'Monitor de Equipo', icon: Activity, permissionKey: 'call_center' },
   { href: '/create-order', label: 'Procesar Pedido', icon: PackagePlus, permissionKey: 'procesar_pedido' },
-  { href: '/clients', label: 'Clientes', icon: Users, permissionKey: 'clientes' },
   { href: '/inventory', label: 'Inventario', icon: Box, permissionKey: 'inventario' },
-  { href: '/reports', label: 'Reportes', icon: BarChart3, permissionKey: 'reportes' },
-  { href: '/staff', label: 'Roles y Personal', icon: Users, permissionKey: 'staff' },
 ];
 
 export function AppSidebar({ currentUser }: AppSidebarProps) {
@@ -86,7 +82,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
       className="hidden md:flex border-r border-sidebar-border bg-sidebar text-sidebar-foreground sticky top-0 h-screen"
     >
       <SidebarHeader className="h-16 flex items-center justify-center px-4">
-        <Link href="/orders" className="flex items-center gap-2 font-bold text-primary group-data-[collapsible=icon]:justify-center">
+        <Link href="/" className="flex items-center gap-2 font-bold text-primary group-data-[collapsible=icon]:justify-center">
            <div className="flex items-center justify-center overflow-hidden group-data-[collapsible=icon]:data-[state=collapsed]:hidden">
               <Image src="/logo.png" alt="LogiFlow Logo" width={100} height={25} style={{ height: '25px', width: 'auto' }} />
            </div>
