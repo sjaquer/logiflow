@@ -35,7 +35,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
   };
 
   const getCompletionStatus = (lead: Client) => {
-    const requiredFields: (keyof Client)[] = ['nombres', 'celular', 'direccion', 'distrito', 'provincia'];
+    const requiredFields: (keyof Client)[] = ['nombres', 'celular', 'direccion', 'distrito', 'provincia', 'dni'];
     const completedFields = requiredFields.filter(field => isFieldComplete(lead, field));
     return {
       completed: completedFields.length,
@@ -142,23 +142,52 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead className="w-[50px]">Estado</TableHead>
-              <TableHead>Nombre</TableHead>
+              <TableHead>Fecha Creación</TableHead>
+              <TableHead>Última Modificación</TableHead>
+              <TableHead>Nombre del Lead</TableHead>
               <TableHead>Producto</TableHead>
-              <TableHead>Celular</TableHead>
-              <TableHead>DNI</TableHead>
-              <TableHead>Dirección</TableHead>
-              <TableHead>Distrito</TableHead>
+              <TableHead>Estatus del Lead</TableHead>
               <TableHead>Provincia</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Tienda</TableHead>
-              <TableHead>Fecha</TableHead>
-              <TableHead className="text-right">Acciones</TableHead>
+              <TableHead className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                  <span>DNI</span>
+                </div>
+              </TableHead>
+              <TableHead className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                  <span>Courier</span>
+                </div>
+              </TableHead>
+              <TableHead className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                  <span>Ofic. Shalom</span>
+                </div>
+              </TableHead>
+              <TableHead className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                  <span>Atendido</span>
+                </div>
+              </TableHead>
+              <TableHead>Intento de Llamada</TableHead>
+              <TableHead>Asesor</TableHead>
+              <TableHead>Resultado</TableHead>
+              <TableHead className="text-center">
+                <div className="flex items-center justify-center gap-1">
+                  <AlertCircle className="h-4 w-4 text-orange-500" />
+                  <span>Comentario</span>
+                </div>
+              </TableHead>
+              <TableHead className="text-right w-[200px]">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {leads.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={12} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={16} className="h-24 text-center text-muted-foreground">
                   No hay leads pendientes
                 </TableCell>
               </TableRow>
@@ -166,6 +195,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
               leads.map((lead) => {
                 const status = getCompletionStatus(lead);
                 const isEditing = editingId === lead.id;
+                const callAttempts = lead.call_status?.match(/INTENTO_(\d)/)?.[1] || '0';
 
                 return (
                   <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
@@ -178,8 +208,23 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                         <Circle className="h-5 w-5 text-gray-300" />
                       )}
                     </TableCell>
+
+                    {/* Fecha de Creación */}
+                    <TableCell className="text-xs text-muted-foreground">
+                      {lead.first_interaction_at 
+                        ? format(new Date(lead.first_interaction_at), 'dd/MM/yyyy HH:mm', { locale: es })
+                        : '—'}
+                    </TableCell>
+
+                    {/* Última Modificación */}
+                    <TableCell className="text-xs text-muted-foreground">
+                      {lead.last_updated 
+                        ? format(new Date(lead.last_updated), 'dd/MM/yyyy HH:mm', { locale: es })
+                        : '—'}
+                    </TableCell>
                     
-                    <TableCell className="font-medium">
+                    {/* Nombre del Lead */}
+                    <TableCell className="font-medium min-w-[180px]">
                       {isEditing ? (
                         <Input
                           value={editForm.nombres || ''}
@@ -193,7 +238,8 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                       )}
                     </TableCell>
 
-                    <TableCell>
+                    {/* Producto */}
+                    <TableCell className="min-w-[150px]">
                       {isEditing ? (
                         <Input
                           value={editForm.producto || ''}
@@ -202,72 +248,29 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                           placeholder="Producto..."
                         />
                       ) : (
-                        <span className={cn(!isFieldComplete(lead, 'producto') && 'text-muted-foreground')}>
+                        <span className={cn(!isFieldComplete(lead, 'producto') && 'text-muted-foreground text-sm')}>
                           {lead.producto || '—'}
                         </span>
                       )}
                     </TableCell>
 
+                    {/* Estatus del Lead */}
                     <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={editForm.celular || ''}
-                          onChange={(e) => setEditForm({ ...editForm, celular: e.target.value })}
-                          className="h-8"
-                        />
-                      ) : (
-                        <span className={cn(!isFieldComplete(lead, 'celular') && 'text-muted-foreground')}>
-                          {lead.celular || '—'}
-                        </span>
-                      )}
+                      <Badge 
+                        variant={
+                          lead.call_status === 'VENTA_CONFIRMADA' ? 'default' :
+                          lead.call_status === 'NUEVO' ? 'secondary' :
+                          lead.call_status?.includes('INTENTO') ? 'outline' :
+                          'destructive'
+                        }
+                        className="text-xs whitespace-nowrap"
+                      >
+                        {lead.call_status?.replace(/_/g, ' ') || 'NUEVO'}
+                      </Badge>
                     </TableCell>
 
-                    <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={editForm.dni || ''}
-                          onChange={(e) => setEditForm({ ...editForm, dni: e.target.value })}
-                          className="h-8"
-                          placeholder="DNI..."
-                        />
-                      ) : (
-                        <span className={cn(!isFieldComplete(lead, 'dni') && 'text-muted-foreground')}>
-                          {lead.dni || '—'}
-                        </span>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={editForm.direccion || ''}
-                          onChange={(e) => setEditForm({ ...editForm, direccion: e.target.value })}
-                          className="h-8"
-                          placeholder="Dirección..."
-                        />
-                      ) : (
-                        <span className={cn(!isFieldComplete(lead, 'direccion') && 'text-muted-foreground')}>
-                          {lead.direccion || '—'}
-                        </span>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
-                      {isEditing ? (
-                        <Input
-                          value={editForm.distrito || ''}
-                          onChange={(e) => setEditForm({ ...editForm, distrito: e.target.value })}
-                          className="h-8"
-                          placeholder="Distrito..."
-                        />
-                      ) : (
-                        <span className={cn(!isFieldComplete(lead, 'distrito') && 'text-muted-foreground')}>
-                          {lead.distrito || '—'}
-                        </span>
-                      )}
-                    </TableCell>
-
-                    <TableCell>
+                    {/* Provincia */}
+                    <TableCell className="min-w-[120px]">
                       {isEditing ? (
                         <Input
                           value={editForm.provincia || ''}
@@ -282,24 +285,98 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                       )}
                     </TableCell>
 
-                    <TableCell>
-                      <span className={cn(!isFieldComplete(lead, 'email') && 'text-muted-foreground text-xs')}>
-                        {lead.email || '—'}
-                      </span>
-                    </TableCell>
-
-                    <TableCell>
-                      {lead.tienda_origen && (
-                        <Badge variant="outline" className="text-xs">
-                          {lead.tienda_origen}
-                        </Badge>
+                    {/* DNI */}
+                    <TableCell className="text-center">
+                      {isEditing ? (
+                        <Input
+                          value={editForm.dni || ''}
+                          onChange={(e) => setEditForm({ ...editForm, dni: e.target.value })}
+                          className="h-8"
+                          placeholder="DNI..."
+                        />
+                      ) : (
+                        <span className={cn(
+                          !isFieldComplete(lead, 'dni') && 'text-orange-500 font-semibold',
+                          isFieldComplete(lead, 'dni') && 'text-foreground'
+                        )}>
+                          {lead.dni || '⚠'}
+                        </span>
                       )}
                     </TableCell>
 
-                    <TableCell className="text-xs text-muted-foreground">
-                      {lead.last_updated ? format(new Date(lead.last_updated), 'dd/MM/yyyy', { locale: es }) : '—'}
+                    {/* Courier - Este campo no existe en Client, lo dejamos vacío por ahora */}
+                    <TableCell className="text-center text-orange-500 font-semibold">
+                      ⚠
                     </TableCell>
 
+                    {/* Oficina Shalom - Este campo no existe en Client */}
+                    <TableCell className="text-center text-orange-500 font-semibold">
+                      ⚠
+                    </TableCell>
+
+                    {/* Atendido */}
+                    <TableCell className="text-center">
+                      {lead.call_status !== 'NUEVO' && lead.assigned_agent_name ? (
+                        <CheckCircle className="h-4 w-4 text-green-500 mx-auto" />
+                      ) : (
+                        <span className="text-orange-500 font-semibold">⚠</span>
+                      )}
+                    </TableCell>
+
+                    {/* Intento de Llamada */}
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className="text-xs">
+                        {callAttempts === '0' ? '—' : `Intento ${callAttempts}`}
+                      </Badge>
+                    </TableCell>
+
+                    {/* Asesor */}
+                    <TableCell className="min-w-[120px]">
+                      {lead.assigned_agent_name ? (
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold">
+                            {lead.assigned_agent_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                          </div>
+                          <span className="text-sm">{lead.assigned_agent_name}</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">Sin asignar</span>
+                      )}
+                    </TableCell>
+
+                    {/* Resultado */}
+                    <TableCell>
+                      {lead.call_status === 'VENTA_CONFIRMADA' ? (
+                        <Badge className="bg-green-500 text-xs">Venta</Badge>
+                      ) : lead.call_status === 'LEAD_PERDIDO' ? (
+                        <Badge variant="destructive" className="text-xs">Perdido</Badge>
+                      ) : lead.call_status === 'NO_CONTESTA' ? (
+                        <Badge variant="secondary" className="text-xs">No contesta</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
+
+                    {/* Comentario de Llamada */}
+                    <TableCell className="text-center min-w-[120px]">
+                      {isEditing ? (
+                        <Input
+                          value={editForm.notas_agente || ''}
+                          onChange={(e) => setEditForm({ ...editForm, notas_agente: e.target.value })}
+                          className="h-8"
+                          placeholder="Comentario..."
+                        />
+                      ) : (
+                        <span className={cn(
+                          !isFieldComplete(lead, 'notas_agente') && 'text-orange-500 font-semibold',
+                          isFieldComplete(lead, 'notas_agente') && 'text-sm'
+                        )}>
+                          {lead.notas_agente || '⚠'}
+                        </span>
+                      )}
+                    </TableCell>
+
+                    {/* Acciones */}
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
                         {isEditing ? (
