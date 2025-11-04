@@ -48,7 +48,7 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
         timestamp: new Date(order.fechas_clave.entrega_real),
         icon: Clock,
         color: 'text-red-500',
-        href: '/orders'
+  href: '/call-center-queue'
       });
     }
   });
@@ -63,7 +63,7 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
         timestamp: new Date(order.fechas_clave.creacion),
         icon: CircleDollarSign,
         color: 'text-blue-500',
-        href: '/orders'
+  href: '/call-center-queue'
       });
     }
   });
@@ -78,7 +78,7 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
         timestamp: new Date(order.fechas_clave.creacion),
         icon: Archive,
         color: 'text-orange-500',
-        href: '/orders'
+  href: '/call-center-queue'
       });
     }
   });
@@ -93,7 +93,7 @@ const getNotifications = (inventory: InventoryItem[], orders: Order[]): Notifica
         timestamp: new Date(order.fechas_clave.creacion),
         icon: XCircle,
         color: 'text-gray-500',
-        href: '/orders'
+  href: '/call-center-queue'
       });
     }
   });

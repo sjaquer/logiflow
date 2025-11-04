@@ -23,8 +23,8 @@ export default function LoginPage() {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await login(email, password);
-      router.push('/orders');
+  await login(email, password);
+  router.push('/call-center-queue');
     } catch (error: any) {
       console.error(error);
       toast({

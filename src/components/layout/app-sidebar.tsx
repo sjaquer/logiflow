@@ -43,7 +43,8 @@ type MenuItem = {
   href: string;
   label: string;
   icon: React.ElementType;
-  permissionKey: keyof User['permisos']['puede_ver'];
+  // Use NonNullable to allow keyof a possibly-undefined 'puede_ver'
+  permissionKey: keyof NonNullable<User['permisos']['puede_ver']>;
 }
 
 const menuItems: MenuItem[] = [

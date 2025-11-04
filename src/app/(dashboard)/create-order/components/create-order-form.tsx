@@ -374,7 +374,7 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                 });
             }
 
-            router.push('/orders');
+            router.push('/call-center-queue');
 
         } catch (error) {
             console.error("Error processing order:", error);
