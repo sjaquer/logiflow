@@ -389,7 +389,7 @@ export default function CallCenterQueuePage() {
   }
 
   return (
-    <div className="w-full max-w-[calc(100vw-20px)] mx-auto px-[10px] py-4 space-y-6 animate-in box-border">
+    <div className="w-full max-w-[calc(100vw-20px)] mx-auto px-[10px] py-4 space-y-6 animate-in box-border overflow-x-hidden">
       {/* Header con gradiente vibrante */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 p-8 shadow-xl">
         <div className="absolute inset-0 bg-grid-white/10" />
