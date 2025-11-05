@@ -165,8 +165,11 @@ async function seedClients(): Promise<Client[]> {
         first_interaction_at: new Date().toISOString()
     }));
 
-    const uniqueClientsMap = new Map<string, Omit<Client, 'id'>>();
-    clientData.forEach(c => uniqueClientsMap.set(c.dni, c));
+        const uniqueClientsMap = new Map<string, Omit<Client, 'id'>>();
+        // skip entries without DNI to avoid undefined keys
+        clientData.forEach(c => {
+            if (c.dni) uniqueClientsMap.set(String(c.dni), c);
+        });
     const uniqueClientsData = Array.from(uniqueClientsMap.values());
     
     const generatedIds = await seedCollection('clients', uniqueClientsData);
@@ -199,8 +202,8 @@ async function seedOrders(allUsers: User[], inventoryItems: any[], clients: Clie
         const item2 = inventoryItems[(index + 1) % inventoryItems.length];
         
         const orderItems: OrderItem[] = [
-            { sku: item1.sku, nombre: item1.nombre, variante: '', cantidad: 1, precio_unitario: item1.precios.venta, subtotal: item1.precios.venta, estado_item: 'PENDIENTE' },
-            ...(index % 2 === 0 ? [{ sku: item2.sku, nombre: item2.nombre, variante: '', cantidad: 1, precio_unitario: item2.precios.venta, subtotal: item2.precios.venta, estado_item: 'PENDIENTE' }] : [])
+            { sku: item1.sku, nombre: item1.nombre, variante: '', cantidad: 1, precio_unitario: item1.precios.venta, subtotal: item1.precios.venta, estado_item: 'PENDIENTE' as const },
+            ...(index % 2 === 0 ? [{ sku: item2.sku, nombre: item2.nombre, variante: '', cantidad: 1, precio_unitario: item2.precios.venta, subtotal: item2.precios.venta, estado_item: 'PENDIENTE' as const }] : [])
         ];
 
         const totalAmount = orderItems.reduce((sum, item) => sum + item.subtotal, 0) + order.envio.costo_envio;

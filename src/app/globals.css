@@ -140,10 +140,11 @@
   
   /* Sombras más dramáticas */
   .shadow-primary {
-    box-shadow: 0 4px 14px 0 rgba(var(--primary-rgb), 0.15);
+    /* Use HSL CSS variable with alpha instead of undefined --primary-rgb */
+    box-shadow: 0 4px 14px 0 hsl(var(--primary) / 0.15);
   }
-  
+
   .shadow-success {
-    box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.15);
+    box-shadow: 0 4px 14px 0 hsl(var(--success) / 0.15);
   }
 }

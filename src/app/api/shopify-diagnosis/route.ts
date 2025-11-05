@@ -28,7 +28,14 @@ export async function GET() {
     BLUMI_SECRET: process.env.SHOPIFY_BLUMI_WEBHOOK_SECRET ? 'SET' : 'MISSING',
   };
 
-  const diagnosis = {
+  const diagnosis: {
+    timestamp: string;
+    environment: string | undefined;
+    shopifyConfig: any;
+    environmentVariables: any;
+    issues: string[];
+    solutions: string[];
+  } = {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     shopifyConfig: stats,

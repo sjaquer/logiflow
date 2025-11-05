@@ -58,7 +58,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     paymentGateway: false,
     confirmedAt: false,
     visto: false,
-    acciones: true
+    // 'acciones' column removed: actions are provided via per-row overlay/menu
   };
 
   const [visibleColumns, setVisibleColumns] = useState<{ [key: string]: boolean }>(() => {
@@ -70,6 +70,23 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     }
     return DEFAULT_VISIBLE_COLUMNS;
   });
+  
+  // If an older localStorage value includes the removed 'acciones' column,
+  // remove it so the table doesn't render an empty column space.
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('cc_visibleColumns');
+      if (!raw) return;
+      const parsed = JSON.parse(raw);
+      if (parsed && Object.prototype.hasOwnProperty.call(parsed, 'acciones')) {
+        delete parsed.acciones;
+        localStorage.setItem('cc_visibleColumns', JSON.stringify(parsed));
+        setVisibleColumns(parsed);
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, []);
   const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -141,7 +158,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     // 'source' column removed: origin is displayed via tienda_origen when needed
     confirmedAt: 'confirmed_at',
     visto: 'visto_por',
-    acciones: ''
+    
   };
   
 
@@ -264,7 +281,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     // Keep at least name and actions visible
     setVisibleColumns(prev => Object.keys(prev).reduce((acc, key) => ({ 
       ...acc, 
-      [key]: key === 'nombreLead' || key === 'acciones' 
+      [key]: key === 'nombreLead'
     }), {}));
   };
 
@@ -299,8 +316,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     { key: 'totalShipping', label: 'Envio', essential: false },
     { key: 'paymentGateway', label: 'Metodo Pago', essential: false },
     { key: 'confirmedAt', label: 'Confirmado', essential: false },
-    { key: 'visto', label: 'Visto', essential: false },
-    { key: 'acciones', label: 'Acciones', essential: true }
+    { key: 'visto', label: 'Visto', essential: false }
   ];
 
   // Compute unique values per column (for filter options)
@@ -569,7 +585,8 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
           top: 0;
           z-index: 20;
           backdrop-filter: blur(8px);
-          background: hsl(var(--background)) / 0.95;
+          /* ensure HSL alpha syntax is inside parentheses */
+          background: hsl(var(--background) / 0.95);
           border-bottom: 1px solid hsl(var(--border));
         }
         
@@ -1568,15 +1585,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
-                            {/* keep visible quick buttons on larger screens */}
-                            <Button size="sm" variant="default" onClick={() => openDialog(lead)} className="hidden sm:inline-flex h-8 gap-1 whitespace-nowrap">
-                              <Edit2 className="h-3 w-3" />
-                              <span className="hidden sm:inline">Editar</span>
-                            </Button>
-                            <Button size="sm" onClick={() => onProcessLead(lead)} className="hidden sm:inline-flex h-8 gap-1 whitespace-nowrap">
-                              <Phone className="h-3 w-3" />
-                              <span className="hidden sm:inline">Procesar</span>
-                            </Button>
+                              {/* quick action buttons removed: use the 3-dot menu to pick actions */}
                           </>
                         )}
                       </div>

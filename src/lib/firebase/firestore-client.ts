@@ -7,7 +7,7 @@ export async function getCollectionData<T extends DocumentData>(collectionName: 
   try {
     const collectionRef = collection(db, collectionName);
     const snapshot = await getDocs(collectionRef);
-    return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
+  return snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as unknown as T));
   } catch (error) {
     console.error(`Error fetching ${collectionName}:`, error);
     return [];
@@ -19,7 +19,7 @@ export async function getDocumentData<T extends DocumentData>(collectionName: st
         const docRef = doc(db, collectionName, docId);
         const docSnap = await getDoc(docRef);
         if (docSnap.exists()) {
-            return { ...docSnap.data(), id: docSnap.id } as T;
+            return { ...docSnap.data(), id: docSnap.id } as unknown as T;
         } else {
             console.warn(`Document with ID ${docId} not found in ${collectionName}`);
             return null;
@@ -37,7 +37,7 @@ export function listenToCollection<T extends DocumentData>(
 ): Unsubscribe {
   const collectionRef = collection(db, collectionName);
   const unsubscribe = onSnapshot(collectionRef, (snapshot) => {
-    const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
+  const data = snapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as unknown as T));
     callback(data);
   }, (error) => {
     console.error(`Error listening to ${collectionName}:`, error);
