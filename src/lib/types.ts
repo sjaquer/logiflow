@@ -207,6 +207,10 @@ export interface Client {
     }
     etapa_shopify?: string; // e.g. "unfulfilled"
 
+  // Optional fields present in some payloads
+  confirmed_at?: string;
+  visto_por?: string | { id?: string; name?: string };
+
     // Generic fields
     producto?: string;
     notas_agente?: string;

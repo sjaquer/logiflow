@@ -28,7 +28,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Client>>({});
   const [dialogLead, setDialogLead] = useState<Client | null>(null);
-  const [visibleColumns, setVisibleColumns] = useState<{ [key: string]: boolean }>({
+  const DEFAULT_VISIBLE_COLUMNS: { [key: string]: boolean } = {
     estado: true,
     fechaCreacion: false,
     ultimaModif: false,
@@ -56,21 +56,55 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     totalPrice: false,
     totalShipping: false,
     paymentGateway: false,
-    source: false,
     confirmedAt: false,
     visto: false,
     acciones: true
+  };
+
+  const [visibleColumns, setVisibleColumns] = useState<{ [key: string]: boolean }>(() => {
+    try {
+      const raw = localStorage.getItem('cc_visibleColumns');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      // ignore
+    }
+    return DEFAULT_VISIBLE_COLUMNS;
   });
   const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const visibleCount = Object.values(visibleColumns).filter(Boolean).length;
 
+  // Persist visibleColumns and columnWidths to localStorage when they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('cc_visibleColumns', JSON.stringify(visibleColumns));
+    } catch (e) {
+      // ignore
+    }
+  }, [visibleColumns]);
+
   // Column filters: multi-select values per column
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
   // Column resizing state: widths in pixels and current resizing session
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
+    try {
+      const raw = localStorage.getItem('cc_columnWidths');
+      if (raw) return JSON.parse(raw);
+    } catch (e) {
+      // ignore
+    }
+    return {};
+  });
+  // Persist column widths
+  useEffect(() => {
+    try {
+      localStorage.setItem('cc_columnWidths', JSON.stringify(columnWidths));
+    } catch (e) {
+      // ignore
+    }
+  }, [columnWidths]);
   const [resizing, setResizing] = useState<null | { colKey: string; startX: number; startWidth: number }>(null);
   // Date range filters for date/time columns (values as datetime-local strings)
   const [dateFilters, setDateFilters] = useState<Record<string, { from?: string; to?: string }>>({});
@@ -98,13 +132,13 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     direccion: 'direccion',
     distrito: 'distrito',
     email: 'email',
-    tienda: 'tienda_origen',
+  tienda: 'tienda_origen',
     shopifyOrderId: 'shopify_order_id',
     subtotalPrice: 'shopify_payment_details.subtotal_price',
     totalPrice: 'shopify_payment_details.total_price',
     totalShipping: 'shopify_payment_details.total_shipping',
     paymentGateway: 'shopify_payment_details.payment_gateway',
-    source: 'source',
+    // 'source' column removed: origin is displayed via tienda_origen when needed
     confirmedAt: 'confirmed_at',
     visto: 'visto_por',
     acciones: ''
@@ -256,7 +290,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     { key: 'direccion', label: 'Dirección', essential: false },
     { key: 'distrito', label: 'Distrito', essential: false },
     { key: 'email', label: 'Email', essential: false },
-    { key: 'tienda', label: 'Tienda', essential: false },
+  { key: 'tienda', label: 'Tienda / Origen', essential: false },
     { key: 'shopifyOrderId', label: 'Order ID', essential: false },
     { key: 'itemsCount', label: 'Items', essential: false },
     { key: 'itemsSummary', label: 'Resumen Items', essential: false },
@@ -264,7 +298,6 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     { key: 'totalPrice', label: 'Total', essential: false },
     { key: 'totalShipping', label: 'Envio', essential: false },
     { key: 'paymentGateway', label: 'Metodo Pago', essential: false },
-    { key: 'source', label: 'Origen', essential: false },
     { key: 'confirmedAt', label: 'Confirmado', essential: false },
     { key: 'visto', label: 'Visto', essential: false },
     { key: 'acciones', label: 'Acciones', essential: true }
@@ -293,18 +326,32 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
       // Special-case producto: gather both `producto` and shopify_items names
       if (col.key === 'producto') {
         leads.forEach(lead => {
-          // lead.producto (legacy single field)
           const p = (lead as any).producto;
           if (p === null || p === undefined || p === '') values.add('—');
           else values.add(String(p));
 
-          // shopify_items names
           const items = (lead as any).shopify_items;
           if (Array.isArray(items) && items.length > 0) {
             items.forEach((it: any) => {
               const name = it.nombre || it.name || it.title;
               if (name) values.add(String(name));
             });
+          }
+        });
+        map[col.key] = Array.from(values).slice(0, 200);
+        return;
+      }
+
+      // Special-case tienda: include tienda_origen and the legacy/source field if present
+      if (col.key === 'tienda') {
+        leads.forEach(lead => {
+          const t = (lead as any).tienda_origen;
+          const s = (lead as any).source;
+          if ((t === null || t === undefined || t === '') && (s === null || s === undefined || s === '')) {
+            values.add('—');
+          } else {
+            if (t) values.add(String(t));
+            if (s) values.add(String(s));
           }
         });
         map[col.key] = Array.from(values).slice(0, 200);
@@ -318,7 +365,6 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
 
       leads.forEach(lead => {
         let val = getByPath(lead as any, field);
-        // If value is an array, try to extract representative text
         if (Array.isArray(val)) {
           const first = val[0];
           if (typeof first === 'string') val = first;
@@ -940,7 +986,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
 
                 {visibleColumns.tienda && (
                   <TableHead data-col="tienda" className="relative w-[110px] sm:w-[140px]" style={{ width: columnWidths['tienda'] ? `${columnWidths['tienda']}px` : undefined, minWidth: 2 }}>
-                    <div className="flex items-center">Tienda</div>
+                    <div className="flex items-center">Tienda / Origen</div>
                     <div className="col-resizer" onMouseDown={(e) => startResize(e, 'tienda')} />
                   </TableHead>
                 )}
@@ -973,12 +1019,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   </TableHead>
                 )}
 
-                {visibleColumns.source && (
-                  <TableHead data-col="source" className="relative w-[80px] sm:w-[100px]" style={{ width: columnWidths['source'] ? `${columnWidths['source']}px` : undefined, minWidth: 2 }}>
-                    <div className="flex items-center">Origen</div>
-                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'source')} />
-                  </TableHead>
-                )}
+                {/* 'source' column removed - use 'tienda' (tienda_origen) when tienda/origen info is needed */}
 
                 {visibleColumns.confirmedAt && (
                   <TableHead data-col="confirmedAt" className="relative w-[140px] sm:w-[160px]" style={{ width: columnWidths['confirmedAt'] ? `${columnWidths['confirmedAt']}px` : undefined, minWidth: 2 }}>
@@ -1276,9 +1317,17 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
 
                       {visibleColumns.tienda && (
                         <TableCell>
-                          <div className="truncate text-sm" title={lead.tienda_origen || '—'}>
-                            {lead.tienda_origen || '—'}
-                          </div>
+                          {(() => {
+                            const tienda = (lead as any).tienda_origen;
+                            const source = (lead as any).source;
+                            const display = tienda || source || '—';
+                            const title = `${tienda || '—'}${source ? ' · ' + source : ''}`;
+                            return (
+                              <div className="truncate text-sm" title={title}>
+                                {display}
+                              </div>
+                            );
+                          })()}
                         </TableCell>
                       )}
 
@@ -1308,14 +1357,11 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
 
                       {visibleColumns.totalPrice && (
                         <TableCell className="text-right">
-                          <div className="truncate" title={lead.shopify_payment_details?.total_price ?? '—'}>
+                          <div className="truncate" title={String(lead.shopify_payment_details?.total_price ?? '—')}>
                             {lead.shopify_payment_details?.total_price ? `S/ ${lead.shopify_payment_details.total_price}` : '—'}
                           </div>
                         </TableCell>
                       )}
-
-                      {/* source column intentionally kept but hidden by default; user said it's not necessary */}
-
                       {visibleColumns.confirmedAt && (
                         <TableCell className="text-xs text-muted-foreground">
                           <div className="truncate" title={lead.confirmed_at ? format(new Date(lead.confirmed_at), 'dd/MM/yyyy HH:mm', { locale: es }) : '—'}>
