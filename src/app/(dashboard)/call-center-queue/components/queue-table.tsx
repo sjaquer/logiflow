@@ -167,7 +167,8 @@ export default function CallCenterQueuePage() {
 
     } catch (error) {
         console.error("Error processing client:", error);
-        toast({ title: 'Error', description: 'No se pudo asignar el lead.', variant: 'destructive' });
+        const msg = error instanceof Error ? error.message : String(error);
+        toast({ title: 'Error', description: `No se pudo asignar el lead: ${msg}`, variant: 'destructive' });
     }
   }, [currentUser, router, toast]);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Client } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Phone, Edit2, Save, X, CheckCircle, AlertCircle, Circle, Settings, Eye, EyeOff } from 'lucide-react';
+import { Phone, Edit2, Save, X, CheckCircle, AlertCircle, Circle, Settings, Eye, EyeOff, Filter } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -50,6 +50,30 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
   const containerRef = useRef<HTMLDivElement | null>(null);
 
   const visibleCount = Object.values(visibleColumns).filter(Boolean).length;
+
+  // Column filters: multi-select values per column
+  const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
+
+  // Map column keys to lead object fields (best-effort mapping for filters)
+  const columnFieldMap: Record<string, string> = {
+    estado: 'call_status',
+    fechaCreacion: 'first_interaction_at',
+    ultimaModif: 'last_updated',
+    nombreLead: 'nombres',
+    producto: 'producto',
+    estatusLead: 'call_status',
+    provincia: 'provincia',
+    dni: 'dni',
+    courier: 'courier',
+    oficShalom: 'ofic_shalom',
+    atendido: 'assigned_agent_name',
+    intentoLlamada: 'call_status',
+    asesor: 'assigned_agent_name',
+    resultado: 'call_status',
+    comentario: 'notas_agente',
+    acciones: ''
+  };
+  
 
   const isFieldComplete = (lead: Client, field: keyof Client) => {
     const value = lead[field];
@@ -174,6 +198,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     }), {}));
   };
 
+
   // Column definitions for easier management
   const columnDefinitions = [
     { key: 'estado', label: 'Estado', essential: false },
@@ -193,6 +218,71 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     { key: 'comentario', label: 'Comentario', essential: false },
     { key: 'acciones', label: 'Acciones', essential: true }
   ];
+
+  // Compute unique values per column (for filter options)
+  const uniqueValuesMap = useMemo(() => {
+    const map: Record<string, string[]> = {};
+    columnDefinitions.forEach(col => {
+      const field = columnFieldMap[col.key];
+      if (!field) {
+        map[col.key] = [];
+        return;
+      }
+      const values = new Set<string>();
+      leads.forEach(lead => {
+        const val = (lead as any)[field];
+        if (val === null || val === undefined) values.add('—');
+        else if (typeof val === 'string') values.add(val);
+        else values.add(String(val));
+      });
+      map[col.key] = Array.from(values).slice(0, 100);
+    });
+    return map;
+  }, [leads]);
+
+  const toggleFilterValue = (colKey: string, value: string) => {
+    setColumnFilters(prev => {
+      const existing = prev[colKey] || [];
+      const idx = existing.indexOf(value);
+      const copy = { ...prev };
+      if (idx === -1) copy[colKey] = [...existing, value];
+      else copy[colKey] = existing.filter(v => v !== value);
+      return copy;
+    });
+  };
+
+  const clearColumnFilter = (colKey: string) => {
+    setColumnFilters(prev => {
+      const copy = { ...prev };
+      delete copy[colKey];
+      return copy;
+    });
+  };
+
+  // Filtered leads based on columnFilters
+  const filteredLeads = useMemo(() => {
+    const activeFilterKeys = Object.keys(columnFilters).filter(k => (columnFilters[k] || []).length > 0);
+    if (activeFilterKeys.length === 0) return leads;
+    return leads.filter(lead => {
+      return activeFilterKeys.every(colKey => {
+        const field = columnFieldMap[colKey];
+        if (!field) return true;
+        const leadVal = (lead as any)[field];
+        const normalized = leadVal === null || leadVal === undefined ? '—' : String(leadVal);
+        return columnFilters[colKey].includes(normalized);
+      });
+    });
+  }, [leads, columnFilters]);
+
+  // Scroll-to-column helper for top nav
+  const scrollToColumn = useCallback((colKey: string) => {
+    if (!containerRef.current) return;
+    const th = containerRef.current.querySelector(`th[data-col="${colKey}"]`) as HTMLElement | null;
+    if (!th) return;
+    // Scroll so the column is visible with a small offset
+    const left = th.offsetLeft - 12;
+    containerRef.current.scrollTo({ left, behavior: 'smooth' });
+  }, []);
 
   return (
     <>
@@ -319,33 +409,220 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
         </div>
 
         {/* Table with horizontal scroll contained */}
-        <div className="table-scroll-container">
+        {/* Top horizontal navigation: quick jump to column */}
+        <div className="flex items-center gap-2 overflow-x-auto py-1">
+          {columnDefinitions.filter(c => visibleColumns[c.key]).map(c => (
+            <button
+              key={c.key}
+              onClick={() => scrollToColumn(c.key)}
+              className="text-xs px-2 py-1 rounded-md hover:bg-muted/30 border border-transparent hover:border-border"
+              title={`Ir a ${c.label}`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+        <div className="table-scroll-container" ref={containerRef as any}>
           <Table className={`w-full callcenter-table min-w-0 ${visibleCount > 9 ? 'compact-columns' : ''}`}>
             <TableHeader>
               <TableRow className="bg-muted/50">
                 {visibleColumns.estado && (
-                  <TableHead className="w-[40px] sm:w-[60px]">Estado</TableHead>
+                  <TableHead data-col="estado" className="w-[40px] sm:w-[60px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>Estado</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                            <Filter className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={4} className="w-56">
+                          <div className="p-2">
+                            {uniqueValuesMap.estado && uniqueValuesMap.estado.length > 0 ? (
+                              uniqueValuesMap.estado.map(val => (
+                                <label key={val} className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={(columnFilters.estado || []).includes(val)}
+                                    onChange={() => toggleFilterValue('estado', val)}
+                                  />
+                                  <span className="truncate">{val}</span>
+                                </label>
+                              ))
+                            ) : (
+                              <div className="text-xs text-muted-foreground">No hay valores</div>
+                            )}
+                          </div>
+                          <DropdownMenuSeparator />
+                          <div className="flex items-center justify-between px-2 py-1">
+                            <Button size="sm" variant="ghost" onClick={() => clearColumnFilter('estado')}>Limpiar</Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableHead>
                 )}
                 {visibleColumns.fechaCreacion && (
-                  <TableHead className="w-[80px] sm:w-[140px]">Fecha Creación</TableHead>
+                  <TableHead data-col="fechaCreacion" className="w-[80px] sm:w-[140px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>Fecha Creación</span>
+                      {/* simple filter for date could be left empty for now */}
+                    </div>
+                  </TableHead>
                 )}
                 {visibleColumns.ultimaModif && (
-                  <TableHead className="w-[80px] sm:w-[140px]">Última Modificación</TableHead>
+                  <TableHead data-col="ultimaModif" className="w-[80px] sm:w-[140px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>Última Modificación</span>
+                    </div>
+                  </TableHead>
                 )}
                 {visibleColumns.nombreLead && (
-                  <TableHead className="min-w-0 sm:min-w-[200px]">Nombre del Lead</TableHead>
+                  <TableHead data-col="nombreLead" className="min-w-0 sm:min-w-[200px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>Nombre del Lead</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                            <Filter className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={4} className="w-56">
+                          <div className="p-2">
+                            {uniqueValuesMap.nombreLead && uniqueValuesMap.nombreLead.length > 0 ? (
+                              uniqueValuesMap.nombreLead.map(val => (
+                                <label key={val} className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={(columnFilters.nombreLead || []).includes(val)}
+                                    onChange={() => toggleFilterValue('nombreLead', val)}
+                                  />
+                                  <span className="truncate">{val}</span>
+                                </label>
+                              ))
+                            ) : (
+                              <div className="text-xs text-muted-foreground">No hay valores</div>
+                            )}
+                          </div>
+                          <DropdownMenuSeparator />
+                          <div className="flex items-center justify-between px-2 py-1">
+                            <Button size="sm" variant="ghost" onClick={() => clearColumnFilter('nombreLead')}>Limpiar</Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableHead>
                 )}
                 {visibleColumns.producto && (
-                  <TableHead className="min-w-0 sm:min-w-[180px]">Producto</TableHead>
+                  <TableHead data-col="producto" className="min-w-0 sm:min-w-[180px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>Producto</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                            <Filter className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={4} className="w-56">
+                          <div className="p-2">
+                            {uniqueValuesMap.producto && uniqueValuesMap.producto.length > 0 ? (
+                              uniqueValuesMap.producto.map(val => (
+                                <label key={val} className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={(columnFilters.producto || []).includes(val)}
+                                    onChange={() => toggleFilterValue('producto', val)}
+                                  />
+                                  <span className="truncate">{val}</span>
+                                </label>
+                              ))
+                            ) : (
+                              <div className="text-xs text-muted-foreground">No hay valores</div>
+                            )}
+                          </div>
+                          <DropdownMenuSeparator />
+                          <div className="flex items-center justify-between px-2 py-1">
+                            <Button size="sm" variant="ghost" onClick={() => clearColumnFilter('producto')}>Limpiar</Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableHead>
                 )}
                 {visibleColumns.estatusLead && (
-                  <TableHead className="w-[100px] sm:w-[140px]">Estatus del Lead</TableHead>
+                  <TableHead data-col="estatusLead" className="w-[100px] sm:w-[140px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>Estatus del Lead</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                            <Filter className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={4} className="w-56">
+                          <div className="p-2">
+                            {uniqueValuesMap.estatusLead && uniqueValuesMap.estatusLead.length > 0 ? (
+                              uniqueValuesMap.estatusLead.map(val => (
+                                <label key={val} className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={(columnFilters.estatusLead || []).includes(val)}
+                                    onChange={() => toggleFilterValue('estatusLead', val)}
+                                  />
+                                  <span className="truncate">{val}</span>
+                                </label>
+                              ))
+                            ) : (
+                              <div className="text-xs text-muted-foreground">No hay valores</div>
+                            )}
+                          </div>
+                          <DropdownMenuSeparator />
+                          <div className="flex items-center justify-between px-2 py-1">
+                            <Button size="sm" variant="ghost" onClick={() => clearColumnFilter('estatusLead')}>Limpiar</Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableHead>
                 )}
                 {visibleColumns.provincia && (
-                  <TableHead className="w-[100px] sm:w-[140px]">Provincia</TableHead>
+                  <TableHead data-col="provincia" className="w-[100px] sm:w-[140px]">
+                    <div className="flex items-center justify-between gap-2">
+                      <span>Provincia</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                            <Filter className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={4} className="w-56">
+                          <div className="p-2">
+                            {uniqueValuesMap.provincia && uniqueValuesMap.provincia.length > 0 ? (
+                              uniqueValuesMap.provincia.map(val => (
+                                <label key={val} className="flex items-center gap-2 text-sm">
+                                  <input
+                                    type="checkbox"
+                                    checked={(columnFilters.provincia || []).includes(val)}
+                                    onChange={() => toggleFilterValue('provincia', val)}
+                                  />
+                                  <span className="truncate">{val}</span>
+                                </label>
+                              ))
+                            ) : (
+                              <div className="text-xs text-muted-foreground">No hay valores</div>
+                            )}
+                          </div>
+                          <DropdownMenuSeparator />
+                          <div className="flex items-center justify-between px-2 py-1">
+                            <Button size="sm" variant="ghost" onClick={() => clearColumnFilter('provincia')}>Limpiar</Button>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </TableHead>
                 )}
                 {visibleColumns.dni && (
-                  <TableHead className="text-center w-[60px] sm:w-[100px]">
+                  <TableHead data-col="dni" className="text-center w-[60px] sm:w-[100px]">
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>DNI</span>
@@ -353,7 +630,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   </TableHead>
                 )}
                 {visibleColumns.courier && (
-                  <TableHead className="text-center w-[60px] sm:w-[100px]">
+                  <TableHead data-col="courier" className="text-center w-[60px] sm:w-[100px]">
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>Courier</span>
@@ -361,7 +638,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   </TableHead>
                 )}
                 {visibleColumns.oficShalom && (
-                  <TableHead className="text-center w-[60px] sm:w-[100px]">
+                  <TableHead data-col="oficShalom" className="text-center w-[60px] sm:w-[100px]">
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>Ofic. Shalom</span>
@@ -369,7 +646,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   </TableHead>
                 )}
                 {visibleColumns.atendido && (
-                  <TableHead className="text-center w-[60px] sm:w-[100px]">
+                  <TableHead data-col="atendido" className="text-center w-[60px] sm:w-[100px]">
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>Atendido</span>
@@ -377,16 +654,16 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   </TableHead>
                 )}
                 {visibleColumns.intentoLlamada && (
-                  <TableHead className="w-[90px] sm:w-[140px]">Intento de Llamada</TableHead>
+                  <TableHead data-col="intentoLlamada" className="w-[90px] sm:w-[140px]">Intento de Llamada</TableHead>
                 )}
                 {visibleColumns.asesor && (
-                  <TableHead className="min-w-0 sm:min-w-[160px]">Asesor</TableHead>
+                  <TableHead data-col="asesor" className="min-w-0 sm:min-w-[160px]">Asesor</TableHead>
                 )}
                 {visibleColumns.resultado && (
-                  <TableHead className="w-[80px] sm:w-[120px]">Resultado</TableHead>
+                  <TableHead data-col="resultado" className="w-[80px] sm:w-[120px]">Resultado</TableHead>
                 )}
                 {visibleColumns.comentario && (
-                  <TableHead className="text-center w-[90px] sm:min-w-[150px]">
+                  <TableHead data-col="comentario" className="text-center w-[90px] sm:min-w-[150px]">
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>Comentario</span>
@@ -394,19 +671,19 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   </TableHead>
                 )}
                 {visibleColumns.acciones && (
-                  <TableHead className="text-right w-[120px] sm:w-[220px]">Acciones</TableHead>
+                  <TableHead data-col="acciones" className="text-right w-[120px] sm:w-[220px]">Acciones</TableHead>
                 )}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {leads.length === 0 ? (
+              {filteredLeads.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={16} className="h-24 text-center text-muted-foreground">
                     No hay leads pendientes
                   </TableCell>
                 </TableRow>
               ) : (
-                leads.map((lead) => {
+                filteredLeads.map((lead) => {
                   const status = getCompletionStatus(lead);
                   const isEditing = editingId === lead.id;
                   const callAttempts = lead.call_status?.match(/INTENTO_(\d)/)?.[1] || '0';
