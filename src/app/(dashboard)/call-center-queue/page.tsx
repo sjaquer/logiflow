@@ -10,12 +10,13 @@ import { doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { formatDistanceToNow, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { cacheManager } from '@/lib/cache-manager';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon, Repeat, PhoneMissed, Frown } from 'lucide-react';
+import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon, Repeat, PhoneMissed, Frown, RefreshCw, Database } from 'lucide-react';
 import { ManagedQueueTable } from './components/managed-queue-table';
 import { CleanLeadsTable } from './components/clean-leads-table';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -36,6 +37,15 @@ const STATUS_FILTERS: CallStatus[] = ['NUEVO', 'CONTACTADO', 'INTENTO_1', 'INTEN
 const PIN_CODE = '901230';
 type SortOrder = 'newest' | 'oldest';
 
+// Claves de caché
+const CACHE_KEYS = {
+  CLIENTS: 'call_center_clients',
+  SHOPIFY_LEADS: 'call_center_shopify_leads',
+};
+
+// TTL: 30 minutos (suficiente para evitar lecturas excesivas)
+const CACHE_TTL = 30 * 60 * 1000;
+
 
 export default function CallCenterQueuePage() {
   const { user: authUser } = useAuth();
@@ -54,6 +64,8 @@ export default function CallCenterQueuePage() {
   const [pinError, setPinError] = useState('');
   const [isClearing, setIsClearing] = useState(false);
   const [leadToDelete, setLeadToDelete] = useState<Client | null>(null);
+  const [cacheStats, setCacheStats] = useState<{ totalKeys: number; totalSize: number; keys: string[] } | null>(null);
+  const [loadedFromCache, setLoadedFromCache] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -92,6 +104,10 @@ export default function CallCenterQueuePage() {
 
   useEffect(() => {
     setLoading(true);
+    
+    // Limpiar caché expirado al cargar la página
+    cacheManager.clearExpiredCache();
+    
     const allLeadsMap = new Map<string, Client>();
 
     const updateState = () => {
@@ -100,14 +116,47 @@ export default function CallCenterQueuePage() {
         setPendingLeads(pending);
         setManagedLeads(managed);
         setLoading(false);
+        
+        // Guardar en caché después de actualizar el estado
+        cacheManager.set(CACHE_KEYS.CLIENTS, Array.from(allLeadsMap.values()).filter(l => l.source !== 'shopify'), { ttl: CACHE_TTL });
+        cacheManager.set(CACHE_KEYS.SHOPIFY_LEADS, Array.from(allLeadsMap.values()).filter(l => l.source === 'shopify'), { ttl: CACHE_TTL });
     };
 
+    // Intentar cargar desde caché primero
+    const cachedClients = cacheManager.get<Client[]>(CACHE_KEYS.CLIENTS, { ttl: CACHE_TTL });
+    const cachedShopifyLeads = cacheManager.get<Client[]>(CACHE_KEYS.SHOPIFY_LEADS, { ttl: CACHE_TTL });
+    
+    if (cachedClients || cachedShopifyLeads) {
+      console.log('[CallCenterQueue] 🚀 Cargando desde caché (instantáneo)');
+      setLoadedFromCache(true);
+      
+      // Cargar datos del caché inmediatamente
+      if (cachedClients) {
+        cachedClients.forEach(lead => allLeadsMap.set(lead.id, lead));
+      }
+      if (cachedShopifyLeads) {
+        cachedShopifyLeads.forEach(lead => allLeadsMap.set(lead.id, lead));
+      }
+      
+      const allLeads = Array.from(allLeadsMap.values());
+      const { pending, managed } = processLeads(allLeads);
+      setPendingLeads(pending);
+      setManagedLeads(managed);
+      setLoading(false);
+    } else {
+      setLoadedFromCache(false);
+    }
+
+    // Configurar listeners de Firestore para actualizaciones en tiempo real
+    // Los listeners actualizarán el caché en segundo plano
     const unsubClients = listenToCollection<Client>('clients', (clientLeads) => {
+        console.log('[CallCenterQueue] 📡 Actualización desde Firestore (clients)');
         clientLeads.forEach(lead => allLeadsMap.set(lead.id, lead));
         updateState();
     });
 
     const unsubShopify = listenToCollection<Client>('shopify_leads', (shopifyLeads) => {
+        console.log('[CallCenterQueue] 📡 Actualización desde Firestore (shopify_leads)');
         shopifyLeads.forEach(lead => allLeadsMap.set(lead.id, lead));
         updateState();
     });
@@ -244,6 +293,10 @@ export default function CallCenterQueuePage() {
 
         await batch.commit();
         
+        // Limpiar caché después de vaciar la bandeja
+        cacheManager.remove(CACHE_KEYS.CLIENTS);
+        cacheManager.remove(CACHE_KEYS.SHOPIFY_LEADS);
+        
         toast({ title: 'Bandeja Vaciada', description: `Se han eliminado ${pendingLeads.length} leads pendientes.` });
         setIsPinDialogOpen(false);
 
@@ -254,28 +307,61 @@ export default function CallCenterQueuePage() {
         setIsClearing(false);
         setPinValue('');
     }
-};
+  };
+
+  const handleClearCache = () => {
+    cacheManager.remove(CACHE_KEYS.CLIENTS);
+    cacheManager.remove(CACHE_KEYS.SHOPIFY_LEADS);
+    
+    toast({
+      title: 'Caché Limpiado',
+      description: 'Los datos se recargarán desde Firestore en la próxima actualización.',
+    });
+    
+    // Actualizar estadísticas
+    setCacheStats(cacheManager.getStats());
+  };
+
+  const handleShowCacheStats = () => {
+    const stats = cacheManager.getStats();
+    setCacheStats(stats);
+    
+    toast({
+      title: 'Estadísticas de Caché',
+      description: `${stats.totalKeys} claves | ${(stats.totalSize / 1024).toFixed(2)} KB`,
+    });
+  };
 
   
    if (!currentUser && loading) {
     return (
-       <div className="p-4 md:p-6 lg:p-8 space-y-6">
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-1/3" />
-            <Skeleton className="h-4 w-2/3" />
+       <div className="space-y-6 animate-in">
+        <Card className="border-border/40">
+          <CardHeader className="space-y-3">
+            <div className="flex items-start gap-4">
+              <Skeleton className="h-12 w-12 rounded-xl" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-7 w-2/3" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-64 w-full rounded-lg" />
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-8 w-1/4" />
-            <Skeleton className="h-4 w-1/2" />
+        <Card className="border-border/40">
+          <CardHeader className="space-y-3">
+            <div className="flex items-start gap-4">
+              <Skeleton className="h-12 w-12 rounded-xl" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-7 w-1/2" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-48 w-full rounded-lg" />
           </CardContent>
         </Card>
       </div>
@@ -284,13 +370,16 @@ export default function CallCenterQueuePage() {
   
   if (currentUser && !ALLOWED_ROLES.includes(currentUser.rol)) {
     return (
-        <div className="flex-1 flex items-center justify-center p-8">
-             <Card className="w-full max-w-md text-center">
-                <CardHeader>
-                    <CardTitle>Acceso Denegado</CardTitle>
+        <div className="flex-1 flex items-center justify-center p-8 animate-in">
+             <Card className="w-full max-w-md text-center border-border/40 shadow-lg">
+                <CardHeader className="space-y-4 pb-4">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
+                      <AlertTriangle className="h-8 w-8 text-destructive" />
+                    </div>
+                    <CardTitle className="text-2xl">Acceso Denegado</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground">
+                    <p className="text-muted-foreground text-base leading-relaxed">
                         Esta sección es exclusiva para usuarios del equipo de Call Center, administradores y desarrolladores.
                     </p>
                 </CardContent>
@@ -300,59 +389,113 @@ export default function CallCenterQueuePage() {
   }
 
   return (
-    <div className="space-y-6 p-4 md:p-6 lg:p-8">
-      <Card>
-        <CardHeader>
-            <div className="flex justify-between items-start">
-                <div>
-                    <CardTitle className="flex items-center gap-2">
-                        <Phone />
-                        Bandeja de Entrada de Llamadas
-                    </CardTitle>
-                    <CardDescription>
-                        Lista de clientes potenciales (de Kommo y Shopify) para contactar, confirmar datos y crear un pedido.
-                    </CardDescription>
-                </div>
-                {currentUser?.rol !== 'Call Center' && (
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm">
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Vaciar Bandeja
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                            <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                                Esta acción eliminará permanentemente todos los leads pendientes de la bandeja de entrada.
-                                Esta acción no se puede deshacer.
-                            </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                            <AlertDialogAction onClick={() => setIsPinDialogOpen(true)}>
-                                Sí, estoy seguro
-                            </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
+    <div className="container max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 animate-in">
+      {/* Header con gradiente vibrante */}
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 p-8 shadow-xl">
+        <div className="absolute inset-0 bg-grid-white/10" />
+        <div className="relative z-10">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
+            <div className="flex items-start gap-4">
+              <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg">
+                <Phone className="h-7 w-7 text-white" />
+              </div>
+              <div className="flex-1">
+                <CardTitle className="text-3xl font-bold text-white">
+                  Bandeja de Entrada de Llamadas
+                </CardTitle>
+                <CardDescription className="mt-2 text-white/90 text-base">
+                  Lista de clientes potenciales (de Kommo y Shopify) para contactar, confirmar datos y crear un pedido.
+                  {loadedFromCache && (
+                    <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-white/20 backdrop-blur-sm text-white text-sm font-medium shadow-lg">
+                      <Database className="h-4 w-4" />
+                      Datos en caché (carga instantánea)
+                    </span>
+                  )}
+                </CardDescription>
+              </div>
             </div>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
+            <div className="flex flex-wrap gap-2">
+              {/* Botones de caché */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleShowCacheStats}
+                      className="h-10 bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20"
+                    >
+                      <Database className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Ver estadísticas de caché</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleClearCache}
+                      className="h-10 bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Limpiar caché y recargar datos</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+              
+              {currentUser?.rol !== 'Call Center' && (
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="destructive" size="sm" className="h-10 shadow-lg">
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      <span className="hidden sm:inline">Vaciar Bandeja</span>
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="sm:max-w-[425px]">
+                    <AlertDialogHeader>
+                    <AlertDialogTitle>¿Estás realmente seguro?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta acción eliminará permanentemente todos los leads pendientes de la bandeja de entrada.
+                      Esta acción no se puede deshacer.
+                    </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => setIsPinDialogOpen(true)}>
+                      Sí, estoy seguro
+                    </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <Card className="border-border/40 shadow-lg">
+        <CardContent className="pt-6 space-y-6">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre, DNI o agente..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 h-11 border-border/60 focus-visible:ring-primary shadow-sm"
               />
             </div>
              <Select value={sortOrder} onValueChange={(value) => setSortOrder(value as any)}>
-                <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectTrigger className="w-full sm:w-[180px] h-10">
                     <SelectValue placeholder="Ordenar por..." />
                 </SelectTrigger>
                 <SelectContent>
@@ -361,7 +504,7 @@ export default function CallCenterQueuePage() {
                 </SelectContent>
             </Select>
             <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
-              <SelectTrigger className="w-full sm:w-[200px]">
+              <SelectTrigger className="w-full sm:w-[200px] h-10">
                 <SelectValue placeholder="Filtrar por estado" />
               </SelectTrigger>
               <SelectContent>
@@ -374,7 +517,7 @@ export default function CallCenterQueuePage() {
               </SelectContent>
             </Select>
             <Select value={shopFilter} onValueChange={(value) => setShopFilter(value as any)}>
-                <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectTrigger className="w-full sm:w-[200px] h-10">
                     <SelectValue placeholder="Filtrar por tienda" />
                 </SelectTrigger>
                 <SelectContent>
@@ -387,25 +530,65 @@ export default function CallCenterQueuePage() {
           </div>
           
           {loading ? (
-            <Skeleton className="h-96 w-full" />
+            <Skeleton className="h-96 w-full rounded-lg" />
           ) : (
-            <CleanLeadsTable 
-              leads={filteredPendingLeads} 
-              onProcessLead={handleProcessClient}
-            />
+            <>
+              {cacheStats && (
+                <div className="p-4 bg-muted/30 rounded-xl border border-border/40">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Database className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-semibold">Estadísticas de Caché</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setCacheStats(null)}
+                      className="h-7 w-7 p-0"
+                    >
+                      ×
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-xs">Claves totales</p>
+                      <p className="font-semibold text-base">{cacheStats.totalKeys}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-xs">Tamaño total</p>
+                      <p className="font-semibold text-base">{(cacheStats.totalSize / 1024).toFixed(2)} KB</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-muted-foreground text-xs">Leads en caché</p>
+                      <p className="font-semibold text-base">{pendingLeads.length + managedLeads.length}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <CleanLeadsTable 
+                leads={filteredPendingLeads} 
+                onProcessLead={handleProcessClient}
+              />
+            </>
           )}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="border-border/40 shadow-sm">
         <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-                <CheckCircle />
-                Leads Gestionados Hoy
-            </CardTitle>
-            <CardDescription>
-                Resumen de los leads que han sido confirmados como venta durante el día de hoy.
-            </CardDescription>
+            <div className="flex items-start gap-4">
+                <div className="h-12 w-12 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
+                    <CheckCircle className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                    <CardTitle className="text-2xl font-bold">
+                        Leads Gestionados Hoy
+                    </CardTitle>
+                    <CardDescription className="mt-1.5">
+                        Resumen de los leads que han sido confirmados como venta durante el día de hoy.
+                    </CardDescription>
+                </div>
+            </div>
         </CardHeader>
         <CardContent>
             <ManagedQueueTable leads={filteredManagedLeads} />

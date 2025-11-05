@@ -12,22 +12,18 @@ import {
   SidebarMenuItem,
   SidebarMenuButton,
   SidebarFooter,
+  SidebarSeparator,
 } from '@/components/ui/sidebar';
 import {
-  LayoutDashboard,
   Box,
-  BarChart3,
-  Warehouse,
-  Settings,
   LogOut,
-  Code,
-  Users,
   Phone,
   PackagePlus,
-  FileUp,
-  Activity,
+  Settings,
+  Code,
+  Package,
 } from 'lucide-react';
-import type { User, UserRole } from '@/lib/types';
+import type { User } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
@@ -43,14 +39,13 @@ type MenuItem = {
   href: string;
   label: string;
   icon: React.ElementType;
-  // Use NonNullable to allow keyof a possibly-undefined 'puede_ver'
   permissionKey: keyof NonNullable<User['permisos']['puede_ver']>;
 }
 
 const menuItems: MenuItem[] = [
-  // Se han eliminado temporalmente las páginas archivadas: Orders, Monitor de Equipo, Clientes, Reportes, Roles
   { href: '/call-center-queue', label: 'Call Center', icon: Phone, permissionKey: 'call_center' },
   { href: '/create-order', label: 'Procesar Pedido', icon: PackagePlus, permissionKey: 'procesar_pedido' },
+  { href: '/orders', label: 'Órdenes', icon: Package, permissionKey: 'procesar_pedido' },
   { href: '/inventory', label: 'Inventario', icon: Box, permissionKey: 'inventario' },
 ];
 
@@ -67,12 +62,11 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
 
   const filterItems = (items: typeof menuItems) => {
       if (!currentUser) return [];
-      // Admins and Devs see everything, regardless of individual permissions
+      // Admins and Devs see everything
       if (currentUser.rol === 'Admin' || currentUser.rol === 'Desarrolladores') {
           return items;
       }
       return items.filter(item => {
-        // A user might not have the 'puede_ver' permission object yet, so we safely check for it.
         return currentUser.permisos?.puede_ver?.[item.permissionKey] === true;
       });
   }
@@ -80,18 +74,28 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
   return (
     <Sidebar
       collapsible="icon"
-      className="hidden md:flex border-r border-sidebar-border bg-sidebar text-sidebar-foreground sticky top-0 h-screen"
+      className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
     >
-      <SidebarHeader className="h-16 flex items-center justify-center px-4">
-        <Link href="/" className="flex items-center gap-2 font-bold text-primary group-data-[collapsible=icon]:justify-center">
+      <SidebarHeader className="border-b border-sidebar-border p-5">
+        <Link href="/" className="flex items-center gap-2 font-semibold group-data-[collapsible=icon]:justify-center">
            <div className="flex items-center justify-center overflow-hidden group-data-[collapsible=icon]:data-[state=collapsed]:hidden">
-              <Image src="/logo.png" alt="LogiFlow Logo" width={100} height={25} style={{ height: '25px', width: 'auto' }} />
+              <Image 
+                src="/logo.png" 
+                alt="LogiFlow Logo" 
+                width={120} 
+                height={30} 
+                style={{ height: '30px', width: 'auto' }}
+                priority
+              />
            </div>
-          <Warehouse className="h-6 w-6 shrink-0 hidden group-data-[collapsible=icon]:data-[state=collapsed]:block" />
+          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-bold text-sm hidden group-data-[collapsible=icon]:data-[state=collapsed]:flex">
+            LF
+          </div>
         </Link>
       </SidebarHeader>
-      <SidebarContent className="flex-1 p-2">
-        <SidebarMenu>
+
+      <SidebarContent className="flex-1 px-3 py-4">
+        <SidebarMenu className="space-y-1">
           {filterItems(menuItems).map((item) => (
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton
@@ -99,47 +103,63 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
                 size="lg"
                 isActive={pathname.startsWith(item.href)}
                 tooltip={{ children: item.label, side: 'right' }}
+                className="rounded-lg px-3 py-2.5 transition-all data-[active=true]:bg-primary data-[active=true]:text-primary-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
               >
                 <Link href={item.href}>
-                  <item.icon className="h-5 w-5" />
-                  <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">{item.label}</span>
+                  <item.icon className="h-5 w-5 shrink-0" />
+                  <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden font-medium">{item.label}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
           ))}
         </SidebarMenu>
       </SidebarContent>
-      <SidebarFooter className="p-2 space-y-2">
+
+      <SidebarFooter className="border-t border-sidebar-border p-3 space-y-2">
         {currentUser?.rol === 'Desarrolladores' && (
-           <div className="p-2 group-data-[collapsible=icon]:data-[state=collapsed]:hidden">
-              <div className="flex items-center justify-between p-2 rounded-lg border border-sidebar-border/50">
-                  <Label htmlFor="dev-mode" className="flex items-center gap-2 text-sm text-sidebar-foreground/80">
-                      <Code className="h-4 w-4" />
-                      Modo Dev
-                  </Label>
-                  <Switch
-                      id="dev-mode"
-                      checked={isDevMode}
-                      onCheckedChange={setIsDevMode}
-                  />
-              </div>
-           </div>
+           <>
+             <div className="p-3 group-data-[collapsible=icon]:data-[state=collapsed]:hidden rounded-lg bg-sidebar-accent/50">
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="dev-mode" className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                        <Code className="h-4 w-4" />
+                        <span>Modo Dev</span>
+                    </Label>
+                    <Switch
+                        id="dev-mode"
+                        checked={isDevMode}
+                        onCheckedChange={setIsDevMode}
+                    />
+                </div>
+             </div>
+             <SidebarSeparator className="my-1" />
+           </>
         )}
+
          <SettingsPanel>
             <SidebarMenu>
                 <SidebarMenuItem>
-                    <SidebarMenuButton size="lg" tooltip={{ children: 'Apariencia', side: 'right' }}>
-                        <Settings className="h-5 w-5" />
-                        <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">Apariencia</span>
+                    <SidebarMenuButton 
+                      size="lg" 
+                      tooltip={{ children: 'Configuración', side: 'right' }}
+                      className="rounded-lg px-3 py-2.5 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+                    >
+                        <Settings className="h-5 w-5 shrink-0" />
+                        <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden font-medium">Configuración</span>
                     </SidebarMenuButton>
                 </SidebarMenuItem>
             </SidebarMenu>
          </SettingsPanel>
+
          <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" tooltip={{ children: 'Cerrar Sesión', side: 'right' }} onClick={handleLogout}>
-                <LogOut className="h-5 w-5" />
-                <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden">Cerrar Sesión</span>
+            <SidebarMenuButton 
+              size="lg" 
+              tooltip={{ children: 'Cerrar Sesión', side: 'right' }} 
+              onClick={handleLogout}
+              className="rounded-lg px-3 py-2.5 hover:bg-destructive/10 hover:text-destructive transition-colors"
+            >
+                <LogOut className="h-5 w-5 shrink-0" />
+                <span className="group-data-[collapsible=icon]:data-[state=collapsed]:hidden font-medium">Cerrar Sesión</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
          </SidebarMenu>
@@ -147,3 +167,4 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     </Sidebar>
   );
 }
+

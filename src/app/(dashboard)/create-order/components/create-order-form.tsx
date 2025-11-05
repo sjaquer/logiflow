@@ -392,20 +392,24 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
 
     if (loading) {
        return (
-             <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
-                 <div className="flex items-center justify-between mb-8">
-                    <Skeleton className="h-10 w-1/4" />
-                    <div className="flex gap-4">
-                        <Skeleton className="h-11 w-52" />
+             <div className="flex-1 flex flex-col animate-in">
+                 <div className="flex items-center justify-between mb-6">
+                    <div className="flex items-start gap-4">
+                      <Skeleton className="h-12 w-12 rounded-xl" />
+                      <div className="space-y-2">
+                        <Skeleton className="h-7 w-48" />
+                        <Skeleton className="h-4 w-96" />
+                      </div>
                     </div>
+                    <Skeleton className="h-10 w-52 rounded-lg" />
                  </div>
-                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div className="lg:col-span-2 space-y-8">
-                        <Skeleton className="h-96 w-full" />
+                 <div className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-2 space-y-6">
+                        <Skeleton className="h-96 w-full rounded-xl" />
                     </div>
-                    <div className="lg:col-span-1 space-y-8">
-                        <Skeleton className="h-[550px] w-full" />
-                        <Skeleton className="h-64 w-full" />
+                    <div className="lg:col-span-1 space-y-6">
+                        <Skeleton className="h-[550px] w-full rounded-xl" />
+                        <Skeleton className="h-64 w-full rounded-xl" />
                     </div>
                 </div>
             </div>
@@ -413,14 +417,24 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
     }
 
     if (error) {
-        return <div className="text-center text-destructive p-8">{error}</div>;
+        return (
+          <div className="flex-1 flex items-center justify-center p-8 animate-in">
+            <div className="text-center bg-destructive/10 border border-destructive/20 p-8 rounded-xl max-w-md">
+              <h3 className="text-lg font-semibold text-destructive mb-2">Error al Cargar</h3>
+              <p className="text-sm text-muted-foreground">{error}</p>
+            </div>
+          </div>
+        );
     }
     
     if (currentUser && !ALLOWED_ROLES.includes(currentUser.rol)) {
         return (
-            <div className="flex-1 flex items-center justify-center p-8">
-                 <div className="text-center bg-card p-8 rounded-lg shadow-md">
-                    <h3 className="text-lg font-semibold">Acceso Denegado</h3>
+            <div className="flex-1 flex items-center justify-center p-8 animate-in">
+                 <div className="text-center bg-card border-border/40 p-8 rounded-xl shadow-lg max-w-md">
+                    <div className="mx-auto h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
+                      <Loader2 className="h-8 w-8 text-destructive" />
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2">Acceso Denegado</h3>
                     <p className="text-sm text-muted-foreground">
                         Esta sección es exclusiva para usuarios autorizados.
                     </p>
@@ -430,25 +444,43 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
     }
 
     return (
-        <div className="flex-1 flex flex-col p-4 md:p-6 lg:p-8">
-             <div className="flex items-center justify-between mb-8">
-                <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Procesar Pedido</h1>
-                    <p className="text-muted-foreground">Confirma los datos del cliente, verifica los productos y guarda el pedido.</p>
-                </div>
-                <div className="flex items-center gap-4">
-                    <Button type="submit" size="lg" disabled={isSubmitting} onClick={form.handleSubmit(onSubmit)}>
-                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4"/>}
-                        Confirmar y Guardar Pedido
-                    </Button>
+        <div className="container max-w-7xl mx-auto p-4 md:p-6 lg:p-8 flex-1 flex flex-col animate-in">
+             {/* Header con gradiente vibrante */}
+             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-warning via-warning/90 to-warning/70 p-8 shadow-xl mb-6">
+                <div className="absolute inset-0 bg-grid-white/10" />
+                <div className="relative z-10">
+                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                        <div className="flex items-start gap-4">
+                            <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg">
+                                <Save className="h-7 w-7 text-white" />
+                            </div>
+                            <div>
+                                <h1 className="text-3xl font-bold tracking-tight text-white">Procesar Pedido</h1>
+                                <p className="text-white/90 mt-2 text-base">Confirma los datos del cliente, verifica los productos y guarda el pedido.</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Button 
+                                type="submit" 
+                                size="lg" 
+                                disabled={isSubmitting} 
+                                onClick={form.handleSubmit(onSubmit)} 
+                                className="h-12 bg-white text-warning hover:bg-white/90 shadow-xl font-semibold"
+                            >
+                                {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5"/>}
+                                <span className="hidden sm:inline">Confirmar y </span>Guardar Pedido
+                            </Button>
+                        </div>
+                    </div>
                 </div>
              </div>
+
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                     <div className="lg:col-span-2 space-y-8">
+                <form onSubmit={form.handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                     <div className="lg:col-span-2 space-y-6">
                          <ItemsForm form={form} inventory={inventory} />
                     </div>
-                    <div className="lg:col-span-1 space-y-8">
+                    <div className="lg:col-span-1 space-y-6">
                         <ClientForm form={form} clients={clients} onSaveClient={handleSaveClient} isSavingClient={isSavingClient} />
                         <PaymentForm form={form} />
                     </div>

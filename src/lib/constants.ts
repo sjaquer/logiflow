@@ -44,6 +44,6 @@ export const CALL_STATUS_BADGE_MAP: Record<CallStatus, 'default' | 'success' | '
     LEAD_PERDIDO: 'destructive',
 };
 
-export const SHOPS: Shop[] = ['Blumi', 'Cumbre', 'Dearel', 'Trazto'];
+export const SHOPS: Shop[] = ['Novi', 'Dearel', 'Blumi Perú', 'NoviPeru', 'Cumbre', 'Trazto'];
 export const COURIERS: Courier[] = ['URBANO', 'SHALOM', 'OLVA', 'INTERNO'];
 export const PAYMENT_METHODS: PaymentMethod[] = ['YAPE', 'PLIN', 'Transferencia Bancaria', 'Efectivo', 'Tarjeta de Crédito', 'Desconocido'];

@@ -4,75 +4,73 @@
 
 @layer base {
   :root {
+    /* ===== PALETA ULTRA PROFESIONAL Y VIBRANTE ===== */
+    /* Fondo principal: Blanco puro */
     --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 197 76% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 39 100% 50%;
-    --accent-foreground: 24 9.8% 10%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --success: 140 60% 40%;
-    --success-foreground: 0 0% 100%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 197 76% 53%;
-    --radius: 0.5rem;
-    --chart-1: 197 76% 53%;
-    --chart-2: 39 100% 50%;
-    --chart-3: 120 50% 50%;
-    --chart-4: 0 72% 51%;
-    --chart-5: 260 70% 60%;
+    --foreground: 222 47% 11%;
     
-    --sidebar-background: 222.2 84% 4.9%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 197 76% 53%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217.2 32.6% 17.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 197 76% 53%;
-  }
-
-  .dark {
-    --background: 222.2 47.4% 11.2%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 47.4% 11.2%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 47.4% 11.2%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 197 76% 53%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 39 100% 50%;
-    --accent-foreground: 39 90% 10%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --success: 140 60% 40%;
+    /* Cards: Blanco con sombra sutil */
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+    
+    /* Popovers */
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+    
+    /* Primary: Azul vibrante estilo Stripe/Linear */
+    --primary: 221 83% 53%;
+    --primary-foreground: 0 0% 100%;
+    
+    /* Secondary: Gris medio */
+    --secondary: 210 17% 95%;
+    --secondary-foreground: 222 47% 11%;
+    
+    /* Muted: Gris ultra claro para fondos */
+    --muted: 210 17% 95%;
+    --muted-foreground: 215 16% 47%;
+    
+    /* Accent: Verde brillante */
+    --accent: 142 76% 40%;
+    --accent-foreground: 0 0% 100%;
+    
+    /* Destructive: Rojo vibrante */
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Success: Verde esmeralda */
+    --success: 142 71% 45%;
     --success-foreground: 0 0% 100%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 197 76% 45%;
-
-    --sidebar-background: 222.2 47.4% 9.2%;
-    --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 197 76% 53%;
+    
+    /* Warning: Naranja llamativo */
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+    
+    /* Info: Azul cyan */
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+    
+    /* Bordes y inputs: Gris claro con más contraste */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 221 83% 53%;
+    --radius: 0.75rem;
+    
+    /* Charts: Paleta vibrante */
+    --chart-1: 221 83% 53%;
+    --chart-2: 142 76% 40%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 0 72% 51%;
+    --chart-5: 271 81% 56%;
+    
+    /* Sidebar: Fondo blanco puro con acentos vibrantes */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 221 83% 53%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217.2 32.6% 22.5%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 217.2 32.6% 17.5%;
-    --sidebar-ring: 197 76% 53%;
+    --sidebar-accent: 210 17% 95%;
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 221 83% 53%;
   }
 }
 
@@ -80,7 +78,72 @@
   * {
     @apply border-border;
   }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: 'rlig' 1, 'calt' 1;
+  }
+  
+  /* Smooth scrolling */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Remove default button styles */
+  button {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+  
+  /* Custom scrollbar mejorado */
+  ::-webkit-scrollbar {
+    width: 12px;
+    height: 12px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-muted/50 rounded-lg;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary/20 rounded-lg hover:bg-primary/30 transition-colors;
+  }
+}
+
+/* ===== ANIMACIONES MEJORADAS ===== */
+@layer utilities {
+  .animate-in {
+    animation: animate-in 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  .animate-in-fast {
+    animation: animate-in 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  
+  @keyframes animate-in {
+    from {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* Gradiente de fondo para elementos decorativos */
+  .bg-grid-white {
+    background-image: 
+      linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  
+  /* Sombras más dramáticas */
+  .shadow-primary {
+    box-shadow: 0 4px 14px 0 rgba(var(--primary-rgb), 0.15);
+  }
+  
+  .shadow-success {
+    box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.15);
   }
 }

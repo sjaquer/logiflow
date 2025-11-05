@@ -4,6 +4,7 @@
 import * as React from 'react';
 import { AppSidebar } from '@/components/layout/app-sidebar';
 import { AppHeader } from '@/components/layout/app-header';
+import { AppFooter } from '@/components/layout/app-footer';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
@@ -33,36 +34,40 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
       unsubs.push(listenToCollection<User>('users', (usersData) => {
         const foundUser = usersData.find(u => u.email === user.email) || null;
         setCurrentUser(foundUser);
-        setDataLoading(false); // Stop loading once we have user info (or lack thereof)
+        setDataLoading(false);
       }));
 
       return () => unsubs.forEach(unsub => unsub());
     } else if (!authLoading) {
-        // If there's no user and we are not in an auth loading state, stop data loading.
         setDataLoading(false);
     }
   }, [user, authLoading]);
 
   if (authLoading || dataLoading) {
     return (
-        <div className="flex min-h-screen">
-            <div className="hidden md:flex flex-col w-64 border-r p-4 space-y-4">
-                <Skeleton className="h-10 w-40" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
-                <Skeleton className="h-10 w-full" />
+        <div className="flex min-h-screen bg-muted/30">
+            <div className="flex flex-col w-64 border-r bg-background p-4 space-y-3">
+                <Skeleton className="h-8 w-32 mb-4" />
+                <Skeleton className="h-11 w-full rounded-lg" />
+                <Skeleton className="h-11 w-full rounded-lg" />
+                <Skeleton className="h-11 w-full rounded-lg" />
+                <div className="flex-1" />
+                <Skeleton className="h-11 w-full rounded-lg" />
+                <Skeleton className="h-11 w-full rounded-lg" />
             </div>
-            <div className="flex-1 p-8">
-                <Skeleton className="h-12 w-1/4 mb-8" />
-                <Skeleton className="w-full h-[60vh]" />
+            <div className="flex-1 flex flex-col">
+                <div className="h-16 border-b bg-background px-6 flex items-center">
+                    <Skeleton className="h-6 w-40" />
+                </div>
+                <div className="flex-1 p-6 space-y-6">
+                    <Skeleton className="h-10 w-1/3" />
+                    <Skeleton className="w-full h-[60vh] rounded-xl" />
+                </div>
             </div>
         </div>
     );
   }
 
-  // This logic is flawed for server components, but for client components it's okay.
-  // It is better to use context to pass down the user. For now, this is fine.
   const childrenWithProps = React.Children.map(children, child => {
     if (React.isValidElement(child)) {
       // @ts-ignore
@@ -72,13 +77,16 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   });
 
   return (
-      <div className="flex min-h-screen bg-muted/40">
+      <div className="flex min-h-screen bg-muted/30">
         <AppSidebar currentUser={currentUser} />
         <div className="flex flex-col flex-1 min-w-0">
           <AppHeader user={currentUser} />
-          <main className="flex-1 overflow-auto">
-            {childrenWithProps}
+          <main className="flex-1 overflow-auto p-6">
+            <div className="mx-auto max-w-7xl">
+              {childrenWithProps}
+            </div>
           </main>
+          <AppFooter />
         </div>
       </div>
   );
