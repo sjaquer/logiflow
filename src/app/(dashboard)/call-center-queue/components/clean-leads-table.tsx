@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Phone, Edit2, Save, X, CheckCircle, AlertCircle, Circle, Settings, Eye, EyeOff, Filter } from 'lucide-react';
+import { Phone, Edit2, Save, X, CheckCircle, AlertCircle, Circle, Settings, Eye, EyeOff, Filter, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
 import { doc, updateDoc } from 'firebase/firestore';
@@ -1083,7 +1083,8 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
-                          <div className="p-2">
+                          {/* allow long lists (provincias) to scroll */}
+                          <div className="p-2 max-h-56 overflow-y-auto">
                             {uniqueValuesMap.provincia && uniqueValuesMap.provincia.length > 0 ? (
                               uniqueValuesMap.provincia.map(val => (
                                 <label key={val} className="flex items-center gap-2 text-sm p-2 rounded hover:bg-muted/20 cursor-pointer">
@@ -1173,12 +1174,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                     <div className="col-resizer" onMouseDown={(e) => startResize(e, 'comentario')} />
                   </TableHead>
                 )}
-                {visibleColumns.acciones && (
-                  <TableHead data-col="acciones" className="relative text-right w-[120px] sm:w-[220px]" style={{ width: columnWidths['acciones'] ? `${columnWidths['acciones']}px` : undefined, minWidth: 2 }}>
-                    <div className="flex items-end justify-end">Acciones</div>
-                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'acciones')} />
-                  </TableHead>
-                )}
+                {/* acciones column intentionally removed: actions are shown as hover overlay buttons per-row */}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1195,7 +1191,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   const callAttempts = lead.call_status?.match(/INTENTO_(\d)/)?.[1] || '0';
 
                   return (
-                    <TableRow key={lead.id} className="hover:bg-muted/30 transition-colors">
+                    <TableRow key={lead.id} className="group relative hover:bg-muted/30 transition-colors">
                       {visibleColumns.estado && (
                         <TableCell>
                           <div className="flex items-center justify-center">
@@ -1527,60 +1523,63 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                         </TableCell>
                       )}
 
-                      {visibleColumns.acciones && (
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2 min-w-0">
-                            {isEditing ? (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleSaveInline(lead)}
-                                  className="h-8 w-8 p-0 flex-shrink-0"
-                                >
-                                  <Save className="h-4 w-4 text-green-600" />
+                      {/* Actions overlay: appears on row hover (not a table column) */}
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
+                        {isEditing ? (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleSaveInline(lead)}
+                              className="h-8 w-8 p-0 flex-shrink-0"
+                            >
+                              <Save className="h-4 w-4 text-green-600" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={handleCancelEdit}
+                              className="h-8 w-8 p-0 flex-shrink-0"
+                            >
+                              <X className="h-4 w-4 text-red-600" />
+                            </Button>
+                          </>
+                        ) : (
+                          <>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
+                                  <MoreVertical className="h-4 w-4" />
                                 </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={handleCancelEdit}
-                                  className="h-8 w-8 p-0 flex-shrink-0"
-                                >
-                                  <X className="h-4 w-4 text-red-600" />
-                                </Button>
-                              </>
-                            ) : (
-                              <>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => handleInlineEdit(lead)}
-                                  className="h-8 w-8 p-0 flex-shrink-0"
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="default"
-                                  onClick={() => openDialog(lead)}
-                                  className="h-8 gap-1 whitespace-nowrap"
-                                >
-                                  <Edit2 className="h-3 w-3" />
-                                  <span className="hidden sm:inline">Editar</span>
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  onClick={() => onProcessLead(lead)}
-                                  className="h-8 gap-1 whitespace-nowrap"
-                                >
-                                  <Phone className="h-3 w-3" />
-                                  <span className="hidden sm:inline">Procesar</span>
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </TableCell>
-                      )}
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent sideOffset={6} align="end" className="w-44 bg-popover shadow-md rounded-md border">
+                                <DropdownMenuItem onClick={() => handleInlineEdit(lead)}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Editar rápido
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => openDialog(lead)}>
+                                  <Edit2 className="mr-2 h-4 w-4" />
+                                  Editar (formulario)
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onClick={() => onProcessLead(lead)}>
+                                  <Phone className="mr-2 h-4 w-4" />
+                                  Procesar
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            {/* keep visible quick buttons on larger screens */}
+                            <Button size="sm" variant="default" onClick={() => openDialog(lead)} className="hidden sm:inline-flex h-8 gap-1 whitespace-nowrap">
+                              <Edit2 className="h-3 w-3" />
+                              <span className="hidden sm:inline">Editar</span>
+                            </Button>
+                            <Button size="sm" onClick={() => onProcessLead(lead)} className="hidden sm:inline-flex h-8 gap-1 whitespace-nowrap">
+                              <Phone className="h-3 w-3" />
+                              <span className="hidden sm:inline">Procesar</span>
+                            </Button>
+                          </>
+                        )}
+                      </div>
                     </TableRow>
                   );
                 })

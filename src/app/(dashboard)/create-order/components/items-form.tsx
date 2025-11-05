@@ -98,7 +98,7 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex-grow h-[300px] overflow-y-auto border rounded-md">
+       <div className="flex-grow max-h-[320px] overflow-auto border rounded-md">
              <Table>
                 <TableHeader>
                     <TableRow>
@@ -110,11 +110,11 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
                 <TableBody>
                    {filteredInventory.length > 0 ? (
                     filteredInventory.map(item => (
-                        <TableRow key={item.sku}>
-                            <TableCell>
-                                <p className="font-medium">{item.nombre}</p>
-                                <p className="text-xs text-muted-foreground">{item.sku}</p>
-                            </TableCell>
+            <TableRow key={item.sku}>
+              <TableCell className="min-w-0">
+                <p className="font-medium break-words max-w-[260px]">{item.nombre}</p>
+                <p className="text-xs text-muted-foreground">{item.sku}</p>
+              </TableCell>
                             <TableCell className="text-right">{item.stock_actual}</TableCell>
                             <TableCell className="text-right">
                                 <Button type="button" size="sm" onClick={() => addProductToOrder(item)}>Agregar</Button>
@@ -134,26 +134,26 @@ export function ItemsForm({ form, inventory }: ItemsFormProps) {
         </div>
 
         {/* Cart Section */}
-        <div className="space-y-4 flex flex-col">
+          <div className="space-y-4 flex flex-col min-w-0">
           <h4 className="font-medium">Carrito de Compras</h4>
-          <div className="flex-grow h-[300px] overflow-y-auto border rounded-md p-2 space-y-2">
+      <div className="flex-grow max-h-[320px] overflow-auto border rounded-md p-2 space-y-2">
             {fields.length > 0 ? (
                 fields.map((field, index) => (
                     <div key={field.id} className="flex items-center justify-between p-2 rounded-md bg-muted/50">
                         <div>
-                            <p className="font-medium">{field.nombre}</p>
-                            <p className="text-sm text-muted-foreground">S/ {field.precio_unitario.toFixed(2)}</p>
+              <p className="font-medium break-words max-w-[220px]">{field.nombre}</p>
+              <p className="text-sm text-muted-foreground">S/ {field.precio_unitario.toFixed(2)}</p>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(index, field.cantidad - 1)}>
                                 <Minus className="w-3 h-3"/>
                             </Button>
-                            <Input
-                                type="number"
-                                className="w-14 h-8 text-center"
-                                value={field.cantidad}
-                                onChange={(e) => updateQuantity(index, parseInt(e.target.value, 10) || 1)}
-                            />
+              <Input
+                type="number"
+                className="w-14 h-8 text-center min-w-0"
+                value={field.cantidad}
+                onChange={(e) => updateQuantity(index, parseInt(e.target.value, 10) || 1)}
+              />
                             <Button variant="outline" size="icon" className="h-6 w-6" onClick={() => updateQuantity(index, field.cantidad + 1)}>
                                 <Plus className="w-3 h-3"/>
                             </Button>

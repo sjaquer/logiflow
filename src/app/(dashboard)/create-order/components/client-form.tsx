@@ -77,7 +77,7 @@ export function ClientForm({ form, clients, onSaveClient, isSavingClient }: Clie
   };
 
   return (
-    <Card>
+    <Card className="min-w-0">
       <CardHeader>
         <div className="flex justify-between items-center">
             <div>
@@ -91,25 +91,26 @@ export function ClientForm({ form, clients, onSaveClient, isSavingClient }: Clie
                 Guardar Cliente
             </Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-6">
+  </CardHeader>
+  <CardContent className="space-y-6 min-w-0">
         <FormField
             control={form.control}
             name="cliente.dni"
             render={({ field }) => (
                 <FormItem>
                     <FormLabel>DNI del Cliente</FormLabel>
-                    <FormControl>
-                        <Input 
-                            {...field} 
-                            placeholder="Buscar o ingresar DNI..." 
-                            list="client-dnis"
-                            onKeyDown={handleKeyDown}
-                            onChange={(e) => {
-                                field.onChange(e);
-                                handleClientChange(e.target.value);
-                            }}
-                        />
+          <FormControl>
+            <Input 
+              {...field} 
+              className="w-full"
+              placeholder="Buscar o ingresar DNI..." 
+              list="client-dnis"
+              onKeyDown={handleKeyDown}
+              onChange={(e) => {
+                field.onChange(e);
+                handleClientChange(e.target.value);
+              }}
+            />
                     </FormControl>
                     <datalist id="client-dnis">
                         {clients.map(c => <option key={c.id} value={c.dni}>{c.nombres}</option>)}
@@ -124,7 +125,7 @@ export function ClientForm({ form, clients, onSaveClient, isSavingClient }: Clie
             render={({ field }) => (
                 <FormItem>
                     <FormLabel>Nombre Completo</FormLabel>
-                    <FormControl><Input {...field} placeholder="Nombre del cliente" onKeyDown={handleKeyDown} /></FormControl>
+                    <FormControl><Input {...field} className="w-full" placeholder="Nombre del cliente" onKeyDown={handleKeyDown} /></FormControl>
                     <FormMessage />
                 </FormItem>
             )}
@@ -136,7 +137,7 @@ export function ClientForm({ form, clients, onSaveClient, isSavingClient }: Clie
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Celular</FormLabel>
-                        <FormControl><Input {...field} placeholder="987654321" onKeyDown={handleKeyDown} /></FormControl>
+                        <FormControl><Input {...field} className="w-full" placeholder="987654321" onKeyDown={handleKeyDown} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )}
@@ -147,7 +148,7 @@ export function ClientForm({ form, clients, onSaveClient, isSavingClient }: Clie
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Email (Opcional)</FormLabel>
-                        <FormControl><Input {...field} placeholder="cliente@email.com" onKeyDown={handleKeyDown} /></FormControl>
+                        <FormControl><Input {...field} className="w-full" placeholder="cliente@email.com" onKeyDown={handleKeyDown} /></FormControl>
                         <FormMessage />
                     </FormItem>
                 )}
@@ -181,7 +182,7 @@ export function ClientForm({ form, clients, onSaveClient, isSavingClient }: Clie
             render={({ field }) => (
                 <FormItem>
                     <FormLabel>Dirección de Entrega</FormLabel>
-                    <FormControl><Input {...field} placeholder="Av. Siempre Viva 123" onKeyDown={handleKeyDown}/></FormControl>
+                    <FormControl><Input {...field} className="w-full" placeholder="Av. Siempre Viva 123" onKeyDown={handleKeyDown}/></FormControl>
                     <FormMessage />
                 </FormItem>
             )}
@@ -253,7 +254,15 @@ export function ClientForm({ form, clients, onSaveClient, isSavingClient }: Clie
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>Agencia Shalom</FormLabel>
-                        <FormControl><Input {...field} placeholder="Agencia de recojo" onKeyDown={handleKeyDown}/></FormControl>
+              <FormControl>
+                <Input
+                  className="w-full"
+                  placeholder="Agencia de recojo"
+                  onKeyDown={handleKeyDown}
+                  value={field.value ?? ''}
+                  onChange={(e) => field.onChange(e.target.value)}
+                />
+              </FormControl>
                         <FormMessage />
                     </FormItem>
                 )}
@@ -265,7 +274,7 @@ export function ClientForm({ form, clients, onSaveClient, isSavingClient }: Clie
             render={({ field }) => (
                 <FormItem>
                     <FormLabel>Horario de Entrega / Notas del Cliente</FormLabel>
-                    <FormControl><Textarea {...field} placeholder="Ej: Entregar de 2pm a 5pm, dejar en portería." /></FormControl>
+                    <FormControl><Textarea {...field} className="w-full" placeholder="Ej: Entregar de 2pm a 5pm, dejar en portería." /></FormControl>
                     <FormMessage />
                 </FormItem>
             )}

@@ -29,7 +29,9 @@ const createOrderSchema = z.object({
     leadSource: z.enum(['shopify', 'kommo', 'manual']).optional(),
     kommo_lead_id: z.string().optional(),
     shopify_order_id: z.string().optional(),
-    tienda: z.custom<Shop>(val => SHOPS.includes(val as Shop), { message: "Tienda inválida" }).optional(),
+    // Allow a free-form tienda string to avoid blocking submission when incoming lead's tienda_origen
+    // is not present in the canonical SHOPS list. We still accept known shops in UI selects.
+    tienda: z.string().optional(),
     cliente: z.object({
         id: z.string().optional(),
         dni: z.string().min(3, "DNI/CE/RUC es requerido"),
@@ -435,6 +437,27 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
         }
     };
 
+    // Called when react-hook-form validation fails. Show a helpful toast with the first message.
+    const handleValidationErrors = (errors: any) => {
+        if (isDevMode) console.warn('Form validation errors:', errors);
+        // Flatten a few messages to show the user the top-most error
+        const collectMessages = (obj: any, out: string[] = []) => {
+            if (!obj) return out;
+            if (typeof obj.message === 'string') out.push(obj.message);
+            for (const key of Object.keys(obj)) {
+                const val = obj[key];
+                if (val && typeof val === 'object') collectMessages(val, out);
+            }
+            return out;
+        };
+        const messages = collectMessages(errors);
+        if (messages.length > 0) {
+            toast({ title: 'Errores en el formulario', description: messages[0], variant: 'destructive' });
+        } else {
+            toast({ title: 'Errores en el formulario', description: 'Hay campos inválidos. Revisa el formulario.', variant: 'destructive' });
+        }
+    };
+
     const handleKeyDown = (event: React.KeyboardEvent) => {
         if (event.key === 'Enter') {
           event.preventDefault();
@@ -502,14 +525,15 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
     }
 
     return (
-        <div className="container max-w-7xl mx-auto p-4 md:p-6 lg:p-8 flex-1 flex flex-col animate-in">
-             {/* Header con gradiente vibrante */}
-             <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-warning via-warning/90 to-warning/70 p-8 shadow-xl mb-6">
-                <div className="absolute inset-0 bg-grid-white/10" />
+        <div className="container max-w-7xl mx-auto p-4 md:p-6 lg:p-8 flex-1 flex flex-col animate-in overflow-x-hidden">
+             {/* Header acorde al tema (respetar modo claro/oscuro) */}
+             <div className="relative overflow-hidden rounded-2xl bg-card border border-border p-8 shadow-xl mb-6">
+                {/* overlay sutil para textura sin romper tema */}
+                <div className="absolute inset-0 opacity-6 pointer-events-none bg-gradient-to-r from-transparent via-muted/10 to-transparent dark:via-muted/20" />
                     <div className="relative z-10">
                         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
                             <div className="flex items-start gap-4">
-                                <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg">
+                                <div className="h-14 w-14 rounded-2xl bg-muted/20 flex items-center justify-center shrink-0 shadow">
                                     <Save className="h-7 w-7 text-foreground" />
                                 </div>
                                 <div>
@@ -518,23 +542,23 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
                                 </div>
                             </div>
                             <div className="flex items-center gap-3">
-                                <Button 
-                                    type="submit" 
-                                    size="lg" 
-                                    disabled={isSubmitting} 
-                                    onClick={form.handleSubmit(onSubmit)} 
-                                    className="h-12 bg-white text-warning hover:bg-white/90 shadow-xl font-semibold"
-                                >
-                                    {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5"/>}
-                                    <span className="hidden sm:inline">Confirmar y </span>Guardar Pedido
-                                </Button>
+                                    <Button
+                                        type="submit"
+                                        size="lg"
+                                        disabled={isSubmitting}
+                                        onClick={form.handleSubmit(onSubmit, handleValidationErrors)}
+                                        className="h-12 font-semibold bg-white/90 text-black hover:bg-white/80 dark:bg-white/5 dark:text-foreground shadow-md"
+                                    >
+                                        {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5"/>}
+                                        <span className="hidden sm:inline">Confirmar y </span>Guardar Pedido
+                                    </Button>
                             </div>
                         </div>
                     </div>
              </div>
 
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} onKeyDown={handleKeyDown} className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <form onSubmit={form.handleSubmit(onSubmit, handleValidationErrors)} onKeyDown={handleKeyDown} className="flex-1 grid grid-cols-1 lg:grid-cols-3 gap-6 min-w-0">
                      <div className="lg:col-span-2 space-y-6">
                          <ItemsForm form={form} inventory={inventory} />
                     </div>

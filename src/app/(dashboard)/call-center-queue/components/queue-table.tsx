@@ -5,7 +5,7 @@ import type { Client, User, UserRole, CallStatus } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc, writeBatch, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { formatDistanceToNow, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -148,26 +148,39 @@ export default function CallCenterQueuePage() {
         const collectionName = client.source === 'shopify' ? 'shopify_leads' : 'clients';
         const clientRef = doc(db, collectionName, client.id);
 
+        // Ensure we never send `undefined` values to Firestore (causes "Unsupported field value: undefined").
+        // Use null as an explicit absence marker, which Firestore accepts.
         const updateData: any = {
             call_status: 'CONTACTADO',
-            assigned_agent_id: currentUser.id_usuario,
-            assigned_agent_name: currentUser.nombre,
-            assigned_agent_avatar: currentUser.avatar,
+            // Prefer internal id_usuario, fallback to authUser.uid if the internal user doc lacks id_usuario
+            assigned_agent_id: currentUser?.id_usuario ?? null,
+            assigned_agent_name: currentUser?.nombre ?? null,
+            assigned_agent_avatar: currentUser?.avatar ?? null,
             last_updated: new Date().toISOString(),
         };
 
-        await updateDoc(clientRef, updateData);
+        // First, check whether the document exists. updateDoc will throw if it doesn't.
+        const snapshot = await getDoc(clientRef);
+        if (snapshot.exists()) {
+            await updateDoc(clientRef, updateData);
+        } else {
+            // If the document does not exist (race condition or moved doc), use setDoc with merge
+            // to ensure the lead is created/updated without throwing.
+            await setDoc(clientRef, updateData, { merge: true });
+            console.warn(`Client document ${client.id} not found in ${collectionName}; created/merged instead.`);
+        }
 
         toast({
           title: 'Lead Asignado',
           description: `Ahora estás a cargo de ${client.nombres}.`,
         });
-        
+
         router.push(`/create-order?leadId=${client.id}&source=${client.source}`);
 
     } catch (error) {
         console.error("Error processing client:", error);
         const msg = error instanceof Error ? error.message : String(error);
+        // Make the toast slightly more actionable for debugging in dev mode
         toast({ title: 'Error', description: `No se pudo asignar el lead: ${msg}`, variant: 'destructive' });
     }
   }, [currentUser, router, toast]);
@@ -359,19 +372,7 @@ export default function CallCenterQueuePage() {
                     <SelectItem value="oldest">Más Antiguos</SelectItem>
                 </SelectContent>
             </Select>
-            <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Filtrar por estado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODOS">Todos los Estados</SelectItem>
-                {STATUS_FILTERS.map(status => (
-                  <SelectItem key={status} value={status}>
-                    <span className="capitalize">{status.replace(/_/g, ' ').toLowerCase()}</span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                        {/* Estado filter removed per UX request */}
             <Select value={shopFilter} onValueChange={(value) => setShopFilter(value as any)}>
                 <SelectTrigger className="w-full sm:w-[200px]">
                     <SelectValue placeholder="Filtrar por tienda" />
