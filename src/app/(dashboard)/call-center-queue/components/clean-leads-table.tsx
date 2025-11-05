@@ -44,6 +44,21 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     asesor: true,
     resultado: true,
     comentario: true,
+    celular: true,
+    direccion: false,
+    distrito: false,
+    email: false,
+    tienda: false,
+    shopifyOrderId: false,
+    itemsCount: false,
+    itemsSummary: false,
+    subtotalPrice: false,
+    totalPrice: false,
+    totalShipping: false,
+    paymentGateway: false,
+    source: false,
+    confirmedAt: false,
+    visto: false,
     acciones: true
   });
   const { toast } = useToast();
@@ -79,6 +94,19 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     asesor: 'assigned_agent_name',
     resultado: 'call_status',
     comentario: 'notas_agente',
+    celular: 'celular',
+    direccion: 'direccion',
+    distrito: 'distrito',
+    email: 'email',
+    tienda: 'tienda_origen',
+    shopifyOrderId: 'shopify_order_id',
+    subtotalPrice: 'shopify_payment_details.subtotal_price',
+    totalPrice: 'shopify_payment_details.total_price',
+    totalShipping: 'shopify_payment_details.total_shipping',
+    paymentGateway: 'shopify_payment_details.payment_gateway',
+    source: 'source',
+    confirmedAt: 'confirmed_at',
+    visto: 'visto_por',
     acciones: ''
   };
   
@@ -224,21 +252,80 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     { key: 'asesor', label: 'Asesor', essential: false },
     { key: 'resultado', label: 'Resultado', essential: false },
     { key: 'comentario', label: 'Comentario', essential: false },
+    { key: 'celular', label: 'Celular', essential: false },
+    { key: 'direccion', label: 'Dirección', essential: false },
+    { key: 'distrito', label: 'Distrito', essential: false },
+    { key: 'email', label: 'Email', essential: false },
+    { key: 'tienda', label: 'Tienda', essential: false },
+    { key: 'shopifyOrderId', label: 'Order ID', essential: false },
+    { key: 'itemsCount', label: 'Items', essential: false },
+    { key: 'itemsSummary', label: 'Resumen Items', essential: false },
+    { key: 'subtotalPrice', label: 'Subtotal', essential: false },
+    { key: 'totalPrice', label: 'Total', essential: false },
+    { key: 'totalShipping', label: 'Envio', essential: false },
+    { key: 'paymentGateway', label: 'Metodo Pago', essential: false },
+    { key: 'source', label: 'Origen', essential: false },
+    { key: 'confirmedAt', label: 'Confirmado', essential: false },
+    { key: 'visto', label: 'Visto', essential: false },
     { key: 'acciones', label: 'Acciones', essential: true }
   ];
 
   // Compute unique values per column (for filter options)
   const uniqueValuesMap = useMemo(() => {
     const map: Record<string, string[]> = {};
+
+    const getByPath = (obj: any, path: string) => {
+      if (!obj || !path) return undefined;
+      // support dot paths like 'shopify_payment_details.total_price'
+      const parts = path.split('.');
+      let cur: any = obj;
+      for (const p of parts) {
+        if (cur === null || cur === undefined) return undefined;
+        cur = cur[p];
+      }
+      return cur;
+    };
+
     columnDefinitions.forEach(col => {
       const field = columnFieldMap[col.key];
+      const values = new Set<string>();
+
+      // Special-case producto: gather both `producto` and shopify_items names
+      if (col.key === 'producto') {
+        leads.forEach(lead => {
+          // lead.producto (legacy single field)
+          const p = (lead as any).producto;
+          if (p === null || p === undefined || p === '') values.add('—');
+          else values.add(String(p));
+
+          // shopify_items names
+          const items = (lead as any).shopify_items;
+          if (Array.isArray(items) && items.length > 0) {
+            items.forEach((it: any) => {
+              const name = it.nombre || it.name || it.title;
+              if (name) values.add(String(name));
+            });
+          }
+        });
+        map[col.key] = Array.from(values).slice(0, 200);
+        return;
+      }
+
       if (!field) {
         map[col.key] = [];
         return;
       }
-      const values = new Set<string>();
+
       leads.forEach(lead => {
-        const val = (lead as any)[field];
+        let val = getByPath(lead as any, field);
+        // If value is an array, try to extract representative text
+        if (Array.isArray(val)) {
+          const first = val[0];
+          if (typeof first === 'string') val = first;
+          else if (first && (first.nombre || first.name || first.title)) val = String(first.nombre || first.name || first.title);
+          else val = String(val.length);
+        }
+
         if (val === null || val === undefined) values.add('—');
         else if (typeof val === 'string') values.add(val);
         else values.add(String(val));
@@ -823,6 +910,89 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                     <div className="col-resizer" onMouseDown={(e) => startResize(e, 'producto')} />
                   </TableHead>
                 )}
+                {visibleColumns.celular && (
+                  <TableHead data-col="celular" className="relative w-[120px] sm:w-[140px]" style={{ width: columnWidths['celular'] ? `${columnWidths['celular']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Celular</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'celular')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.direccion && (
+                  <TableHead data-col="direccion" className="relative min-w-0 sm:min-w-[220px]" style={{ width: columnWidths['direccion'] ? `${columnWidths['direccion']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Dirección</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'direccion')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.distrito && (
+                  <TableHead data-col="distrito" className="relative w-[100px] sm:w-[120px]" style={{ width: columnWidths['distrito'] ? `${columnWidths['distrito']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Distrito</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'distrito')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.email && (
+                  <TableHead data-col="email" className="relative min-w-0 sm:min-w-[180px]" style={{ width: columnWidths['email'] ? `${columnWidths['email']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Email</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'email')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.tienda && (
+                  <TableHead data-col="tienda" className="relative w-[110px] sm:w-[140px]" style={{ width: columnWidths['tienda'] ? `${columnWidths['tienda']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Tienda</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'tienda')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.shopifyOrderId && (
+                  <TableHead data-col="shopifyOrderId" className="relative w-[120px] sm:w-[160px]" style={{ width: columnWidths['shopifyOrderId'] ? `${columnWidths['shopifyOrderId']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Order ID</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'shopifyOrderId')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.itemsCount && (
+                  <TableHead data-col="itemsCount" className="relative w-[60px] sm:w-[80px]" style={{ width: columnWidths['itemsCount'] ? `${columnWidths['itemsCount']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center justify-center">Items</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'itemsCount')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.itemsSummary && (
+                  <TableHead data-col="itemsSummary" className="relative min-w-0 sm:min-w-[220px]" style={{ width: columnWidths['itemsSummary'] ? `${columnWidths['itemsSummary']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Resumen Items</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'itemsSummary')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.totalPrice && (
+                  <TableHead data-col="totalPrice" className="relative w-[100px] sm:w-[120px] text-right" style={{ width: columnWidths['totalPrice'] ? `${columnWidths['totalPrice']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center justify-end">Total</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'totalPrice')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.source && (
+                  <TableHead data-col="source" className="relative w-[80px] sm:w-[100px]" style={{ width: columnWidths['source'] ? `${columnWidths['source']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Origen</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'source')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.confirmedAt && (
+                  <TableHead data-col="confirmedAt" className="relative w-[140px] sm:w-[160px]" style={{ width: columnWidths['confirmedAt'] ? `${columnWidths['confirmedAt']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Confirmado</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'confirmedAt')} />
+                  </TableHead>
+                )}
+
+                {visibleColumns.visto && (
+                  <TableHead data-col="visto" className="relative w-[80px] sm:w-[100px]" style={{ width: columnWidths['visto'] ? `${columnWidths['visto']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Visto</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'visto')} />
+                  </TableHead>
+                )}
                 {visibleColumns.estatusLead && (
                   <TableHead data-col="estatusLead" className="relative w-[100px] sm:w-[140px]" style={{ width: columnWidths['estatusLead'] ? `${columnWidths['estatusLead']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
@@ -1057,13 +1227,109 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                                 placeholder="Producto..."
                               />
                             ) : (
-                              <span
-                                className={cn(!isFieldComplete(lead, 'producto') && 'text-muted-foreground text-sm')}
-                                title={lead.producto || '—'}
-                              >
-                                {lead.producto || '—'}
-                              </span>
+                              (() => {
+                                // Prefer showing shopify_items names joined by comma when present
+                                const items = (lead as any).shopify_items;
+                                if (Array.isArray(items) && items.length > 0) {
+                                  const names = items.map((it: any) => it.nombre || it.name || it.title).filter(Boolean);
+                                  const display = names.join(', ');
+                                  return <span className={cn(!isFieldComplete(lead, 'producto') && 'text-muted-foreground text-sm')} title={display || (lead.producto || '—')}>{display || (lead.producto || '—')}</span>;
+                                }
+                                return <span className={cn(!isFieldComplete(lead, 'producto') && 'text-muted-foreground text-sm')} title={lead.producto || '—'}>{lead.producto || '—'}</span>;
+                              })()
                             )}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.celular && (
+                        <TableCell>
+                          <div className="truncate text-sm" title={lead.celular || '—'}>
+                            {lead.celular || '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.direccion && (
+                        <TableCell>
+                          <div className="truncate text-sm" title={lead.direccion || '—'}>
+                            {lead.direccion || '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.distrito && (
+                        <TableCell>
+                          <div className="truncate text-sm" title={lead.distrito || '—'}>
+                            {lead.distrito || '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.email && (
+                        <TableCell>
+                          <div className="truncate text-sm" title={lead.email || '—'}>
+                            {lead.email || '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.tienda && (
+                        <TableCell>
+                          <div className="truncate text-sm" title={lead.tienda_origen || '—'}>
+                            {lead.tienda_origen || '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.shopifyOrderId && (
+                        <TableCell>
+                          <div className="truncate text-sm" title={lead.shopify_order_id || '—'}>
+                            {lead.shopify_order_id || '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.itemsCount && (
+                        <TableCell className="text-center">
+                          <div title={String(lead.shopify_items?.length ?? 0)}>
+                            {lead.shopify_items ? lead.shopify_items.length : '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.itemsSummary && (
+                        <TableCell>
+                          <div className="truncate text-sm" title={Array.isArray(lead.shopify_items) ? lead.shopify_items.map((i: any) => i.nombre || i.name || i.title).join(', ') : '—'}>
+                            {Array.isArray(lead.shopify_items) ? lead.shopify_items.map((i: any) => i.nombre || i.name || i.title).slice(0,3).join(', ') + (lead.shopify_items.length > 3 ? '…' : '') : '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.totalPrice && (
+                        <TableCell className="text-right">
+                          <div className="truncate" title={lead.shopify_payment_details?.total_price ?? '—'}>
+                            {lead.shopify_payment_details?.total_price ? `S/ ${lead.shopify_payment_details.total_price}` : '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {/* source column intentionally kept but hidden by default; user said it's not necessary */}
+
+                      {visibleColumns.confirmedAt && (
+                        <TableCell className="text-xs text-muted-foreground">
+                          <div className="truncate" title={lead.confirmed_at ? format(new Date(lead.confirmed_at), 'dd/MM/yyyy HH:mm', { locale: es }) : '—'}>
+                            {lead.confirmed_at ? format(new Date(lead.confirmed_at), 'dd/MM/yyyy HH:mm', { locale: es }) : '—'}
+                          </div>
+                        </TableCell>
+                      )}
+
+                      {visibleColumns.visto && (
+                        <TableCell className="text-center">
+                          <div title={
+                            lead.visto_por && (typeof lead.visto_por === 'string' ? lead.visto_por : (lead.visto_por.name || JSON.stringify(lead.visto_por)))
+                          || '—'}>
+                            {lead.visto_por ? (typeof lead.visto_por === 'string' ? lead.visto_por : (lead.visto_por.name || 'Sí')) : '—'}
                           </div>
                         </TableCell>
                       )}
