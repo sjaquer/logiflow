@@ -13,6 +13,7 @@ import {
   SidebarMenuButton,
   SidebarFooter,
   SidebarSeparator,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   Box,
@@ -30,6 +31,7 @@ import { useRouter } from 'next/navigation';
 import { useDevMode } from '@/context/dev-mode-context';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { useEffect } from 'react';
 
 interface AppSidebarProps {
   currentUser: User | null;
@@ -54,6 +56,7 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
   const { logout } = useAuth();
   const router = useRouter();
   const { isDevMode, setIsDevMode } = useDevMode();
+  const { setOpenMobile } = useSidebar();
 
   const handleLogout = async () => {
     await logout();
@@ -65,9 +68,14 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     return items;
   }
 
+  // Cerrar sidebar al navegar a una nueva página
+  useEffect(() => {
+    setOpenMobile(false);
+  }, [pathname, setOpenMobile]);
+
   return (
     <Sidebar
-      collapsible="icon"
+      collapsible="offcanvas"
       className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
     >
       <SidebarHeader className="border-b border-sidebar-border p-5">

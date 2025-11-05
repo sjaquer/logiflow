@@ -3,6 +3,10 @@ import * as React from "react"
 const MOBILE_BREAKPOINT = 768
 
 export function useIsMobile() {
+  // Siempre retornar true para forzar sidebar como overlay
+  return true;
+  
+  /* Código original comentado - descomentar para restaurar comportamiento responsive
   const [isMobile, setIsMobile] = React.useState<boolean | undefined>(undefined)
 
   React.useEffect(() => {
@@ -16,4 +20,5 @@ export function useIsMobile() {
   }, [])
 
   return !!isMobile
+  */
 }

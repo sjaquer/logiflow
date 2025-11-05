@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useTheme } from '@/context/theme-provider';
 import type { Palette } from '@/context/theme-provider';
+import { Switch } from '@/components/ui/switch';
 import { Palette as PaletteIcon } from 'lucide-react';
 
 interface SettingsPanelProps {
@@ -14,8 +15,14 @@ export function SettingsPanel({ children }: SettingsPanelProps) {
   const { colorPalette, setColorPalette, palettes } = useTheme();
   
   const getDisplayColors = (palette: Palette) => {
-    const p = palette.light; // Siempre usar modo claro
+    const p = palette.light;
     return [p.primary, p.accent, p.background];
+  }
+
+  const { theme, setTheme } = useTheme();
+
+  const handleThemeToggle = (checked: boolean) => {
+    setTheme(checked ? 'dark' : 'light');
   }
 
   return (
@@ -63,10 +70,14 @@ export function SettingsPanel({ children }: SettingsPanelProps) {
             </div>
           </div>
           
-          <div className="pt-4 border-t border-border/40">
-            <p className="text-xs text-muted-foreground text-center">
-              Modo claro habilitado permanentemente para mejor visibilidad
-            </p>
+          <div className="pt-4 border-t border-border/40 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="font-semibold">Modo Oscuro</Label>
+                <p className="text-sm text-muted-foreground">Activa o desactiva el modo oscuro</p>
+              </div>
+              <Switch checked={theme === 'dark'} onCheckedChange={handleThemeToggle} />
+            </div>
           </div>
         </div>
       </SheetContent>

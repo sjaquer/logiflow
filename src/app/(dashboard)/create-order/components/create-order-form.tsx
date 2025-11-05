@@ -72,6 +72,7 @@ interface CreateOrderFormProps {
 }
 
 export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
+    const { theme } = ({} as any);
     const { user: authUser } = useAuth();
     const { toast } = useToast();
     const { isDevMode } = useDevMode();
@@ -448,31 +449,31 @@ export function CreateOrderForm({ leadId, source }: CreateOrderFormProps) {
              {/* Header con gradiente vibrante */}
              <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-warning via-warning/90 to-warning/70 p-8 shadow-xl mb-6">
                 <div className="absolute inset-0 bg-grid-white/10" />
-                <div className="relative z-10">
-                    <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
-                        <div className="flex items-start gap-4">
-                            <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg">
-                                <Save className="h-7 w-7 text-white" />
+                    <div className="relative z-10">
+                        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                            <div className="flex items-start gap-4">
+                                <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg">
+                                    <Save className="h-7 w-7 text-foreground" />
+                                </div>
+                                <div>
+                                    <h1 className="text-3xl font-bold tracking-tight text-foreground">Procesar Pedido</h1>
+                                    <p className="text-muted-foreground mt-2 text-base">Confirma los datos del cliente, verifica los productos y guarda el pedido.</p>
+                                </div>
                             </div>
-                            <div>
-                                <h1 className="text-3xl font-bold tracking-tight text-white">Procesar Pedido</h1>
-                                <p className="text-white/90 mt-2 text-base">Confirma los datos del cliente, verifica los productos y guarda el pedido.</p>
+                            <div className="flex items-center gap-3">
+                                <Button 
+                                    type="submit" 
+                                    size="lg" 
+                                    disabled={isSubmitting} 
+                                    onClick={form.handleSubmit(onSubmit)} 
+                                    className="h-12 bg-white text-warning hover:bg-white/90 shadow-xl font-semibold"
+                                >
+                                    {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5"/>}
+                                    <span className="hidden sm:inline">Confirmar y </span>Guardar Pedido
+                                </Button>
                             </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Button 
-                                type="submit" 
-                                size="lg" 
-                                disabled={isSubmitting} 
-                                onClick={form.handleSubmit(onSubmit)} 
-                                className="h-12 bg-white text-warning hover:bg-white/90 shadow-xl font-semibold"
-                            >
-                                {isSubmitting ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <Save className="mr-2 h-5 w-5"/>}
-                                <span className="hidden sm:inline">Confirmar y </span>Guardar Pedido
-                            </Button>
                         </div>
                     </div>
-                </div>
              </div>
 
             <Form {...form}>

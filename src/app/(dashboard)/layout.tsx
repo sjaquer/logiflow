@@ -7,7 +7,7 @@ import { AppHeader } from '@/components/layout/app-header';
 import { AppFooter } from '@/components/layout/app-footer';
 import { SidebarProvider } from '@/components/ui/sidebar';
 import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import type { User } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
@@ -68,6 +68,8 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
     );
   }
 
+  const pathname = usePathname();
+
   const childrenWithProps = React.Children.map(children, child => {
     if (React.isValidElement(child)) {
       // @ts-ignore
@@ -77,12 +79,15 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
   });
 
   return (
-      <div className="flex min-h-screen bg-muted/30">
+      <div className="min-h-screen bg-muted/30">
+        {/* Sidebar como overlay - no consume espacio */}
         <AppSidebar currentUser={currentUser} />
-        <div className="flex flex-col flex-1 min-w-0">
+        
+        {/* Contenido principal ocupa todo el ancho */}
+        <div className="flex flex-col min-h-screen w-full">
           <AppHeader user={currentUser} />
           <main className="flex-1 overflow-auto p-6">
-            <div className="mx-auto max-w-7xl">
+            <div className={pathname?.startsWith('/call-center-queue') ? 'w-full' : 'mx-auto max-w-7xl'}>
               {childrenWithProps}
             </div>
           </main>
@@ -99,7 +104,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <SidebarProvider>
+    <SidebarProvider defaultOpen={false}>
       <DevModeProvider>
         <DashboardContent>{children}</DashboardContent>
       </DevModeProvider>

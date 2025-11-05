@@ -397,13 +397,13 @@ export default function CallCenterQueuePage() {
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
             <div className="flex items-start gap-4">
               <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg">
-                <Phone className="h-7 w-7 text-white" />
+                <Phone className="h-7 w-7 text-foreground" />
               </div>
               <div className="flex-1">
-                <CardTitle className="text-3xl font-bold text-white">
+                <CardTitle className="text-3xl font-bold text-foreground">
                   Bandeja de Entrada de Llamadas
                 </CardTitle>
-                <CardDescription className="mt-2 text-white/90 text-base">
+                <CardDescription className="mt-2 text-muted-foreground text-base">
                   Lista de clientes potenciales (de Kommo y Shopify) para contactar, confirmar datos y crear un pedido.
                   {loadedFromCache && (
                     <span className="inline-flex items-center gap-1.5 mt-2 px-3 py-1.5 rounded-lg bg-white/20 backdrop-blur-sm text-white text-sm font-medium shadow-lg">
