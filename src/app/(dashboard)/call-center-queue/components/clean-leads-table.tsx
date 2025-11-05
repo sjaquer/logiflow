@@ -54,6 +54,10 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
   // Column filters: multi-select values per column
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
 
+  // Column resizing state: widths in pixels and current resizing session
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
+  const [resizing, setResizing] = useState<null | { colKey: string; startX: number; startWidth: number }>(null);
+
   // Map column keys to lead object fields (best-effort mapping for filters)
   const columnFieldMap: Record<string, string> = {
     estado: 'call_status',
@@ -251,6 +255,39 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     });
   };
 
+  const startResize = (e: any, colKey: string) => {
+    e.preventDefault();
+    const target = e.currentTarget as HTMLElement;
+    const th = target.parentElement as HTMLElement | null;
+    const startWidth = th ? th.offsetWidth : 100;
+    setResizing({ colKey, startX: e.clientX, startWidth });
+    // prevent text selection during drag
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor = 'col-resize';
+  };
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - resizing.startX;
+      const newWidth = Math.max(2, Math.round(resizing.startWidth + dx));
+      setColumnWidths(prev => ({ ...prev, [resizing.colKey]: newWidth }));
+    };
+    const onUp = () => {
+      setResizing(null);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    return () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      document.body.style.userSelect = '';
+      document.body.style.cursor = '';
+    };
+  }, [resizing]);
+
   const clearColumnFilter = (colKey: string) => {
     setColumnFilters(prev => {
       const copy = { ...prev };
@@ -358,6 +395,18 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
         .table-scroll-container::-webkit-scrollbar-thumb:hover {
           background: hsl(var(--muted-foreground) / 0.6);
         }
+
+        /* Column resizer handle */
+        .col-resizer {
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 10px;
+          height: 100%;
+          cursor: col-resize;
+          z-index: 40;
+        }
+        .col-resizer:active { background: rgba(0,0,0,0.04); }
       `}</style>
 
       <div className="space-y-4">
@@ -379,31 +428,33 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
             <DropdownMenuContent align="end" className="w-56">
               <DropdownMenuLabel className="text-xs">Visibilidad de Columnas</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              
+
               <DropdownMenuItem onClick={showAllColumns}>
                 <Eye className="h-4 w-4 mr-2" />
                 Mostrar todas
               </DropdownMenuItem>
-              
+
               <DropdownMenuItem onClick={hideAllColumns}>
                 <EyeOff className="h-4 w-4 mr-2" />
                 Ocultar opcionales
               </DropdownMenuItem>
-              
+
               <DropdownMenuSeparator />
-              
-              {columnDefinitions.map((col) => (
-                <DropdownMenuCheckboxItem
-                  key={col.key}
-                  checked={visibleColumns[col.key]}
-                  onCheckedChange={() => col.essential ? null : toggleColumnVisibility(col.key)}
-                  disabled={col.essential}
-                  className={col.essential ? 'text-muted-foreground' : ''}
-                >
-                  {col.label}
-                  {col.essential && <span className="ml-2 text-xs">(requerido)</span>}
-                </DropdownMenuCheckboxItem>
-              ))}
+
+              <div className="p-2 max-h-56 overflow-y-auto">
+                {columnDefinitions.map((col) => (
+                  <DropdownMenuCheckboxItem
+                    key={col.key}
+                    checked={visibleColumns[col.key]}
+                    onCheckedChange={() => col.essential ? null : toggleColumnVisibility(col.key)}
+                    disabled={col.essential}
+                    className={col.essential ? 'text-muted-foreground' : ''}
+                  >
+                    {col.label}
+                    {col.essential && <span className="ml-2 text-xs">(requerido)</span>}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -427,7 +478,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
             <TableHeader>
               <TableRow className="bg-muted/50">
                 {visibleColumns.estado && (
-                  <TableHead data-col="estado" className="w-[40px] sm:w-[60px]">
+                  <TableHead data-col="estado" className="relative w-[40px] sm:w-[60px]" style={{ width: columnWidths['estado'] ? `${columnWidths['estado']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Estado</span>
                       <DropdownMenu>
@@ -437,7 +488,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={4} className="w-56">
-                          <div className="p-2">
+                          <div className="p-2 max-h-56 overflow-y-auto">
                             {uniqueValuesMap.estado && uniqueValuesMap.estado.length > 0 ? (
                               uniqueValuesMap.estado.map(val => (
                                 <label key={val} className="flex items-center gap-2 text-sm">
@@ -460,25 +511,28 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'estado')} />
                   </TableHead>
                 )}
                 {visibleColumns.fechaCreacion && (
-                  <TableHead data-col="fechaCreacion" className="w-[80px] sm:w-[140px]">
+                  <TableHead data-col="fechaCreacion" className="relative w-[80px] sm:w-[140px]" style={{ width: columnWidths['fechaCreacion'] ? `${columnWidths['fechaCreacion']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Fecha Creación</span>
                       {/* simple filter for date could be left empty for now */}
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'fechaCreacion')} />
                   </TableHead>
                 )}
                 {visibleColumns.ultimaModif && (
-                  <TableHead data-col="ultimaModif" className="w-[80px] sm:w-[140px]">
+                  <TableHead data-col="ultimaModif" className="relative w-[80px] sm:w-[140px]" style={{ width: columnWidths['ultimaModif'] ? `${columnWidths['ultimaModif']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Última Modificación</span>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'ultimaModif')} />
                   </TableHead>
                 )}
                 {visibleColumns.nombreLead && (
-                  <TableHead data-col="nombreLead" className="min-w-0 sm:min-w-[200px]">
+                  <TableHead data-col="nombreLead" className="relative min-w-0 sm:min-w-[200px]" style={{ width: columnWidths['nombreLead'] ? `${columnWidths['nombreLead']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Nombre del Lead</span>
                       <DropdownMenu>
@@ -488,7 +542,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={4} className="w-56">
-                          <div className="p-2">
+                          <div className="p-2 max-h-56 overflow-y-auto">
                             {uniqueValuesMap.nombreLead && uniqueValuesMap.nombreLead.length > 0 ? (
                               uniqueValuesMap.nombreLead.map(val => (
                                 <label key={val} className="flex items-center gap-2 text-sm">
@@ -511,10 +565,11 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'nombreLead')} />
                   </TableHead>
                 )}
                 {visibleColumns.producto && (
-                  <TableHead data-col="producto" className="min-w-0 sm:min-w-[180px]">
+                  <TableHead data-col="producto" className="relative min-w-0 sm:min-w-[180px]" style={{ width: columnWidths['producto'] ? `${columnWidths['producto']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Producto</span>
                       <DropdownMenu>
@@ -524,7 +579,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={4} className="w-56">
-                          <div className="p-2">
+                          <div className="p-2 max-h-56 overflow-y-auto">
                             {uniqueValuesMap.producto && uniqueValuesMap.producto.length > 0 ? (
                               uniqueValuesMap.producto.map(val => (
                                 <label key={val} className="flex items-center gap-2 text-sm">
@@ -547,10 +602,11 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'producto')} />
                   </TableHead>
                 )}
                 {visibleColumns.estatusLead && (
-                  <TableHead data-col="estatusLead" className="w-[100px] sm:w-[140px]">
+                  <TableHead data-col="estatusLead" className="relative w-[100px] sm:w-[140px]" style={{ width: columnWidths['estatusLead'] ? `${columnWidths['estatusLead']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Estatus del Lead</span>
                       <DropdownMenu>
@@ -583,10 +639,11 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'estatusLead')} />
                   </TableHead>
                 )}
                 {visibleColumns.provincia && (
-                  <TableHead data-col="provincia" className="w-[100px] sm:w-[140px]">
+                  <TableHead data-col="provincia" className="relative w-[100px] sm:w-[140px]" style={{ width: columnWidths['provincia'] ? `${columnWidths['provincia']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Provincia</span>
                       <DropdownMenu>
@@ -619,59 +676,77 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'provincia')} />
                   </TableHead>
                 )}
                 {visibleColumns.dni && (
-                  <TableHead data-col="dni" className="text-center w-[60px] sm:w-[100px]">
+                  <TableHead data-col="dni" className="relative text-center w-[60px] sm:w-[100px]" style={{ width: columnWidths['dni'] ? `${columnWidths['dni']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>DNI</span>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'dni')} />
                   </TableHead>
                 )}
                 {visibleColumns.courier && (
-                  <TableHead data-col="courier" className="text-center w-[60px] sm:w-[100px]">
+                  <TableHead data-col="courier" className="relative text-center w-[60px] sm:w-[100px]" style={{ width: columnWidths['courier'] ? `${columnWidths['courier']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>Courier</span>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'courier')} />
                   </TableHead>
                 )}
                 {visibleColumns.oficShalom && (
-                  <TableHead data-col="oficShalom" className="text-center w-[60px] sm:w-[100px]">
+                  <TableHead data-col="oficShalom" className="relative text-center w-[60px] sm:w-[100px]" style={{ width: columnWidths['oficShalom'] ? `${columnWidths['oficShalom']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>Ofic. Shalom</span>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'oficShalom')} />
                   </TableHead>
                 )}
                 {visibleColumns.atendido && (
-                  <TableHead data-col="atendido" className="text-center w-[60px] sm:w-[100px]">
+                  <TableHead data-col="atendido" className="relative text-center w-[60px] sm:w-[100px]" style={{ width: columnWidths['atendido'] ? `${columnWidths['atendido']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>Atendido</span>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'atendido')} />
                   </TableHead>
                 )}
                 {visibleColumns.intentoLlamada && (
-                  <TableHead data-col="intentoLlamada" className="w-[90px] sm:w-[140px]">Intento de Llamada</TableHead>
+                  <TableHead data-col="intentoLlamada" className="relative w-[90px] sm:w-[140px]" style={{ width: columnWidths['intentoLlamada'] ? `${columnWidths['intentoLlamada']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center justify-center">Intento de Llamada</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'intentoLlamada')} />
+                  </TableHead>
                 )}
                 {visibleColumns.asesor && (
-                  <TableHead data-col="asesor" className="min-w-0 sm:min-w-[160px]">Asesor</TableHead>
+                  <TableHead data-col="asesor" className="relative min-w-0 sm:min-w-[160px]" style={{ width: columnWidths['asesor'] ? `${columnWidths['asesor']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Asesor</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'asesor')} />
+                  </TableHead>
                 )}
                 {visibleColumns.resultado && (
-                  <TableHead data-col="resultado" className="w-[80px] sm:w-[120px]">Resultado</TableHead>
+                  <TableHead data-col="resultado" className="relative w-[80px] sm:w-[120px]" style={{ width: columnWidths['resultado'] ? `${columnWidths['resultado']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-center">Resultado</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'resultado')} />
+                  </TableHead>
                 )}
                 {visibleColumns.comentario && (
-                  <TableHead data-col="comentario" className="text-center w-[90px] sm:min-w-[150px]">
+                  <TableHead data-col="comentario" className="relative text-center w-[90px] sm:min-w-[150px]" style={{ width: columnWidths['comentario'] ? `${columnWidths['comentario']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-center gap-1">
                       <AlertCircle className="h-4 w-4 text-orange-500" />
                       <span>Comentario</span>
                     </div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'comentario')} />
                   </TableHead>
                 )}
                 {visibleColumns.acciones && (
-                  <TableHead data-col="acciones" className="text-right w-[120px] sm:w-[220px]">Acciones</TableHead>
+                  <TableHead data-col="acciones" className="relative text-right w-[120px] sm:w-[220px]" style={{ width: columnWidths['acciones'] ? `${columnWidths['acciones']}px` : undefined, minWidth: 2 }}>
+                    <div className="flex items-end justify-end">Acciones</div>
+                    <div className="col-resizer" onMouseDown={(e) => startResize(e, 'acciones')} />
+                  </TableHead>
                 )}
               </TableRow>
             </TableHeader>
