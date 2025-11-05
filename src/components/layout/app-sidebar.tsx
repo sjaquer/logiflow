@@ -60,15 +60,9 @@ export function AppSidebar({ currentUser }: AppSidebarProps) {
     router.push('/login');
   };
 
+  // Show all items in the sidebar (remove role/permission based filtering)
   const filterItems = (items: typeof menuItems) => {
-      if (!currentUser) return [];
-      // Admins and Devs see everything
-      if (currentUser.rol === 'Admin' || currentUser.rol === 'Desarrolladores') {
-          return items;
-      }
-      return items.filter(item => {
-        return currentUser.permisos?.puede_ver?.[item.permissionKey] === true;
-      });
+    return items;
   }
 
   return (
