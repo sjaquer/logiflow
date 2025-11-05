@@ -389,13 +389,13 @@ export default function CallCenterQueuePage() {
   }
 
   return (
-    <div className="container max-w-7xl mx-auto p-4 md:p-6 lg:p-8 space-y-6 animate-in">
+    <div className="w-full max-w-[calc(100vw-20px)] mx-auto px-[10px] py-4 space-y-6 animate-in box-border">
       {/* Header con gradiente vibrante */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 p-8 shadow-xl">
         <div className="absolute inset-0 bg-grid-white/10" />
         <div className="relative z-10">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-            <div className="flex items-start gap-4">
+            <div className="flex items-start gap-4 min-w-0">
               <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg">
                 <Phone className="h-7 w-7 text-foreground" />
               </div>
@@ -414,7 +414,7 @@ export default function CallCenterQueuePage() {
                 </CardDescription>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 min-w-0">
               {/* Botones de caché */}
               <TooltipProvider>
                 <Tooltip>
@@ -485,7 +485,7 @@ export default function CallCenterQueuePage() {
       <Card className="border-border/40 shadow-lg">
         <CardContent className="pt-6 space-y-6">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-grow">
+            <div className="relative flex-grow min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Buscar por nombre, DNI o agente..."
@@ -565,10 +565,12 @@ export default function CallCenterQueuePage() {
                   </div>
                 </div>
               )}
-              <CleanLeadsTable 
-                leads={filteredPendingLeads} 
-                onProcessLead={handleProcessClient}
-              />
+              <div className="w-full min-w-0 max-w-[calc(100vw-20px)]">
+                <CleanLeadsTable 
+                  leads={filteredPendingLeads} 
+                  onProcessLead={handleProcessClient}
+                />
+              </div>
             </>
           )}
         </CardContent>
@@ -590,9 +592,9 @@ export default function CallCenterQueuePage() {
                 </div>
             </div>
         </CardHeader>
-        <CardContent>
-            <ManagedQueueTable leads={filteredManagedLeads} />
-        </CardContent>
+    <CardContent className="w-full min-w-0 max-w-[calc(100vw-20px)]">
+      <ManagedQueueTable leads={filteredManagedLeads} />
+    </CardContent>
       </Card>
 
         {/* PIN Dialog */}
