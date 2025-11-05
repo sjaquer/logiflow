@@ -57,6 +57,10 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
   // Column resizing state: widths in pixels and current resizing session
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   const [resizing, setResizing] = useState<null | { colKey: string; startX: number; startWidth: number }>(null);
+  // Date range filters for date/time columns (values as datetime-local strings)
+  const [dateFilters, setDateFilters] = useState<Record<string, { from?: string; to?: string }>>({});
+  // Time-of-day range filters (HH:MM) for columns; primary focus per request
+  const [timeFilters, setTimeFilters] = useState<Record<string, { from?: string; to?: string }>>({});
 
   // Map column keys to lead object fields (best-effort mapping for filters)
   const columnFieldMap: Record<string, string> = {
@@ -296,20 +300,122 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     });
   };
 
-  // Filtered leads based on columnFilters
+  const setDateFilter = (colKey: string, from?: string, to?: string) => {
+    setDateFilters(prev => {
+      const copy = { ...prev };
+      if (!from && !to) {
+        delete copy[colKey];
+      } else {
+        copy[colKey] = { from, to };
+      }
+      return copy;
+    });
+  };
+
+  const clearDateFilter = (colKey: string) => {
+    setDateFilters(prev => {
+      const copy = { ...prev };
+      delete copy[colKey];
+      return copy;
+    });
+  };
+
+  const setTimeFilter = (colKey: string, from?: string, to?: string) => {
+    setTimeFilters(prev => {
+      const copy = { ...prev };
+      if (!from && !to) {
+        delete copy[colKey];
+      } else {
+        copy[colKey] = { from, to };
+      }
+      return copy;
+    });
+  };
+
+  const clearTimeFilter = (colKey: string) => {
+    setTimeFilters(prev => {
+      const copy = { ...prev };
+      delete copy[colKey];
+      return copy;
+    });
+  };
+
+  // Filtered leads based on columnFilters, dateFilters and timeFilters
   const filteredLeads = useMemo(() => {
     const activeFilterKeys = Object.keys(columnFilters).filter(k => (columnFilters[k] || []).length > 0);
-    if (activeFilterKeys.length === 0) return leads;
     return leads.filter(lead => {
-      return activeFilterKeys.every(colKey => {
+      // Apply multi-select column filters
+      const columnPass = activeFilterKeys.every(colKey => {
         const field = columnFieldMap[colKey];
         if (!field) return true;
         const leadVal = (lead as any)[field];
         const normalized = leadVal === null || leadVal === undefined ? '—' : String(leadVal);
         return columnFilters[colKey].includes(normalized);
       });
+      if (!columnPass) return false;
+
+      // Apply date range filters (if present)
+      for (const colKey of Object.keys(dateFilters)) {
+        const filter = dateFilters[colKey];
+        if (!filter) continue;
+        const field = columnFieldMap[colKey];
+        if (!field) continue;
+        const leadVal = (lead as any)[field];
+        if (!leadVal) return false;
+        const leadTs = new Date(leadVal).getTime();
+
+        if (filter.from) {
+          const fromTs = new Date(filter.from).getTime();
+          if (isNaN(fromTs) || leadTs < fromTs) return false;
+        }
+        if (filter.to) {
+          const toTs = new Date(filter.to).getTime();
+          if (isNaN(toTs) || leadTs > toTs) return false;
+        }
+      }
+
+      // Apply time-of-day filters (primary requirement)
+      for (const colKey of Object.keys(timeFilters)) {
+        const tfilter = timeFilters[colKey];
+        if (!tfilter) continue;
+        const field = columnFieldMap[colKey];
+        if (!field) continue;
+        const leadVal = (lead as any)[field];
+        if (!leadVal) return false;
+        const d = new Date(leadVal);
+        if (isNaN(d.getTime())) return false;
+        const leadMinutes = d.getHours() * 60 + d.getMinutes();
+
+        const parseHM = (s?: string) => {
+          if (!s) return undefined;
+          const [hh, mm] = s.split(':').map(v => Number(v));
+          if (Number.isNaN(hh) || Number.isNaN(mm)) return undefined;
+          return hh * 60 + mm;
+        };
+
+        const fromMin = parseHM(tfilter.from);
+        const toMin = parseHM(tfilter.to);
+
+        if (fromMin === undefined && toMin === undefined) continue;
+
+        if (fromMin !== undefined && toMin !== undefined) {
+          // Normal range
+          if (fromMin <= toMin) {
+            if (leadMinutes < fromMin || leadMinutes > toMin) return false;
+          } else {
+            // Wrap-around (e.g., 22:00 - 02:00)
+            if (!(leadMinutes >= fromMin || leadMinutes <= toMin)) return false;
+          }
+        } else if (fromMin !== undefined) {
+          if (leadMinutes < fromMin) return false;
+        } else if (toMin !== undefined) {
+          if (leadMinutes > toMin) return false;
+        }
+      }
+
+      return true;
     });
-  }, [leads, columnFilters]);
+  }, [leads, columnFilters, dateFilters, timeFilters]);
 
   // Scroll-to-column helper for top nav
   const scrollToColumn = useCallback((colKey: string) => {
@@ -323,7 +429,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
 
   return (
     <>
-      <style>{`
+  <style>{`
         /* Theme-adaptive sticky headers */
         .callcenter-table thead th {
           position: sticky;
@@ -396,17 +502,29 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
           background: hsl(var(--muted-foreground) / 0.6);
         }
 
-        /* Column resizer handle */
+        /* Column resizer handle with visible grip */
         .col-resizer {
           position: absolute;
           top: 0;
           right: 0;
-          width: 10px;
+          width: 12px;
           height: 100%;
           cursor: col-resize;
           z-index: 40;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
-        .col-resizer:active { background: rgba(0,0,0,0.04); }
+        .col-resizer::before {
+          content: '';
+          display: block;
+          width: 2px;
+          height: 48%;
+          background: rgba(0,0,0,0.18);
+          border-radius: 2px;
+        }
+        .col-resizer:hover::before { background: rgba(0,0,0,0.28); }
+        .col-resizer:active { background: rgba(0,0,0,0.02); }
       `}</style>
 
       <div className="space-y-4">
@@ -420,12 +538,12 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Settings className="h-4 w-4" />
-                Columnas
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  Columnas
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 bg-popover shadow-md rounded-md border">
               <DropdownMenuLabel className="text-xs">Visibilidad de Columnas</DropdownMenuLabel>
               <DropdownMenuSeparator />
 
@@ -463,14 +581,16 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
         {/* Top horizontal navigation: quick jump to column */}
         <div className="flex items-center gap-2 overflow-x-auto py-1">
           {columnDefinitions.filter(c => visibleColumns[c.key]).map(c => (
-            <button
+            <Button
               key={c.key}
+              variant="ghost"
+              size="sm"
               onClick={() => scrollToColumn(c.key)}
-              className="text-xs px-2 py-1 rounded-md hover:bg-muted/30 border border-transparent hover:border-border"
+              className="text-xs px-2 py-1 rounded-md"
               title={`Ir a ${c.label}`}
             >
               {c.label}
-            </button>
+            </Button>
           ))}
         </div>
         <div className="table-scroll-container" ref={containerRef as any}>
@@ -487,17 +607,18 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                             <Filter className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={4} className="w-56">
+                        <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
                           <div className="p-2 max-h-56 overflow-y-auto">
                             {uniqueValuesMap.estado && uniqueValuesMap.estado.length > 0 ? (
                               uniqueValuesMap.estado.map(val => (
-                                <label key={val} className="flex items-center gap-2 text-sm">
+                                <label key={val} className="flex items-center gap-2 text-sm p-2 rounded hover:bg-muted/20 cursor-pointer">
                                   <input
                                     type="checkbox"
+                                    className="h-4 w-4"
                                     checked={(columnFilters.estado || []).includes(val)}
                                     onChange={() => toggleFilterValue('estado', val)}
                                   />
-                                  <span className="truncate">{val}</span>
+                                  <span className="truncate" title={val}>{val}</span>
                                 </label>
                               ))
                             ) : (
@@ -518,7 +639,54 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   <TableHead data-col="fechaCreacion" className="relative w-[80px] sm:w-[140px]" style={{ width: columnWidths['fechaCreacion'] ? `${columnWidths['fechaCreacion']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Fecha Creación</span>
-                      {/* simple filter for date could be left empty for now */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                            <Filter className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={4} className="w-72 bg-popover shadow-md rounded-md border">
+                          <div className="p-3 space-y-2">
+                            <label className="text-xs">Desde (fecha/hora)</label>
+                            <input
+                              type="datetime-local"
+                              className="w-full p-2 border rounded text-sm"
+                              value={dateFilters.fechaCreacion?.from || ''}
+                              onChange={(e) => setDateFilter('fechaCreacion', e.target.value || undefined, dateFilters.fechaCreacion?.to)}
+                            />
+                            <label className="text-xs">Hasta (fecha/hora)</label>
+                            <input
+                              type="datetime-local"
+                              className="w-full p-2 border rounded text-sm"
+                              value={dateFilters.fechaCreacion?.to || ''}
+                              onChange={(e) => setDateFilter('fechaCreacion', dateFilters.fechaCreacion?.from, e.target.value || undefined)}
+                            />
+
+                            <div className="h-px bg-border my-2" />
+
+                            <label className="text-xs">Desde (hora del día)</label>
+                            <input
+                              type="time"
+                              className="w-full p-2 border rounded text-sm"
+                              value={timeFilters.fechaCreacion?.from || ''}
+                              onChange={(e) => setTimeFilter('fechaCreacion', e.target.value || undefined, timeFilters.fechaCreacion?.to)}
+                            />
+                            <label className="text-xs">Hasta (hora del día)</label>
+                            <input
+                              type="time"
+                              className="w-full p-2 border rounded text-sm"
+                              value={timeFilters.fechaCreacion?.to || ''}
+                              onChange={(e) => setTimeFilter('fechaCreacion', timeFilters.fechaCreacion?.from, e.target.value || undefined)}
+                            />
+                          </div>
+                          <DropdownMenuSeparator />
+                          <div className="flex items-center justify-between px-2 py-1">
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="ghost" onClick={() => { clearDateFilter('fechaCreacion'); clearTimeFilter('fechaCreacion'); }}>Limpiar</Button>
+                            </div>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                     <div className="col-resizer" onMouseDown={(e) => startResize(e, 'fechaCreacion')} />
                   </TableHead>
@@ -527,6 +695,54 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   <TableHead data-col="ultimaModif" className="relative w-[80px] sm:w-[140px]" style={{ width: columnWidths['ultimaModif'] ? `${columnWidths['ultimaModif']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Última Modificación</span>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                            <Filter className="h-3 w-3" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent sideOffset={4} className="w-72 bg-popover shadow-md rounded-md border">
+                          <div className="p-3 space-y-2">
+                            <label className="text-xs">Desde (fecha/hora)</label>
+                            <input
+                              type="datetime-local"
+                              className="w-full p-2 border rounded text-sm"
+                              value={dateFilters.ultimaModif?.from || ''}
+                              onChange={(e) => setDateFilter('ultimaModif', e.target.value || undefined, dateFilters.ultimaModif?.to)}
+                            />
+                            <label className="text-xs">Hasta (fecha/hora)</label>
+                            <input
+                              type="datetime-local"
+                              className="w-full p-2 border rounded text-sm"
+                              value={dateFilters.ultimaModif?.to || ''}
+                              onChange={(e) => setDateFilter('ultimaModif', dateFilters.ultimaModif?.from, e.target.value || undefined)}
+                            />
+
+                            <div className="h-px bg-border my-2" />
+
+                            <label className="text-xs">Desde (hora del día)</label>
+                            <input
+                              type="time"
+                              className="w-full p-2 border rounded text-sm"
+                              value={timeFilters.ultimaModif?.from || ''}
+                              onChange={(e) => setTimeFilter('ultimaModif', e.target.value || undefined, timeFilters.ultimaModif?.to)}
+                            />
+                            <label className="text-xs">Hasta (hora del día)</label>
+                            <input
+                              type="time"
+                              className="w-full p-2 border rounded text-sm"
+                              value={timeFilters.ultimaModif?.to || ''}
+                              onChange={(e) => setTimeFilter('ultimaModif', timeFilters.ultimaModif?.from, e.target.value || undefined)}
+                            />
+                          </div>
+                          <DropdownMenuSeparator />
+                          <div className="flex items-center justify-between px-2 py-1">
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="ghost" onClick={() => { clearDateFilter('ultimaModif'); clearTimeFilter('ultimaModif'); }}>Limpiar</Button>
+                            </div>
+                          </div>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                     <div className="col-resizer" onMouseDown={(e) => startResize(e, 'ultimaModif')} />
                   </TableHead>
@@ -541,17 +757,18 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                             <Filter className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={4} className="w-56">
+                        <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
                           <div className="p-2 max-h-56 overflow-y-auto">
                             {uniqueValuesMap.nombreLead && uniqueValuesMap.nombreLead.length > 0 ? (
                               uniqueValuesMap.nombreLead.map(val => (
-                                <label key={val} className="flex items-center gap-2 text-sm">
+                                <label key={val} className="flex items-center gap-2 text-sm p-2 rounded hover:bg-muted/20 cursor-pointer">
                                   <input
                                     type="checkbox"
+                                    className="h-4 w-4"
                                     checked={(columnFilters.nombreLead || []).includes(val)}
                                     onChange={() => toggleFilterValue('nombreLead', val)}
                                   />
-                                  <span className="truncate">{val}</span>
+                                  <span className="truncate" title={val}>{val}</span>
                                 </label>
                               ))
                             ) : (
@@ -578,17 +795,18 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                             <Filter className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={4} className="w-56">
+                        <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
                           <div className="p-2 max-h-56 overflow-y-auto">
                             {uniqueValuesMap.producto && uniqueValuesMap.producto.length > 0 ? (
                               uniqueValuesMap.producto.map(val => (
-                                <label key={val} className="flex items-center gap-2 text-sm">
+                                <label key={val} className="flex items-center gap-2 text-sm p-2 rounded hover:bg-muted/20 cursor-pointer">
                                   <input
                                     type="checkbox"
+                                    className="h-4 w-4"
                                     checked={(columnFilters.producto || []).includes(val)}
                                     onChange={() => toggleFilterValue('producto', val)}
                                   />
-                                  <span className="truncate">{val}</span>
+                                  <span className="truncate" title={val}>{val}</span>
                                 </label>
                               ))
                             ) : (
@@ -615,17 +833,18 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                             <Filter className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={4} className="w-56">
+                        <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
                           <div className="p-2">
                             {uniqueValuesMap.estatusLead && uniqueValuesMap.estatusLead.length > 0 ? (
                               uniqueValuesMap.estatusLead.map(val => (
-                                <label key={val} className="flex items-center gap-2 text-sm">
+                                <label key={val} className="flex items-center gap-2 text-sm p-2 rounded hover:bg-muted/20 cursor-pointer">
                                   <input
                                     type="checkbox"
+                                    className="h-4 w-4"
                                     checked={(columnFilters.estatusLead || []).includes(val)}
                                     onChange={() => toggleFilterValue('estatusLead', val)}
                                   />
-                                  <span className="truncate">{val}</span>
+                                  <span className="truncate" title={val}>{val}</span>
                                 </label>
                               ))
                             ) : (
@@ -652,17 +871,18 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                             <Filter className="h-3 w-3" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={4} className="w-56">
+                        <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
                           <div className="p-2">
                             {uniqueValuesMap.provincia && uniqueValuesMap.provincia.length > 0 ? (
                               uniqueValuesMap.provincia.map(val => (
-                                <label key={val} className="flex items-center gap-2 text-sm">
+                                <label key={val} className="flex items-center gap-2 text-sm p-2 rounded hover:bg-muted/20 cursor-pointer">
                                   <input
                                     type="checkbox"
+                                    className="h-4 w-4"
                                     checked={(columnFilters.provincia || []).includes(val)}
                                     onChange={() => toggleFilterValue('provincia', val)}
                                   />
-                                  <span className="truncate">{val}</span>
+                                  <span className="truncate" title={val}>{val}</span>
                                 </label>
                               ))
                             ) : (
@@ -781,7 +1001,10 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
 
                       {visibleColumns.fechaCreacion && (
                         <TableCell className="text-xs text-muted-foreground">
-                          <div className="truncate">
+                          <div
+                            className="truncate"
+                            title={lead.first_interaction_at ? format(new Date(lead.first_interaction_at), 'dd/MM/yyyy HH:mm', { locale: es }) : '—'}
+                          >
                             {lead.first_interaction_at 
                               ? format(new Date(lead.first_interaction_at), 'dd/MM/yyyy HH:mm', { locale: es })
                               : '—'}
@@ -791,7 +1014,10 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
 
                       {visibleColumns.ultimaModif && (
                         <TableCell className="text-xs text-muted-foreground">
-                          <div className="truncate">
+                          <div
+                            className="truncate"
+                            title={lead.last_updated ? format(new Date(lead.last_updated), 'dd/MM/yyyy HH:mm', { locale: es }) : '—'}
+                          >
                             {lead.last_updated 
                               ? format(new Date(lead.last_updated), 'dd/MM/yyyy HH:mm', { locale: es })
                               : '—'}
@@ -809,7 +1035,10 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                                 className="h-8 w-full"
                               />
                             ) : (
-                              <span className={cn(!isFieldComplete(lead, 'nombres') && 'text-muted-foreground')}>
+                              <span
+                                className={cn(!isFieldComplete(lead, 'nombres') && 'text-muted-foreground')}
+                                title={lead.nombres || '—'}
+                              >
                                 {lead.nombres || '—'}
                               </span>
                             )}
@@ -828,7 +1057,10 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                                 placeholder="Producto..."
                               />
                             ) : (
-                              <span className={cn(!isFieldComplete(lead, 'producto') && 'text-muted-foreground text-sm')}>
+                              <span
+                                className={cn(!isFieldComplete(lead, 'producto') && 'text-muted-foreground text-sm')}
+                                title={lead.producto || '—'}
+                              >
                                 {lead.producto || '—'}
                               </span>
                             )}
@@ -863,7 +1095,10 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                                 placeholder="Provincia..."
                               />
                             ) : (
-                              <span className={cn(!isFieldComplete(lead, 'provincia') && 'text-muted-foreground')}>
+                              <span
+                                className={cn(!isFieldComplete(lead, 'provincia') && 'text-muted-foreground')}
+                                title={lead.provincia || '—'}
+                              >
                                 {lead.provincia || '—'}
                               </span>
                             )}
@@ -880,11 +1115,14 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                               className="h-8 w-full"
                               placeholder="DNI..."
                             />
-                          ) : (
-                            <span className={cn(
-                              !isFieldComplete(lead, 'dni') && 'text-orange-500 font-semibold',
-                              isFieldComplete(lead, 'dni') && 'text-foreground'
-                            )}>
+                            ) : (
+                            <span
+                              className={cn(
+                                !isFieldComplete(lead, 'dni') && 'text-orange-500 font-semibold',
+                                isFieldComplete(lead, 'dni') && 'text-foreground'
+                              )}
+                              title={lead.dni || '⚠'}
+                            >
                               {lead.dni || '⚠'}
                             </span>
                           )}
@@ -929,7 +1167,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                                 <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-semibold flex-shrink-0">
                                   {lead.assigned_agent_name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                                 </div>
-                                <span className="text-sm truncate">{lead.assigned_agent_name}</span>
+                                <span className="text-sm truncate" title={lead.assigned_agent_name}>{lead.assigned_agent_name}</span>
                               </div>
                             ) : (
                               <span className="text-muted-foreground text-sm">Sin asignar</span>
@@ -962,11 +1200,14 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                                 className="h-8 w-full"
                                 placeholder="Comentario..."
                               />
-                            ) : (
-                              <span className={cn(
-                                !isFieldComplete(lead, 'notas_agente') && 'text-orange-500 font-semibold',
-                                isFieldComplete(lead, 'notas_agente') && 'text-sm'
-                              )}>
+                              ) : (
+                              <span
+                                className={cn(
+                                  !isFieldComplete(lead, 'notas_agente') && 'text-orange-500 font-semibold',
+                                  isFieldComplete(lead, 'notas_agente') && 'text-sm'
+                                )}
+                                title={lead.notas_agente || '⚠'}
+                              >
                                 {lead.notas_agente || '⚠'}
                               </span>
                             )}
