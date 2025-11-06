@@ -112,6 +112,7 @@ export function extractPhoneNumber(data: any): string {
 
 /**
  * Crea un objeto de lead completo desde un pedido de Shopify
+ * Filtra valores undefined para evitar errores en Firestore
  */
 export function createShopifyLead(data: any, storeName: Shop) {
     const shippingAddress = data.shipping_address || {};
@@ -123,51 +124,90 @@ export function createShopifyLead(data: any, storeName: Shop) {
     const shopifyPaymentDetails = extractPaymentDetails(data);
     const shopifyOrderId = String(data.id);
     
-    return {
+    // Función helper para limpiar valores undefined
+    const cleanValue = (value: any, defaultValue: any = '') => {
+        return value !== undefined && value !== null ? value : defaultValue;
+    };
+    
+    const lead: any = {
         // Información personal
         nombres: clientName,
-        apellidos: shippingAddress.last_name || billingAddress.last_name || customer.last_name || '',
         celular: extractPhoneNumber(data),
-        email: customer.email || data.email || data.contact_email || '',
         
         // Dirección de envío
-        direccion: shippingAddress.address1 || billingAddress.address1 || '',
-        direccion_referencia: shippingAddress.address2 || billingAddress.address2 || '',
-        distrito: shippingAddress.city || billingAddress.city || '',
-        provincia: shippingAddress.province || billingAddress.province || 'Lima',
-        codigo_postal: shippingAddress.zip || billingAddress.zip || '',
-        pais: shippingAddress.country || billingAddress.country || 'Perú',
+        direccion: cleanValue(shippingAddress.address1 || billingAddress.address1),
+        distrito: cleanValue(shippingAddress.city || billingAddress.city),
+        provincia: cleanValue(shippingAddress.province || billingAddress.province, 'Lima'),
         
         // Campos de origen y tracking
-        source: 'shopify' as const,
+        source: 'shopify',
         tienda_origen: storeName,
-        store_name: storeName, // Compatibilidad con código legacy
         
         // Información del pedido
         shopify_order_id: shopifyOrderId,
-        shopify_order_number: data.order_number || data.name || '',
         shopify_items: shopifyItems,
         shopify_payment_details: shopifyPaymentDetails,
         
-        // Estados y fechas
-        call_status: 'NUEVO' as const,
-        financial_status: data.financial_status || 'pending',
-        fulfillment_status: data.fulfillment_status || 'unfulfilled',
+        // Estados
+        call_status: 'NUEVO',
         
         // Fechas importantes
         first_interaction_at: new Date().toISOString(),
         last_updated: new Date().toISOString(),
-        created_time: data.created_at || new Date().toISOString(),
-        confirmed_at: data.confirmed ? data.confirmed_at : null,
-        
-        // Información adicional
-        notas_cliente: data.note || '',
-        tags: data.tags ? data.tags.split(',').map((t: string) => t.trim()) : [],
-        
-        // Datos del cliente de Shopify
-        shopify_customer_id: customer.id ? String(customer.id) : null,
-        
-        // Metadata
-        processed_by: 'shopify_api_v5.0.0',
     };
+    
+    // Agregar campos opcionales solo si tienen valores válidos
+    if (shippingAddress.last_name || billingAddress.last_name || customer.last_name) {
+        lead.apellidos = shippingAddress.last_name || billingAddress.last_name || customer.last_name;
+    }
+    
+    if (customer.email || data.email || data.contact_email) {
+        lead.email = customer.email || data.email || data.contact_email;
+    }
+    
+    if (shippingAddress.address2 || billingAddress.address2) {
+        lead.direccion_referencia = shippingAddress.address2 || billingAddress.address2;
+    }
+    
+    if (shippingAddress.zip || billingAddress.zip) {
+        lead.codigo_postal = shippingAddress.zip || billingAddress.zip;
+    }
+    
+    if (shippingAddress.country || billingAddress.country) {
+        lead.pais = shippingAddress.country || billingAddress.country;
+    }
+    
+    if (data.order_number || data.name) {
+        lead.shopify_order_number = data.order_number || data.name;
+    }
+    
+    if (data.financial_status) {
+        lead.financial_status = data.financial_status;
+    }
+    
+    if (data.fulfillment_status) {
+        lead.fulfillment_status = data.fulfillment_status;
+    }
+    
+    if (data.created_at) {
+        lead.created_time = data.created_at;
+    }
+    
+    if (data.confirmed && data.confirmed_at) {
+        lead.confirmed_at = data.confirmed_at;
+    }
+    
+    if (data.note) {
+        lead.notas_cliente = data.note;
+    }
+    
+    if (data.tags) {
+        lead.tags = data.tags.split(',').map((t: string) => t.trim()).filter(Boolean);
+    }
+    
+    if (customer.id) {
+        lead.shopify_customer_id = String(customer.id);
+    }
+    
+    return lead;
 }
