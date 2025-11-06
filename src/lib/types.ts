@@ -175,14 +175,19 @@ export interface Client {
     id: string; // Document ID from Firestore (unique, auto-generated)
     dni?: string;
     nombres: string;
+    apellidos?: string;
     celular: string;
     email?: string;
     direccion?: string;
+    direccion_referencia?: string;
     distrito?: string;
     provincia?: string;
+    codigo_postal?: string;
+    pais?: string;
     source: 'kommo' | 'manual' | 'shopify';
     last_updated: string;
     tienda_origen?: Shop;
+    store_name?: Shop; // Alias para compatibilidad con código legacy
     
     // Fields for Call Center workflow
     call_status: CallStatus;
@@ -198,22 +203,36 @@ export interface Client {
 
     // For leads coming from Shopify
     shopify_order_id?: string;
+    shopify_order_number?: string;
+    shopify_customer_id?: string;
     shopify_items?: OrderItem[];
     shopify_payment_details?: {
       total_price: number;
       subtotal_price: number;
       total_shipping: number;
+      total_tax?: number;
+      total_discounts?: number;
       payment_gateway: string;
+      financial_status?: string;
+      currency?: string;
     }
     etapa_shopify?: string; // e.g. "unfulfilled"
+    financial_status?: string;
+    fulfillment_status?: string;
 
   // Optional fields present in some payloads
   confirmed_at?: string;
+  created_time?: string;
   visto_por?: string | { id?: string; name?: string };
 
     // Generic fields
     producto?: string;
     notas_agente?: string;
+    notas_cliente?: string;
+    tags?: string[];
+    
+    // Metadata
+    processed_by?: string;
 }
 
 

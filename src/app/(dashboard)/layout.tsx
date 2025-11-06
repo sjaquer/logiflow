@@ -13,6 +13,7 @@ import type { User } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DevModeProvider } from '@/context/dev-mode-context';
+import { NotificationProvider } from '@/context/notification-context';
 
 function DashboardContent({ children }: { children: React.ReactNode }) {
   const { user, loading: authLoading } = useAuth();
@@ -106,7 +107,9 @@ export default function DashboardLayout({
   return (
     <SidebarProvider defaultOpen={false}>
       <DevModeProvider>
-        <DashboardContent>{children}</DashboardContent>
+        <NotificationProvider>
+          <DashboardContent>{children}</DashboardContent>
+        </NotificationProvider>
       </DevModeProvider>
     </SidebarProvider>
   );

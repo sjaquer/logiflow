@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon, Repeat, PhoneMissed, Frown, RefreshCw, Database } from 'lucide-react';
 import { ManagedQueueTable } from './components/managed-queue-table';
 import { CleanLeadsTable } from './components/clean-leads-table';
+import { NotificationsDropdown } from './components/notifications-dropdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -170,12 +171,13 @@ export default function CallCenterQueuePage() {
   const filteredPendingLeads = useMemo(() => {
     return pendingLeads.filter(lead => {
         const searchInput = searchQuery.toLowerCase();
-        const matchesSearch = lead.nombres.toLowerCase().includes(searchInput) ||
+        // Validación defensiva: asegurar que nombres existe antes de toLowerCase
+        const matchesSearch = (lead.nombres || '').toLowerCase().includes(searchInput) ||
           (lead.celular && lead.celular.includes(searchInput)) ||
           (lead.assigned_agent_name && lead.assigned_agent_name.toLowerCase().includes(searchInput));
 
         const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
-        const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter;
+        const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter || lead.store_name === shopFilter;
         
         return matchesSearch && matchesStatus && matchesShop;
     });
@@ -184,7 +186,8 @@ export default function CallCenterQueuePage() {
   const filteredManagedLeads = useMemo(() => {
      return managedLeads.filter(lead => {
         const searchInput = searchQuery.toLowerCase();
-        return lead.nombres.toLowerCase().includes(searchInput) ||
+        // Validación defensiva: asegurar que nombres existe antes de toLowerCase
+        return (lead.nombres || '').toLowerCase().includes(searchInput) ||
           (lead.assigned_agent_name && lead.assigned_agent_name.toLowerCase().includes(searchInput));
      });
   }, [managedLeads, searchQuery]);
@@ -303,11 +306,22 @@ export default function CallCenterQueuePage() {
 
         await batch.commit();
         
-        // Limpiar caché después de vaciar la bandeja
+        // Limpiar caché y localStorage después de vaciar la bandeja
         cacheManager.remove(CACHE_KEYS.CLIENTS);
         cacheManager.remove(CACHE_KEYS.SHOPIFY_LEADS);
         
-        toast({ title: 'Bandeja Vaciada', description: `Se han eliminado ${pendingLeads.length} leads pendientes.` });
+        // Limpiar localStorage de la tabla (columnas visibles, anchos, filtros)
+        try {
+          localStorage.removeItem('cc_visibleColumns');
+          localStorage.removeItem('cc_columnWidths');
+        } catch (e) {
+          console.error('Error clearing localStorage:', e);
+        }
+        
+        toast({ 
+          title: 'Bandeja Vaciada', 
+          description: `Se han eliminado ${pendingLeads.length} leads pendientes y se limpió el caché local.` 
+        });
         setIsPinDialogOpen(false);
 
     } catch (error) {
@@ -425,6 +439,9 @@ export default function CallCenterQueuePage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 min-w-0">
+              {/* Notificaciones */}
+              <NotificationsDropdown />
+              
               {/* Botones de caché */}
               <TooltipProvider>
                 <Tooltip>

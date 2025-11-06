@@ -18,6 +18,8 @@ import { db } from '@/lib/firebase/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { DateTimeFilter } from './date-time-filter';
+import { ProductFilter } from './product-filter';
 
 interface CleanLeadsTableProps {
   leads: Client[];
@@ -727,6 +729,56 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
           </DropdownMenu>
         </div>
 
+        {/* Active Filters Banner */}
+        {(() => {
+          const activeColumnFilters = Object.entries(columnFilters).filter(([_, vals]) => vals && vals.length > 0);
+          const activeDateFilters = Object.entries(dateFilters).filter(([_, range]) => range && (range.from || range.to));
+          const activeTimeFilters = Object.entries(timeFilters).filter(([_, range]) => range && (range.from || range.to));
+          const totalActiveFilters = activeColumnFilters.length + activeDateFilters.length + activeTimeFilters.length;
+
+          if (totalActiveFilters === 0) return null;
+
+          return (
+            <div className="flex items-center justify-between p-3 bg-primary/10 border border-primary/20 rounded-lg">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Filter className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">
+                  {totalActiveFilters} {totalActiveFilters === 1 ? 'filtro activo' : 'filtros activos'}
+                </span>
+                <div className="flex gap-1 flex-wrap">
+                  {activeColumnFilters.map(([key, vals]) => (
+                    <Badge key={key} variant="secondary" className="text-xs">
+                      {columnDefinitions.find(c => c.key === key)?.label || key}: {vals.length}
+                    </Badge>
+                  ))}
+                  {activeDateFilters.map(([key]) => (
+                    <Badge key={`date-${key}`} variant="secondary" className="text-xs">
+                      Fecha {columnDefinitions.find(c => c.key === key)?.label || key}
+                    </Badge>
+                  ))}
+                  {activeTimeFilters.map(([key]) => (
+                    <Badge key={`time-${key}`} variant="secondary" className="text-xs">
+                      Hora {columnDefinitions.find(c => c.key === key)?.label || key}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setColumnFilters({});
+                  setDateFilters({});
+                  setTimeFilters({});
+                }}
+                className="text-xs"
+              >
+                Limpiar todos
+              </Button>
+            </div>
+          );
+        })()}
+
         {/* Table with horizontal scroll contained */}
         {/* Top horizontal navigation: quick jump to column */}
         <div className="flex items-center gap-2 overflow-x-auto py-1">
@@ -753,8 +805,11 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                       <span>Estado</span>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                          <Button variant="ghost" size="icon" className={cn("h-6 w-6 p-0 relative", (columnFilters.estado || []).length > 0 && "text-primary")}>
                             <Filter className="h-3 w-3" />
+                            {(columnFilters.estado || []).length > 0 && (
+                              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+                            )}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
@@ -789,54 +844,24 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   <TableHead data-col="fechaCreacion" className="relative w-[80px] sm:w-[140px]" style={{ width: columnWidths['fechaCreacion'] ? `${columnWidths['fechaCreacion']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Fecha Creación</span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-                            <Filter className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={4} className="w-72 bg-popover shadow-md rounded-md border">
-                          <div className="p-3 space-y-2">
-                            <label className="text-xs">Desde (fecha/hora)</label>
-                            <input
-                              type="datetime-local"
-                              className="w-full p-2 border rounded text-sm"
-                              value={dateFilters.fechaCreacion?.from || ''}
-                              onChange={(e) => setDateFilter('fechaCreacion', e.target.value || undefined, dateFilters.fechaCreacion?.to)}
-                            />
-                            <label className="text-xs">Hasta (fecha/hora)</label>
-                            <input
-                              type="datetime-local"
-                              className="w-full p-2 border rounded text-sm"
-                              value={dateFilters.fechaCreacion?.to || ''}
-                              onChange={(e) => setDateFilter('fechaCreacion', dateFilters.fechaCreacion?.from, e.target.value || undefined)}
-                            />
-
-                            <div className="h-px bg-border my-2" />
-
-                            <label className="text-xs">Desde (hora del día)</label>
-                            <input
-                              type="time"
-                              className="w-full p-2 border rounded text-sm"
-                              value={timeFilters.fechaCreacion?.from || ''}
-                              onChange={(e) => setTimeFilter('fechaCreacion', e.target.value || undefined, timeFilters.fechaCreacion?.to)}
-                            />
-                            <label className="text-xs">Hasta (hora del día)</label>
-                            <input
-                              type="time"
-                              className="w-full p-2 border rounded text-sm"
-                              value={timeFilters.fechaCreacion?.to || ''}
-                              onChange={(e) => setTimeFilter('fechaCreacion', timeFilters.fechaCreacion?.from, e.target.value || undefined)}
-                            />
-                          </div>
-                          <DropdownMenuSeparator />
-                          <div className="flex items-center justify-between px-2 py-1">
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="ghost" onClick={() => { clearDateFilter('fechaCreacion'); clearTimeFilter('fechaCreacion'); }}>Limpiar</Button>
-                            </div>
-                          </div>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <DateTimeFilter
+                        columnKey="fechaCreacion"
+                        columnLabel="Fecha Creación"
+                        currentDateFilter={dateFilters.fechaCreacion}
+                        currentTimeFilter={timeFilters.fechaCreacion}
+                        onApply={(dateFilter?: { from?: string; to?: string }, timeFilter?: { from?: string; to?: string }) => {
+                          if (dateFilter) {
+                            setDateFilter('fechaCreacion', dateFilter.from, dateFilter.to);
+                          }
+                          if (timeFilter) {
+                            setTimeFilter('fechaCreacion', timeFilter.from, timeFilter.to);
+                          }
+                        }}
+                        onClear={() => {
+                          clearDateFilter('fechaCreacion');
+                          clearTimeFilter('fechaCreacion');
+                        }}
+                      />
                     </div>
                     <div className="col-resizer" onMouseDown={(e) => startResize(e, 'fechaCreacion')} />
                   </TableHead>
@@ -845,54 +870,24 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   <TableHead data-col="ultimaModif" className="relative w-[80px] sm:w-[140px]" style={{ width: columnWidths['ultimaModif'] ? `${columnWidths['ultimaModif']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Última Modificación</span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-                            <Filter className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={4} className="w-72 bg-popover shadow-md rounded-md border">
-                          <div className="p-3 space-y-2">
-                            <label className="text-xs">Desde (fecha/hora)</label>
-                            <input
-                              type="datetime-local"
-                              className="w-full p-2 border rounded text-sm"
-                              value={dateFilters.ultimaModif?.from || ''}
-                              onChange={(e) => setDateFilter('ultimaModif', e.target.value || undefined, dateFilters.ultimaModif?.to)}
-                            />
-                            <label className="text-xs">Hasta (fecha/hora)</label>
-                            <input
-                              type="datetime-local"
-                              className="w-full p-2 border rounded text-sm"
-                              value={dateFilters.ultimaModif?.to || ''}
-                              onChange={(e) => setDateFilter('ultimaModif', dateFilters.ultimaModif?.from, e.target.value || undefined)}
-                            />
-
-                            <div className="h-px bg-border my-2" />
-
-                            <label className="text-xs">Desde (hora del día)</label>
-                            <input
-                              type="time"
-                              className="w-full p-2 border rounded text-sm"
-                              value={timeFilters.ultimaModif?.from || ''}
-                              onChange={(e) => setTimeFilter('ultimaModif', e.target.value || undefined, timeFilters.ultimaModif?.to)}
-                            />
-                            <label className="text-xs">Hasta (hora del día)</label>
-                            <input
-                              type="time"
-                              className="w-full p-2 border rounded text-sm"
-                              value={timeFilters.ultimaModif?.to || ''}
-                              onChange={(e) => setTimeFilter('ultimaModif', timeFilters.ultimaModif?.from, e.target.value || undefined)}
-                            />
-                          </div>
-                          <DropdownMenuSeparator />
-                          <div className="flex items-center justify-between px-2 py-1">
-                            <div className="flex gap-2">
-                              <Button size="sm" variant="ghost" onClick={() => { clearDateFilter('ultimaModif'); clearTimeFilter('ultimaModif'); }}>Limpiar</Button>
-                            </div>
-                          </div>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <DateTimeFilter
+                        columnKey="ultimaModif"
+                        columnLabel="Última Modificación"
+                        currentDateFilter={dateFilters.ultimaModif}
+                        currentTimeFilter={timeFilters.ultimaModif}
+                        onApply={(dateFilter?: { from?: string; to?: string }, timeFilter?: { from?: string; to?: string }) => {
+                          if (dateFilter) {
+                            setDateFilter('ultimaModif', dateFilter.from, dateFilter.to);
+                          }
+                          if (timeFilter) {
+                            setTimeFilter('ultimaModif', timeFilter.from, timeFilter.to);
+                          }
+                        }}
+                        onClear={() => {
+                          clearDateFilter('ultimaModif');
+                          clearTimeFilter('ultimaModif');
+                        }}
+                      />
                     </div>
                     <div className="col-resizer" onMouseDown={(e) => startResize(e, 'ultimaModif')} />
                   </TableHead>
@@ -939,36 +934,17 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                   <TableHead data-col="producto" className="relative min-w-0 sm:min-w-[180px]" style={{ width: columnWidths['producto'] ? `${columnWidths['producto']}px` : undefined, minWidth: 2 }}>
                     <div className="flex items-center justify-between gap-2">
                       <span>Producto</span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
-                            <Filter className="h-3 w-3" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
-                          <div className="p-2 max-h-56 overflow-y-auto">
-                            {uniqueValuesMap.producto && uniqueValuesMap.producto.length > 0 ? (
-                              uniqueValuesMap.producto.map(val => (
-                                <label key={val} className="flex items-center gap-2 text-sm p-2 rounded hover:bg-muted/20 cursor-pointer">
-                                  <input
-                                    type="checkbox"
-                                    className="h-4 w-4"
-                                    checked={(columnFilters.producto || []).includes(val)}
-                                    onChange={() => toggleFilterValue('producto', val)}
-                                  />
-                                  <span className="truncate" title={val}>{val}</span>
-                                </label>
-                              ))
-                            ) : (
-                              <div className="text-xs text-muted-foreground">No hay valores</div>
-                            )}
-                          </div>
-                          <DropdownMenuSeparator />
-                          <div className="flex items-center justify-between px-2 py-1">
-                            <Button size="sm" variant="ghost" onClick={() => clearColumnFilter('producto')}>Limpiar</Button>
-                          </div>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      <ProductFilter
+                        products={uniqueValuesMap.producto || []}
+                        selectedProducts={columnFilters.producto || []}
+                        onApply={(selected: string[]) => {
+                          setColumnFilters(prev => ({
+                            ...prev,
+                            producto: selected
+                          }));
+                        }}
+                        onClear={() => clearColumnFilter('producto')}
+                      />
                     </div>
                     <div className="col-resizer" onMouseDown={(e) => startResize(e, 'producto')} />
                   </TableHead>
