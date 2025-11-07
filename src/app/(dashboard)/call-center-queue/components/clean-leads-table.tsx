@@ -699,12 +699,12 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
               <DropdownMenuLabel className="text-xs">Visibilidad de Columnas</DropdownMenuLabel>
               <DropdownMenuSeparator />
 
-              <DropdownMenuItem onClick={showAllColumns}>
+              <DropdownMenuItem onClick={showAllColumns} onSelect={(e) => e.preventDefault()}>
                 <Eye className="h-4 w-4 mr-2" />
                 Mostrar todas
               </DropdownMenuItem>
 
-              <DropdownMenuItem onClick={hideAllColumns}>
+              <DropdownMenuItem onClick={hideAllColumns} onSelect={(e) => e.preventDefault()}>
                 <EyeOff className="h-4 w-4 mr-2" />
                 Ocultar opcionales
               </DropdownMenuItem>
@@ -717,6 +717,7 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                     key={col.key}
                     checked={visibleColumns[col.key]}
                     onCheckedChange={() => col.essential ? null : toggleColumnVisibility(col.key)}
+                    onSelect={(e) => e.preventDefault()} // Evitar que se cierre al hacer clic
                     disabled={col.essential}
                     className={col.essential ? 'text-muted-foreground' : ''}
                   >
@@ -898,8 +899,11 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                       <span>Nombre del Lead</span>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                          <Button variant="ghost" size="icon" className={cn("h-6 w-6 p-0 relative", (columnFilters.nombreLead || []).length > 0 && "text-primary")}>
                             <Filter className="h-3 w-3" />
+                            {(columnFilters.nombreLead || []).length > 0 && (
+                              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+                            )}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
@@ -1033,8 +1037,11 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                       <span>Estatus del Lead</span>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                          <Button variant="ghost" size="icon" className={cn("h-6 w-6 p-0 relative", (columnFilters.estatusLead || []).length > 0 && "text-primary")}>
                             <Filter className="h-3 w-3" />
+                            {(columnFilters.estatusLead || []).length > 0 && (
+                              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+                            )}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">
@@ -1071,8 +1078,11 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
                       <span>Provincia</span>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-6 w-6 p-0">
+                          <Button variant="ghost" size="icon" className={cn("h-6 w-6 p-0 relative", (columnFilters.provincia || []).length > 0 && "text-primary")}>
                             <Filter className="h-3 w-3" />
+                            {(columnFilters.provincia || []).length > 0 && (
+                              <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+                            )}
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent sideOffset={4} className="w-56 bg-popover shadow-md rounded-md border">

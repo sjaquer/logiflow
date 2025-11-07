@@ -17,7 +17,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Phone, Search, CheckCircle, Trash2, Loader2, AlertTriangle, PhoneForwarded, MoreVertical, PhoneOff, ShoppingCart, Globe, Clock, User as UserIcon, Repeat, PhoneMissed, Frown, RefreshCw, Database } from 'lucide-react';
-import { ManagedQueueTable } from './components/managed-queue-table';
 import { CleanLeadsTable } from './components/clean-leads-table';
 import { NotificationsDropdown } from './components/notifications-dropdown';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -222,15 +221,6 @@ export default function CallCenterQueuePage() {
         return matchesSearch && matchesStatus && matchesShop;
     });
   }, [pendingLeads, searchQuery, statusFilter, shopFilter]);
-  
-  const filteredManagedLeads = useMemo(() => {
-     return managedLeads.filter(lead => {
-        const searchInput = searchQuery.toLowerCase();
-        // Validación defensiva: asegurar que nombres existe antes de toLowerCase
-        return (lead.nombres || '').toLowerCase().includes(searchInput) ||
-          (lead.assigned_agent_name && lead.assigned_agent_name.toLowerCase().includes(searchInput));
-     });
-  }, [managedLeads, searchQuery]);
 
   const handleProcessClient = useCallback(async (client: Client) => {
     if (!currentUser) {
@@ -513,15 +503,15 @@ export default function CallCenterQueuePage() {
   return (
     <div className="w-full max-w-[calc(100vw-20px)] mx-auto px-[10px] py-4 space-y-6 animate-in box-border overflow-x-hidden">
       {/* Header con gradiente vibrante */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 p-8 shadow-xl">
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/70 p-8 shadow-xl z-0">
         <div className="absolute inset-0 bg-grid-white/10" />
         <div className="relative z-10">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start gap-6">
-            <div className="flex items-start gap-4 min-w-0">
+            <div className="flex items-start gap-4 min-w-0 flex-1">
               <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0 shadow-lg">
                 <Phone className="h-7 w-7 text-foreground" />
               </div>
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <CardTitle className="text-3xl font-bold text-foreground">
                   Bandeja de Entrada de Llamadas
                 </CardTitle>
@@ -536,7 +526,7 @@ export default function CallCenterQueuePage() {
                 </CardDescription>
               </div>
             </div>
-            <div className="flex flex-wrap gap-2 min-w-0">
+            <div className="flex flex-wrap gap-2 shrink-0">
               {/* Botón de vaciar bandeja */}
               {currentUser?.rol !== 'Call Center' && (
                 <AlertDialog>
@@ -648,27 +638,6 @@ export default function CallCenterQueuePage() {
             </>
           )}
         </CardContent>
-      </Card>
-
-      <Card className="border-border/40 shadow-sm">
-        <CardHeader>
-            <div className="flex items-start gap-4">
-                <div className="h-12 w-12 rounded-xl bg-success/10 flex items-center justify-center shrink-0">
-                    <CheckCircle className="h-6 w-6 text-success" />
-                </div>
-                <div>
-                    <CardTitle className="text-2xl font-bold">
-                        Leads Gestionados Hoy
-                    </CardTitle>
-                    <CardDescription className="mt-1.5">
-                        Resumen de los leads que han sido confirmados como venta durante el día de hoy.
-                    </CardDescription>
-                </div>
-            </div>
-        </CardHeader>
-    <CardContent className="w-full min-w-0 max-w-[calc(100vw-20px)]">
-      <ManagedQueueTable leads={filteredManagedLeads} />
-    </CardContent>
       </Card>
 
         {/* PIN Dialog */}
