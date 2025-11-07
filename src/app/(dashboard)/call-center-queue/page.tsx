@@ -6,7 +6,7 @@ import type { Client, User, UserRole, CallStatus } from '@/lib/types';
 import { listenToCollection } from '@/lib/firebase/firestore-client';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/auth-context';
-import { doc, deleteDoc, updateDoc, writeBatch, getDoc, setDoc } from 'firebase/firestore';
+import { doc, deleteDoc, updateDoc, writeBatch, getDoc, setDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { formatDistanceToNow, isToday } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -170,11 +170,51 @@ export default function CallCenterQueuePage() {
 
   const filteredPendingLeads = useMemo(() => {
     return pendingLeads.filter(lead => {
-        const searchInput = searchQuery.toLowerCase();
-        // Validación defensiva: asegurar que nombres existe antes de toLowerCase
-        const matchesSearch = (lead.nombres || '').toLowerCase().includes(searchInput) ||
-          (lead.celular && lead.celular.includes(searchInput)) ||
-          (lead.assigned_agent_name && lead.assigned_agent_name.toLowerCase().includes(searchInput));
+        const searchInput = searchQuery.toLowerCase().trim();
+        
+        // Si no hay búsqueda, solo aplicar filtros de status y shop
+        if (!searchInput) {
+          const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
+          const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter || lead.store_name === shopFilter;
+          return matchesStatus && matchesShop;
+        }
+        
+        // BUSCADOR UNIVERSAL - Buscar en TODOS los campos posibles
+        const searchableFields = [
+          lead.nombres,
+          lead.apellidos,
+          lead.celular,
+          lead.email,
+          lead.dni,
+          lead.direccion,
+          lead.direccion_referencia,
+          lead.distrito,
+          lead.provincia,
+          lead.pais,
+          lead.assigned_agent_name,
+          lead.shopify_order_id,
+          lead.shopify_order_number,
+          lead.tienda_origen,
+          lead.store_name,
+          lead.call_status,
+          lead.notas_agente,
+          lead.notas_cliente,
+          lead.producto,
+          lead.financial_status,
+          lead.fulfillment_status,
+          // Buscar en items de Shopify
+          ...(lead.shopify_items || []).map(item => item.nombre),
+          ...(lead.shopify_items || []).map(item => item.sku),
+          ...(lead.shopify_items || []).map(item => item.variante),
+          // Buscar en tags
+          ...(lead.tags || []),
+          // Buscar en payment details si existen
+          lead.shopify_payment_details?.payment_gateway,
+        ].filter(Boolean); // Eliminar valores null/undefined
+        
+        const matchesSearch = searchableFields.some(field => 
+          String(field).toLowerCase().includes(searchInput)
+        );
 
         const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
         const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter || lead.store_name === shopFilter;
@@ -297,32 +337,90 @@ export default function CallCenterQueuePage() {
     setPinError('');
 
     try {
+        console.log('🗑️ Iniciando limpieza total del sistema...');
+        
+        // 1. Eliminar TODOS los documentos de shopify_leads
+        const shopifyLeadsSnapshot = await getDocs(collection(db, 'shopify_leads'));
+        const shopifyBatch = writeBatch(db);
+        let shopifyCount = 0;
+        
+        shopifyLeadsSnapshot.forEach((docSnap) => {
+            shopifyBatch.delete(docSnap.ref);
+            shopifyCount++;
+        });
+        
+        if (shopifyCount > 0) {
+            await shopifyBatch.commit();
+            console.log(`✅ Eliminados ${shopifyCount} documentos de shopify_leads`);
+        }
+
+        // 2. Eliminar leads pendientes de clients
         const batch = writeBatch(db);
+        let clientsCount = 0;
+        
         pendingLeads.forEach(lead => {
-            const collectionName = lead.source === 'shopify' ? 'shopify_leads' : 'clients';
-            const leadRef = doc(db, collectionName, lead.id);
+            if (lead.source === 'shopify') return; // Ya eliminados arriba
+            const leadRef = doc(db, 'clients', lead.id);
             batch.delete(leadRef);
+            clientsCount++;
         });
 
-        await batch.commit();
-        
-        // Limpiar caché y localStorage después de vaciar la bandeja
-        cacheManager.remove(CACHE_KEYS.CLIENTS);
-        cacheManager.remove(CACHE_KEYS.SHOPIFY_LEADS);
-        
-        // Limpiar localStorage de la tabla (columnas visibles, anchos, filtros)
+        if (clientsCount > 0) {
+            await batch.commit();
+            console.log(`✅ Eliminados ${clientsCount} documentos de clients`);
+        }
+
+        // 3. LIMPIAR TODO EL LOCALSTORAGE - Reset completo
+        console.log('🧹 Limpiando localStorage completamente...');
         try {
-          localStorage.removeItem('cc_visibleColumns');
-          localStorage.removeItem('cc_columnWidths');
+          // Limpiar cache manager (remover claves específicas)
+          cacheManager.remove(CACHE_KEYS.CLIENTS);
+          cacheManager.remove(CACHE_KEYS.SHOPIFY_LEADS);
+          
+          // Limpiar TODAS las claves relacionadas con call center
+          const keysToRemove = [
+            'cc_visibleColumns',
+            'cc_columnWidths',
+            'cc_filters',
+            'cc_searchQuery',
+            'cc_sortOrder',
+            'cc_statusFilter',
+            'cc_shopFilter',
+            'call_center_clients',
+            'call_center_shopify_leads',
+          ];
+          
+          keysToRemove.forEach(key => {
+            localStorage.removeItem(key);
+          });
+          
+          // Limpiar cualquier otra clave que empiece con cc_ o call_center_
+          Object.keys(localStorage).forEach(key => {
+            if (key.startsWith('cc_') || key.startsWith('call_center_')) {
+              localStorage.removeItem(key);
+            }
+          });
+          
+          console.log('✅ localStorage limpiado completamente');
         } catch (e) {
           console.error('Error clearing localStorage:', e);
         }
         
+        const totalDeleted = shopifyCount + clientsCount;
+        
         toast({ 
-          title: 'Bandeja Vaciada', 
-          description: `Se han eliminado ${pendingLeads.length} leads pendientes y se limpió el caché local.` 
+          title: '🎉 Sistema Reiniciado', 
+          description: `Se eliminaron ${totalDeleted} leads (${shopifyCount} de Shopify, ${clientsCount} de Clients). Sistema limpio y listo para empezar de cero.`,
+          duration: 5000,
         });
+        
         setIsPinDialogOpen(false);
+        
+        // Resetear filtros y búsqueda
+        setSearchQuery('');
+        setStatusFilter('TODOS');
+        setShopFilter('TODAS');
+        setSortOrder('newest');
 
     } catch (error) {
         console.error("Error clearing queue:", error);
@@ -439,46 +537,7 @@ export default function CallCenterQueuePage() {
               </div>
             </div>
             <div className="flex flex-wrap gap-2 min-w-0">
-              {/* Notificaciones */}
-              <NotificationsDropdown />
-              
-              {/* Botones de caché */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleShowCacheStats}
-                      className="h-10 bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20"
-                    >
-                      <Database className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Ver estadísticas de caché</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleClearCache}
-                      className="h-10 bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20"
-                    >
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Limpiar caché y recargar datos</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
+              {/* Botón de vaciar bandeja */}
               {currentUser?.rol !== 'Call Center' && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
@@ -515,7 +574,7 @@ export default function CallCenterQueuePage() {
             <div className="relative flex-grow min-w-0">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nombre, DNI o agente..."
+                placeholder="Buscar por cualquier dato: nombre, DNI, Order ID, dirección, producto..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9 h-11 border-border/60 focus-visible:ring-primary shadow-sm"
