@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Client } from '@/lib/types';
+import { Client, User } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Phone, Edit2, Save, X, CheckCircle, AlertCircle, Circle, Settings, Eye, EyeOff, Filter, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -24,12 +24,16 @@ import { ProductFilter } from './product-filter';
 interface CleanLeadsTableProps {
   leads: Client[];
   onProcessLead: (lead: Client) => void;
+  currentUser: User | null;
+  authUserId: string | null;
 }
 
-export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) {
+export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId }: CleanLeadsTableProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<Client>>({});
   const [dialogLead, setDialogLead] = useState<Client | null>(null);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+  
   const DEFAULT_VISIBLE_COLUMNS: { [key: string]: boolean } = {
     estado: true,
     fechaCreacion: false,
@@ -63,67 +67,173 @@ export function CleanLeadsTable({ leads, onProcessLead }: CleanLeadsTableProps) 
     // 'acciones' column removed: actions are provided via per-row overlay/menu
   };
 
-  const [visibleColumns, setVisibleColumns] = useState<{ [key: string]: boolean }>(() => {
-    try {
-      const raw = localStorage.getItem('cc_visibleColumns');
-      if (raw) return JSON.parse(raw);
-    } catch (e) {
-      // ignore
-    }
-    return DEFAULT_VISIBLE_COLUMNS;
-  });
+  const [visibleColumns, setVisibleColumns] = useState<{ [key: string]: boolean }>(DEFAULT_VISIBLE_COLUMNS);
+  const [columnWidths, setColumnWidths] = useState<Record<string, number>>({});
   
-  // If an older localStorage value includes the removed 'acciones' column,
-  // remove it so the table doesn't render an empty column space.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('cc_visibleColumns');
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && Object.prototype.hasOwnProperty.call(parsed, 'acciones')) {
-        delete parsed.acciones;
-        localStorage.setItem('cc_visibleColumns', JSON.stringify(parsed));
-        setVisibleColumns(parsed);
-      }
-    } catch (e) {
-      // ignore
-    }
-  }, []);
   const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // Cargar configuración desde Firestore al montar el componente
+  useEffect(() => {
+    const loadTableConfig = async () => {
+      if (!authUserId) {
+        // Si no hay usuario autenticado, cargar desde localStorage
+        try {
+          const rawColumns = localStorage.getItem('cc_visibleColumns');
+          const rawWidths = localStorage.getItem('cc_columnWidths');
+          
+          if (rawColumns) {
+            const parsed = JSON.parse(rawColumns);
+            // Eliminar columna 'acciones' si existe
+            if (parsed && Object.prototype.hasOwnProperty.call(parsed, 'acciones')) {
+              delete parsed.acciones;
+            }
+            setVisibleColumns(parsed);
+          }
+          
+          if (rawWidths) {
+            setColumnWidths(JSON.parse(rawWidths));
+          }
+        } catch (e) {
+          console.error('Error loading from localStorage:', e);
+        }
+        setIsLoadingConfig(false);
+        return;
+      }
+
+      try {
+        // Intentar cargar desde Firestore usando authUserId (Firebase Auth UID)
+        const configRef = doc(db, 'user_table_configs', authUserId);
+        const configSnap = await getDoc(configRef);
+        
+        if (configSnap.exists()) {
+          const data = configSnap.data();
+          
+          if (data.visibleColumns) {
+            // Eliminar columna 'acciones' si existe
+            if (Object.prototype.hasOwnProperty.call(data.visibleColumns, 'acciones')) {
+              delete data.visibleColumns.acciones;
+            }
+            setVisibleColumns(data.visibleColumns);
+          }
+          
+          if (data.columnWidths) {
+            setColumnWidths(data.columnWidths);
+          }
+          
+          // Guardar también en localStorage como backup
+          localStorage.setItem('cc_visibleColumns', JSON.stringify(data.visibleColumns || DEFAULT_VISIBLE_COLUMNS));
+          localStorage.setItem('cc_columnWidths', JSON.stringify(data.columnWidths || {}));
+        } else {
+          // Si no existe en Firestore, intentar cargar desde localStorage
+          const rawColumns = localStorage.getItem('cc_visibleColumns');
+          const rawWidths = localStorage.getItem('cc_columnWidths');
+          
+          if (rawColumns) {
+            const parsed = JSON.parse(rawColumns);
+            if (parsed && Object.prototype.hasOwnProperty.call(parsed, 'acciones')) {
+              delete parsed.acciones;
+            }
+            setVisibleColumns(parsed);
+          }
+          
+          if (rawWidths) {
+            setColumnWidths(JSON.parse(rawWidths));
+          }
+        }
+      } catch (e) {
+        console.error('Error loading table config from Firestore:', e);
+        // Fallback a localStorage
+        try {
+          const rawColumns = localStorage.getItem('cc_visibleColumns');
+          const rawWidths = localStorage.getItem('cc_columnWidths');
+          
+          if (rawColumns) {
+            const parsed = JSON.parse(rawColumns);
+            if (parsed && Object.prototype.hasOwnProperty.call(parsed, 'acciones')) {
+              delete parsed.acciones;
+            }
+            setVisibleColumns(parsed);
+          }
+          
+          if (rawWidths) {
+            setColumnWidths(JSON.parse(rawWidths));
+          }
+        } catch (localErr) {
+          console.error('Error loading from localStorage:', localErr);
+        }
+      } finally {
+        setIsLoadingConfig(false);
+      }
+    };
+
+    loadTableConfig();
+  }, [authUserId]);
+
   const visibleCount = Object.values(visibleColumns).filter(Boolean).length;
 
-  // Persist visibleColumns and columnWidths to localStorage when they change
+  // Guardar configuración en Firestore y localStorage cuando cambien
   useEffect(() => {
-    try {
-      localStorage.setItem('cc_visibleColumns', JSON.stringify(visibleColumns));
-    } catch (e) {
-      // ignore
-    }
-  }, [visibleColumns]);
+    if (isLoadingConfig) return; // No guardar durante la carga inicial
+    
+    const saveTableConfig = async () => {
+      // Siempre guardar en localStorage como backup
+      try {
+        localStorage.setItem('cc_visibleColumns', JSON.stringify(visibleColumns));
+      } catch (e) {
+        console.error('Error saving to localStorage:', e);
+      }
+
+      // Si hay usuario autenticado, guardar en Firestore usando authUserId
+      if (authUserId) {
+        try {
+          const configRef = doc(db, 'user_table_configs', authUserId);
+          await setDoc(configRef, {
+            visibleColumns,
+            columnWidths,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        } catch (e) {
+          console.error('Error saving table config to Firestore:', e);
+        }
+      }
+    };
+
+    saveTableConfig();
+  }, [visibleColumns, authUserId, isLoadingConfig, columnWidths]);
+
+  // Guardar anchos de columna
+  useEffect(() => {
+    if (isLoadingConfig) return;
+    
+    const saveColumnWidths = async () => {
+      // Guardar en localStorage
+      try {
+        localStorage.setItem('cc_columnWidths', JSON.stringify(columnWidths));
+      } catch (e) {
+        console.error('Error saving column widths to localStorage:', e);
+      }
+
+      // Si hay usuario autenticado, guardar en Firestore usando authUserId
+      if (authUserId) {
+        try {
+          const configRef = doc(db, 'user_table_configs', authUserId);
+          await setDoc(configRef, {
+            visibleColumns,
+            columnWidths,
+            updatedAt: new Date().toISOString(),
+          }, { merge: true });
+        } catch (e) {
+          console.error('Error saving column widths to Firestore:', e);
+        }
+      }
+    };
+
+    saveColumnWidths();
+  }, [columnWidths, authUserId, isLoadingConfig, visibleColumns]);
 
   // Column filters: multi-select values per column
   const [columnFilters, setColumnFilters] = useState<Record<string, string[]>>({});
-
-  // Column resizing state: widths in pixels and current resizing session
-  const [columnWidths, setColumnWidths] = useState<Record<string, number>>(() => {
-    try {
-      const raw = localStorage.getItem('cc_columnWidths');
-      if (raw) return JSON.parse(raw);
-    } catch (e) {
-      // ignore
-    }
-    return {};
-  });
-  // Persist column widths
-  useEffect(() => {
-    try {
-      localStorage.setItem('cc_columnWidths', JSON.stringify(columnWidths));
-    } catch (e) {
-      // ignore
-    }
-  }, [columnWidths]);
   const [resizing, setResizing] = useState<null | { colKey: string; startX: number; startWidth: number }>(null);
   // Date range filters for date/time columns (values as datetime-local strings)
   const [dateFilters, setDateFilters] = useState<Record<string, { from?: string; to?: string }>>({});

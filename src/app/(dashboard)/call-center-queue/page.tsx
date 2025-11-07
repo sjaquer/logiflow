@@ -633,6 +633,8 @@ export default function CallCenterQueuePage() {
                 <CleanLeadsTable 
                   leads={filteredPendingLeads} 
                   onProcessLead={handleProcessClient}
+                  currentUser={currentUser}
+                  authUserId={authUser?.uid || null}
                 />
               </div>
             </>
