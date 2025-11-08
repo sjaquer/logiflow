@@ -607,12 +607,35 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
     return leads.filter(lead => {
       // Apply multi-select column filters
       const columnPass = activeFilterKeys.every(colKey => {
-        const field = columnFieldMap[colKey];
-        if (!field) return true;
-        const leadVal = (lead as any)[field];
-        const normalized = leadVal === null || leadVal === undefined ? '—' : String(leadVal);
-        return columnFilters[colKey].includes(normalized);
-      });
+          // Special handling for producto: a lead can have a top-level `producto` field
+          // but also an array `shopify_items` with item names. Filters should match
+          // against either source.
+          if (colKey === 'producto') {
+            const allowed = columnFilters[colKey] || [];
+            const valuesForLead: string[] = [];
+
+            const p = (lead as any).producto;
+            if (p === null || p === undefined || p === '') valuesForLead.push('—');
+            else valuesForLead.push(String(p));
+
+            const items = (lead as any).shopify_items;
+            if (Array.isArray(items) && items.length > 0) {
+              items.forEach((it: any) => {
+                const name = it.nombre || it.name || it.title;
+                if (name) valuesForLead.push(String(name));
+              });
+            }
+
+            // If any of the allowed filter values matches any of the lead values, this column passes
+            return allowed.some(a => valuesForLead.includes(a));
+          }
+
+          const field = columnFieldMap[colKey];
+          if (!field) return true;
+          const leadVal = (lead as any)[field];
+          const normalized = leadVal === null || leadVal === undefined ? '—' : String(leadVal);
+          return columnFilters[colKey].includes(normalized);
+        });
       if (!columnPass) return false;
 
       // Apply date range filters (if present)
