@@ -24,7 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { SHOPS, CALL_STATUS_BADGE_MAP } from '@/lib/constants';
-import { cn } from '@/lib/utils';
+import { cn, normalizeShopName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -33,7 +33,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
-const STATUS_FILTERS: CallStatus[] = ['NUEVO', 'CONTACTADO', 'INTENTO_1', 'INTENTO_2', 'INTENTO_3', 'INTENTO_4', 'NO_CONTESTA', 'EN_SEGUIMIENTO', 'NUMERO_EQUIVOCADO', 'LEAD_NO_CONTACTABLE', 'LEAD_PERDIDO'];
+const STATUS_FILTERS: CallStatus[] = ['NUEVO', 'CONTACTADO', 'INTENTO_1', 'INTENTO_2', 'INTENTO_3', 'INTENTO_4', 'NO_CONTESTA', 'VISTO', 'NUMERO_EQUIVOCADO', 'LEAD_NO_CONTACTABLE', 'LEAD_PERDIDO'];
 const PIN_CODE = '901230';
 type SortOrder = 'newest' | 'oldest';
 
@@ -174,7 +174,7 @@ export default function CallCenterQueuePage() {
         // Si no hay búsqueda, solo aplicar filtros de status y shop
         if (!searchInput) {
           const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
-          const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter || lead.store_name === shopFilter;
+          const matchesShop = shopFilter === 'TODAS' || normalizeShopName(lead.tienda_origen) === shopFilter || normalizeShopName(lead.store_name) === shopFilter;
           return matchesStatus && matchesShop;
         }
         
@@ -215,8 +215,8 @@ export default function CallCenterQueuePage() {
           String(field).toLowerCase().includes(searchInput)
         );
 
-        const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
-        const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter || lead.store_name === shopFilter;
+  const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
+  const matchesShop = shopFilter === 'TODAS' || normalizeShopName(lead.tienda_origen) === shopFilter || normalizeShopName(lead.store_name) === shopFilter;
         
         return matchesSearch && matchesStatus && matchesShop;
     });

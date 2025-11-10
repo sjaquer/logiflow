@@ -33,7 +33,7 @@ export const CALL_STATUS_BADGE_MAP: Record<CallStatus, 'default' | 'success' | '
     CONTACTADO: 'default',
     NO_CONTESTA: 'secondary',
     NUMERO_EQUIVOCADO: 'destructive',
-    EN_SEGUIMIENTO: 'outline',
+  VISTO: 'outline',
     VENTA_CONFIRMADA: 'success',
     HIBERNACION: 'secondary',
     INTENTO_1: 'default',

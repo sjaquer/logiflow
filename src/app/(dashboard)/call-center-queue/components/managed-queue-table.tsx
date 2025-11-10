@@ -7,6 +7,7 @@ import type { Client } from '@/lib/types';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ShoppingCart, Globe } from 'lucide-react';
+import { normalizeShopName } from '@/lib/utils';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 interface ManagedQueueTableProps {
@@ -38,17 +39,17 @@ export function ManagedQueueTable({ leads }: ManagedQueueTableProps) {
                 </CardHeader>
                 <CardContent className="text-sm space-y-2">
                      <div className="flex items-center gap-2">
-                         {lead.tienda_origen ? (
-                              <div className="flex items-center gap-2">
-                                  <ShoppingCart className="h-4 w-4 text-primary" />
-                                  <span className="font-medium capitalize">{lead.tienda_origen}</span>
-                              </div>
-                          ) : (
-                              <div className="flex items-center gap-2 text-muted-foreground">
-                                <Globe className="h-4 w-4" />
-                                <span className="capitalize">{lead.source}</span>
-                              </div>
-                          )}
+             {lead.tienda_origen ? (
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 text-primary" />
+                  <span className="font-medium capitalize">{normalizeShopName(lead.tienda_origen)}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                <Globe className="h-4 w-4" />
+                <span className="capitalize">{normalizeShopName(lead.source)}</span>
+                </div>
+              )}
                     </div>
                      {lead.assigned_agent_name && (
                          <div className="flex items-center gap-2">

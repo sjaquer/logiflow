@@ -5,7 +5,7 @@ import { createShopifyLead, processShopifyItems, extractPaymentDetails } from '@
 import type { Shop } from '@/lib/types';
 
 export async function POST(request: Request) {
-    const storeName: Shop = 'NoviPeru';
+    const storeName: Shop = 'Novi';
     
     console.log(`[${storeName}] Webhook received`);
 

@@ -160,7 +160,7 @@ export type CallStatus =
   | 'CONTACTADO' 
   | 'NO_CONTESTA' 
   | 'NUMERO_EQUIVOCADO' 
-  | 'EN_SEGUIMIENTO' 
+  | 'VISTO' 
   | 'VENTA_CONFIRMADA' 
   | 'HIBERNACION'
   | 'INTENTO_1'

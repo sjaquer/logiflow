@@ -10,6 +10,7 @@ import { collection, query, where, onSnapshot, orderBy, limit, Timestamp } from 
 import { db } from '@/lib/firebase/firebase';
 import type { Client } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
+import { normalizeShopName } from '@/lib/utils';
 
 interface Notification {
   id: string;
@@ -83,7 +84,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             id: `${lead.id}-${Date.now()}`,
             type: 'new_lead',
             title: '🔔 Nuevo Lead',
-            message: `${lead.nombres || 'Cliente'} - ${lead.tienda_origen || lead.store_name || 'Tienda'}`,
+            message: `${lead.nombres || 'Cliente'} - ${normalizeShopName(lead.tienda_origen) || normalizeShopName(lead.store_name) || 'Tienda'}`,
             leadId: lead.id,
             leadName: lead.nombres || 'Sin nombre',
             timestamp: new Date(),
@@ -97,7 +98,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
           if (newLeads.indexOf(lead) === 0) {
             toast({
               title: '🔔 Nuevo Lead Recibido',
-              description: `${lead.nombres || 'Cliente'} desde ${lead.tienda_origen || lead.store_name}`,
+              description: `${lead.nombres || 'Cliente'} desde ${normalizeShopName(lead.tienda_origen) || normalizeShopName(lead.store_name)}`,
               duration: 5000,
             });
           }

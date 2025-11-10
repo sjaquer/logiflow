@@ -20,8 +20,7 @@ interface ShopifyStoreConfig {
 const STORE_ENV_MAP = {
   'Novi': 'NOVI',
   'Dearel': 'DEAREL', 
-  'Blumi Perú': 'BLUMI',
-  'NoviPeru': 'NOVIPERU',
+  'Blumi': 'BLUMI',
   'Cumbre': 'CUMBRE',
   'Trazto': 'TRAZTO'
 } as const;
@@ -64,7 +63,7 @@ export function getShopifyStoreConfig(storeName: Shop): ShopifyStoreConfig | nul
 export function getAllShopifyStores(): ShopifyStoreConfig[] {
   const stores: ShopifyStoreConfig[] = [];
   
-  const storeNames: Shop[] = ['Novi', 'Dearel', 'Blumi Perú', 'NoviPeru', 'Cumbre', 'Trazto'];
+  const storeNames: Shop[] = ['Novi', 'Dearel', 'Blumi', 'Cumbre', 'Trazto'];
   
   for (const storeName of storeNames) {
     const config = getShopifyStoreConfig(storeName);

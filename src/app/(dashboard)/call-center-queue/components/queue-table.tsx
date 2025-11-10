@@ -21,7 +21,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { SHOPS, CALL_STATUS_BADGE_MAP } from '@/lib/constants';
-import { cn } from '@/lib/utils';
+import { cn, normalizeShopName } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -30,7 +30,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 
 const ALLOWED_ROLES: UserRole[] = ['Call Center', 'Admin', 'Desarrolladores'];
 
-const STATUS_FILTERS: CallStatus[] = ['NUEVO', 'CONTACTADO', 'INTENTO_1', 'INTENTO_2', 'INTENTO_3', 'INTENTO_4', 'NO_CONTESTA', 'EN_SEGUIMIENTO', 'NUMERO_EQUIVOCADO', 'LEAD_NO_CONTACTABLE', 'LEAD_PERDIDO'];
+const STATUS_FILTERS: CallStatus[] = ['NUEVO', 'CONTACTADO', 'INTENTO_1', 'INTENTO_2', 'INTENTO_3', 'INTENTO_4', 'NO_CONTESTA', 'VISTO', 'NUMERO_EQUIVOCADO', 'LEAD_NO_CONTACTABLE', 'LEAD_PERDIDO'];
 const PIN_CODE = '901230';
 type SortOrder = 'newest' | 'oldest';
 
@@ -123,8 +123,8 @@ export default function CallCenterQueuePage() {
           (lead.celular && lead.celular.includes(searchInput)) ||
           (lead.assigned_agent_name && lead.assigned_agent_name.toLowerCase().includes(searchInput));
 
-        const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
-        const matchesShop = shopFilter === 'TODAS' || lead.tienda_origen === shopFilter;
+    const matchesStatus = statusFilter === 'TODOS' || lead.call_status === statusFilter;
+    const matchesShop = shopFilter === 'TODAS' || normalizeShopName(lead.tienda_origen) === shopFilter || normalizeShopName(lead.source) === shopFilter;
         
         return matchesSearch && matchesStatus && matchesShop;
     });
@@ -426,16 +426,16 @@ export default function CallCenterQueuePage() {
                           <CardContent className="p-4 flex-grow space-y-3 text-sm">
                               <div className="flex items-center gap-2 text-muted-foreground">
                                   {lead.tienda_origen ? (
-                                      <>
-                                          <ShoppingCart className="h-4 w-4 text-primary" />
-                                          <span className="font-medium capitalize text-foreground">{lead.tienda_origen}</span>
-                                      </>
-                                  ) : (
-                                      <>
-                                          <Globe className="h-4 w-4" />
-                                          <span className="capitalize">{lead.source}</span>
-                                      </>
-                                  )}
+                                          <>
+                                              <ShoppingCart className="h-4 w-4 text-primary" />
+                                              <span className="font-medium capitalize text-foreground">{normalizeShopName(lead.tienda_origen)}</span>
+                                          </>
+                                      ) : (
+                                          <>
+                                              <Globe className="h-4 w-4" />
+                                              <span className="capitalize">{normalizeShopName(lead.source)}</span>
+                                          </>
+                                      )}
                               </div>
                                <div className="flex items-center gap-2 text-muted-foreground">
                                   <Clock className="h-4 w-4" />

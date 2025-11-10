@@ -1458,7 +1458,7 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
                           {(() => {
                             const tienda = (lead as any).tienda_origen;
                             const source = (lead as any).source;
-                            const display = tienda || source || '—';
+                            const display = normalizeShopName(tienda) || normalizeShopName(source) || '—';
                             const title = `${tienda || '—'}${source ? ' · ' + source : ''}`;
                             return (
                               <div className="truncate text-sm" title={title}>
@@ -1529,7 +1529,7 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
                                 {/* Friendly options mapped to internal CallStatus values */}
                                 <SelectItem value="NUEVO">Nuevo</SelectItem>
                                 <SelectItem value="CONTACTADO">Contactado</SelectItem>
-                                <SelectItem value="EN_SEGUIMIENTO">Visto</SelectItem>
+                                <SelectItem value="VISTO">Visto</SelectItem>
                                 <SelectItem value="VENTA_CONFIRMADA">Confirmado</SelectItem>
                                 <SelectItem value="NO_CONTESTA">No contesta</SelectItem>
                                 <SelectItem value="LEAD_PERDIDO">Perdido</SelectItem>
@@ -1847,7 +1847,7 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
                 <SelectContent>
                   <SelectItem value="NUEVO">Nuevo</SelectItem>
                   <SelectItem value="CONTACTADO">Contactado</SelectItem>
-                  <SelectItem value="EN_SEGUIMIENTO">Visto</SelectItem>
+                                <SelectItem value="VISTO">Visto</SelectItem>
                   <SelectItem value="VENTA_CONFIRMADA">Confirmado</SelectItem>
                   <SelectItem value="NO_CONTESTA">No contesta</SelectItem>
                   <SelectItem value="LEAD_PERDIDO">Perdido</SelectItem>
