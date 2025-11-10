@@ -7,7 +7,7 @@ export type PaymentStatus = 'PENDIENTE' | 'PAGADO';
 export type PaymentMethod = 'CONTRAENTREGA' | 'YAPE' | 'PLIN' | 'TRANSFERENCIA' | 'Tarjeta de Crédito' | 'Efectivo' | 'Transferencia Bancaria' | 'Desconocido';
 export type ShippingType = 'LIMA' | 'PROVINCIA';
 export type Courier = 'URBANO' | 'SHALOM' | 'OLVA' | 'INTERNO';
-export type Shop = 'Novi' | 'Dearel' | 'Blumi Perú' | 'NoviPeru' | 'Cumbre' | 'Trazto';
+export type Shop = 'Novi' | 'Dearel' | 'Blumi' | 'Cumbre' | 'Trazto';
 export type OrderItemStatus = 'CONFIRMADO' | 'SIN_STOCK' | 'BACKORDER' | 'PENDIENTE';
 
 

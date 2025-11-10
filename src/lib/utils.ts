@@ -55,3 +55,24 @@ export function calculateLeadProgress(lead: Client): number {
   const progress = (completedFields / totalFields) * 100;
   return Math.round(progress);
 }
+
+/**
+ * Normalize a shop/store name to a canonical short form used in the UI.
+ * Examples: "Blumi Perú" -> "Blumi", "Blumi PerÃº" -> "Blumi", "blumi" -> "Blumi"
+ */
+export function normalizeShopName(raw?: string | null): string {
+  if (!raw) return '';
+  const trimmed = String(raw).trim();
+  if (!trimmed) return '';
+  // remove diacritics
+  const cleaned = trimmed.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase();
+
+  if (cleaned.includes('blumi')) return 'Blumi';
+  if (cleaned.includes('novi')) return 'Novi';
+  if (cleaned.includes('dearel')) return 'Dearel';
+  if (cleaned.includes('cumbre')) return 'Cumbre';
+  if (cleaned.includes('trazto')) return 'Trazto';
+
+  // fallback: capitalize first letter
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+}

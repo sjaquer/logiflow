@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Phone, Edit2, Save, X, CheckCircle, AlertCircle, Circle, Settings, Eye, EyeOff, Filter, MoreVertical } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuCheckboxItem, DropdownMenuSeparator, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+import { cn, normalizeShopName } from '@/lib/utils';
 import { doc, updateDoc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -300,7 +300,8 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
       dni: lead.dni,
       email: lead.email,
       producto: lead.producto,
-      notas_agente: lead.notas_agente
+      notas_agente: lead.notas_agente,
+      call_status: lead.call_status
     });
   };
 
@@ -313,11 +314,13 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
     try {
       const collectionName = lead.source === 'shopify' ? 'shopify_leads' : 'clients';
       const leadRef = doc(db, collectionName, lead.id);
-      
-      await updateDoc(leadRef, {
-        ...editForm,
-        last_updated: new Date().toISOString()
+      // Sanitize update data: remove undefined values because Firestore rejects them
+      const updateData: any = { ...editForm, last_updated: new Date().toISOString() };
+      Object.keys(updateData).forEach((k) => {
+        if (updateData[k] === undefined) delete updateData[k];
       });
+
+      await updateDoc(leadRef, updateData);
 
       toast({
         title: 'Lead Actualizado',
@@ -342,11 +345,13 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
     try {
       const collectionName = dialogLead.source === 'shopify' ? 'shopify_leads' : 'clients';
       const leadRef = doc(db, collectionName, dialogLead.id);
-      
-      await updateDoc(leadRef, {
-        ...editForm,
-        last_updated: new Date().toISOString()
+      // Sanitize update data before sending to Firestore
+      const updateData: any = { ...editForm, last_updated: new Date().toISOString() };
+      Object.keys(updateData).forEach((k) => {
+        if (updateData[k] === undefined) delete updateData[k];
       });
+
+      await updateDoc(leadRef, updateData);
 
       toast({
         title: 'Lead Actualizado',
@@ -376,7 +381,8 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
       dni: lead.dni,
       email: lead.email,
       producto: lead.producto,
-      notas_agente: lead.notas_agente
+      notas_agente: lead.notas_agente,
+      call_status: lead.call_status
     });
   };
 
@@ -478,8 +484,8 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
           if ((t === null || t === undefined || t === '') && (s === null || s === undefined || s === '')) {
             values.add('—');
           } else {
-            if (t) values.add(String(t));
-            if (s) values.add(String(s));
+            if (t) values.add(normalizeShopName(String(t)) || String(t));
+            if (s) values.add(normalizeShopName(String(s)) || String(s));
           }
         });
         map[col.key] = Array.from(values).slice(0, 200);
@@ -1514,17 +1520,39 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
 
                       {visibleColumns.estatusLead && (
                         <TableCell>
-                          <Badge 
-                            variant={
-                              lead.call_status === 'VENTA_CONFIRMADA' ? 'default' :
-                              lead.call_status === 'NUEVO' ? 'secondary' :
-                              lead.call_status?.includes('INTENTO') ? 'outline' :
-                              'destructive'
-                            }
-                            className="text-xs whitespace-nowrap"
-                          >
-                            {lead.call_status?.replace(/_/g, ' ') || 'NUEVO'}
-                          </Badge>
+                          {isEditing ? (
+                            <Select value={String(editForm.call_status || '')} onValueChange={(val) => setEditForm({ ...editForm, call_status: val as any })}>
+                              <SelectTrigger className="h-8 w-40 text-sm">
+                                <SelectValue placeholder={lead.call_status?.replace(/_/g, ' ') || 'NUEVO'} />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {/* Friendly options mapped to internal CallStatus values */}
+                                <SelectItem value="NUEVO">Nuevo</SelectItem>
+                                <SelectItem value="CONTACTADO">Contactado</SelectItem>
+                                <SelectItem value="EN_SEGUIMIENTO">Visto</SelectItem>
+                                <SelectItem value="VENTA_CONFIRMADA">Confirmado</SelectItem>
+                                <SelectItem value="NO_CONTESTA">No contesta</SelectItem>
+                                <SelectItem value="LEAD_PERDIDO">Perdido</SelectItem>
+                                <SelectItem value="HIBERNACION">Hibernación</SelectItem>
+                                <SelectItem value="INTENTO_1">Intento 1</SelectItem>
+                                <SelectItem value="INTENTO_2">Intento 2</SelectItem>
+                                <SelectItem value="INTENTO_3">Intento 3</SelectItem>
+                                <SelectItem value="INTENTO_4">Intento 4</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          ) : (
+                            <Badge 
+                              variant={
+                                lead.call_status === 'VENTA_CONFIRMADA' ? 'default' :
+                                lead.call_status === 'NUEVO' ? 'secondary' :
+                                lead.call_status?.includes('INTENTO') ? 'outline' :
+                                'destructive'
+                              }
+                              className="text-xs whitespace-nowrap"
+                            >
+                              {lead.call_status?.replace(/_/g, ' ') || 'NUEVO'}
+                            </Badge>
+                          )}
                         </TableCell>
                       )}
 
@@ -1638,11 +1666,12 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
                         <TableCell className="text-center">
                           <div className="truncate">
                             {isEditing ? (
-                              <Input
+                              <Textarea
                                 value={editForm.notas_agente || ''}
                                 onChange={(e) => setEditForm({ ...editForm, notas_agente: e.target.value })}
-                                className="h-8 w-full"
+                                className="w-full"
                                 placeholder="Comentario..."
+                                rows={2}
                               />
                               ) : (
                               <span
@@ -1807,6 +1836,28 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
                 onChange={(e) => setEditForm({ ...editForm, producto: e.target.value })}
                 placeholder="Ej: Colchón Queen Size"
               />
+            </div>
+
+            <div className="space-y-2 w-full">
+              <Label htmlFor="dialog-call-status">Estado del Lead</Label>
+              <Select value={String(editForm.call_status || '')} onValueChange={(val) => setEditForm({ ...editForm, call_status: val as any })}>
+                <SelectTrigger id="dialog-call-status" className="h-8 w-full text-sm">
+                  <SelectValue placeholder={String(editForm.call_status?.replace(/_/g, ' ') || 'NUEVO')} />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="NUEVO">Nuevo</SelectItem>
+                  <SelectItem value="CONTACTADO">Contactado</SelectItem>
+                  <SelectItem value="EN_SEGUIMIENTO">Visto</SelectItem>
+                  <SelectItem value="VENTA_CONFIRMADA">Confirmado</SelectItem>
+                  <SelectItem value="NO_CONTESTA">No contesta</SelectItem>
+                  <SelectItem value="LEAD_PERDIDO">Perdido</SelectItem>
+                  <SelectItem value="HIBERNACION">Hibernación</SelectItem>
+                  <SelectItem value="INTENTO_1">Intento 1</SelectItem>
+                  <SelectItem value="INTENTO_2">Intento 2</SelectItem>
+                  <SelectItem value="INTENTO_3">Intento 3</SelectItem>
+                  <SelectItem value="INTENTO_4">Intento 4</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="space-y-2 col-span-2">
