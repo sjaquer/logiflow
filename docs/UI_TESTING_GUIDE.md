@@ -5,10 +5,10 @@
 ### 1. Pruebas de Login ✨
 
 #### Desktop
-- [ ] Abrir https://dataweave-bi.vercel.app/login
+- [ ] Abrir https://{your-app-domain}/login
 - [ ] Verificar que el gradiente de fondo se vea correctamente
 - [ ] Verificar que el logo esté dentro de un círculo azul
-- [ ] Ingresar credenciales: `sjaquer@outlook.es` / `A901230b`
+- [ ] Ingresar credenciales de prueba (usar usuario de desarrollo o `.env.local` configurado)
 - [ ] Verificar que el botón muestre spinner durante carga
 - [ ] Verificar que aparezca toast de "¡Bienvenido!" al login exitoso
 - [ ] Verificar redirección a `/call-center-queue`

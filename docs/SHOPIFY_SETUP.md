@@ -60,37 +60,37 @@ Para **cada tienda**, añade estas 4 variables al archivo `.env` (o `.env.local`
 ```bash
 # === TIENDA: NOVI ===
 SHOPIFY_NOVI_SHOP_DOMAIN=novi.myshopify.com
-SHOPIFY_NOVI_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SHOPIFY_NOVI_ACCESS_TOKEN=REPLACE_WITH_SHOPIFY_ACCESS_TOKEN
 SHOPIFY_NOVI_WEBHOOK_SECRET=                # Se genera al crear el webhook (Paso 3)
 SHOPIFY_NOVI_API_VERSION=2024-10
 
 # === TIENDA: DEAREL ===
 SHOPIFY_DEAREL_SHOP_DOMAIN=dearel.myshopify.com
-SHOPIFY_DEAREL_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SHOPIFY_DEAREL_ACCESS_TOKEN=REPLACE_WITH_SHOPIFY_ACCESS_TOKEN
 SHOPIFY_DEAREL_WEBHOOK_SECRET=              # Se genera al crear el webhook (Paso 3)
 SHOPIFY_DEAREL_API_VERSION=2024-10
 
 # === TIENDA: BLUMI PERÚ ===
 SHOPIFY_BLUMI_SHOP_DOMAIN=blumi-peru.myshopify.com
-SHOPIFY_BLUMI_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SHOPIFY_BLUMI_ACCESS_TOKEN=REPLACE_WITH_SHOPIFY_ACCESS_TOKEN
 SHOPIFY_BLUMI_WEBHOOK_SECRET=               # Se genera al crear el webhook (Paso 3)
 SHOPIFY_BLUMI_API_VERSION=2024-10
 
 # === TIENDA: NOVIPERU ===
 SHOPIFY_NOVIPERU_SHOP_DOMAIN=noviperu.myshopify.com
-SHOPIFY_NOVIPERU_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SHOPIFY_NOVIPERU_ACCESS_TOKEN=REPLACE_WITH_SHOPIFY_ACCESS_TOKEN
 SHOPIFY_NOVIPERU_WEBHOOK_SECRET=            # Se genera al crear el webhook (Paso 3)
 SHOPIFY_NOVIPERU_API_VERSION=2024-10
 
 # === TIENDA: CUMBRE ===
 SHOPIFY_CUMBRE_SHOP_DOMAIN=cumbre.myshopify.com
-SHOPIFY_CUMBRE_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SHOPIFY_CUMBRE_ACCESS_TOKEN=REPLACE_WITH_SHOPIFY_ACCESS_TOKEN
 SHOPIFY_CUMBRE_WEBHOOK_SECRET=              # Se genera al crear el webhook (Paso 3)
 SHOPIFY_CUMBRE_API_VERSION=2024-10
 
 # === TIENDA: TRAZTO ===
 SHOPIFY_TRAZTO_SHOP_DOMAIN=trazto.myshopify.com
-SHOPIFY_TRAZTO_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SHOPIFY_TRAZTO_ACCESS_TOKEN=REPLACE_WITH_SHOPIFY_ACCESS_TOKEN
 SHOPIFY_TRAZTO_WEBHOOK_SECRET=              # Se genera al crear el webhook (Paso 3)
 SHOPIFY_TRAZTO_API_VERSION=2024-10
 ```

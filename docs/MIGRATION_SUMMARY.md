@@ -38,8 +38,10 @@
 | **Trazto** | `/api/webhooks/shopify/trazto` | ⏳ Pendiente configurar |
 
 ### URL Base en Producción
+> Nota: Reemplaza esta URL por tu dominio de producción o por el dominio que uses en deployment. No incluyas URLs reales en documentación pública.
+
 ```
-https://dataweave-bi.vercel.app/api/webhooks/shopify/{tienda}
+https://{your-webhook-base-url}/api/webhooks/shopify/{tienda}
 ```
 
 ## 🔐 Seguridad Mejorada
@@ -76,7 +78,7 @@ Donde `{TIENDA}` puede ser: `NOVI`, `DEAREL`, `BLUMI`, `NOVIPERU`, `CUMBRE`, `TR
 ## 🚀 Próximos Pasos
 
 1. **Actualizar URLs de Webhooks en Shopify Admin**
-   - Ya tienes Dearel configurado: `https://dataweave-bi.vercel.app/api/webhooks/shopify/dearel` ✅
+      - Ejemplo (no real): `https://{your-webhook-base-url}/api/webhooks/shopify/dearel` ✅
    - Replicar para las otras 5 tiendas
 
 2. **Configurar Variables de Entorno**
@@ -97,14 +99,14 @@ Donde `{TIENDA}` puede ser: `NOVI`, `DEAREL`, `BLUMI`, `NOVIPERU`, `CUMBRE`, `TR
 ### Webhooks Antiguos Dejarán de Funcionar
 Si tienes webhooks configurados con URLs como:
 ```
-https://dataweave-bi.vercel.app/api/data-ingestion?apiKey=xxxxx
+https://{your-webhook-base-url}/api/data-ingestion?apiKey=REPLACE_ME
 ```
 
 **Estos ya NO funcionarán** porque el endpoint fue eliminado.
 
 **Solución:** Actualizar cada webhook a:
 ```
-https://dataweave-bi.vercel.app/api/webhooks/shopify/{tienda}
+https://{your-webhook-base-url}/api/webhooks/shopify/{tienda}
 ```
 
 ## 📚 Documentación Disponible

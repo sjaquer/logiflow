@@ -47,12 +47,12 @@ Edita tu archivo `.env` y añade las credenciales de cada tienda:
 ```bash
 # Copia esto y completa con tus valores reales
 SHOPIFY_NOVI_SHOP_DOMAIN=novi.myshopify.com
-SHOPIFY_NOVI_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SHOPIFY_NOVI_ACCESS_TOKEN=REPLACE_WITH_SHOPIFY_ACCESS_TOKEN
 SHOPIFY_NOVI_WEBHOOK_SECRET=
 SHOPIFY_NOVI_API_VERSION=2024-10
 
 SHOPIFY_DEAREL_SHOP_DOMAIN=dearel.myshopify.com
-SHOPIFY_DEAREL_ACCESS_TOKEN=shpat_xxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+SHOPIFY_DEAREL_ACCESS_TOKEN=REPLACE_WITH_SHOPIFY_ACCESS_TOKEN
 SHOPIFY_DEAREL_WEBHOOK_SECRET=
 SHOPIFY_DEAREL_API_VERSION=2024-10
 
@@ -75,10 +75,10 @@ Para **cada tienda**, crea estos 4 webhooks:
 
 | Event | URL (Production) |
 |-------|------------------|
-| `orders/create` | `https://api.logiflow.com/api/webhooks/shopify/{tienda}` |
-| `orders/updated` | `https://api.logiflow.com/api/webhooks/shopify/{tienda}` |
-| `orders/paid` | `https://api.logiflow.com/api/webhooks/shopify/{tienda}` |
-| `fulfillments/create` | `https://api.logiflow.com/api/webhooks/shopify/{tienda}` |
+| `orders/create` | `https://{your-webhook-base-url}/api/webhooks/shopify/{tienda}` |
+| `orders/updated` | `https://{your-webhook-base-url}/api/webhooks/shopify/{tienda}` |
+| `orders/paid` | `https://{your-webhook-base-url}/api/webhooks/shopify/{tienda}` |
+| `fulfillments/create` | `https://{your-webhook-base-url}/api/webhooks/shopify/{tienda}` |
 
 **Nota**: Reemplaza `{tienda}` con: `novi`, `dearel`, `blumi`, `noviperu`, `cumbre`, `trazto`
 

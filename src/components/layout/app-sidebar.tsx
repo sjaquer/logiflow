@@ -23,6 +23,7 @@ import {
   Settings,
   Code,
   Package,
+  Microscope,
 } from 'lucide-react';
 import type { User } from '@/lib/types';
 import { SettingsPanel } from '@/components/layout/settings-panel';
@@ -49,6 +50,7 @@ const menuItems: MenuItem[] = [
   { href: '/create-order', label: 'Procesar Pedido', icon: PackagePlus, permissionKey: 'procesar_pedido' },
   { href: '/orders', label: 'Órdenes', icon: Package, permissionKey: 'procesar_pedido' },
   { href: '/inventory', label: 'Inventario', icon: Box, permissionKey: 'inventario' },
+  { href: '/kommo-test', label: 'Pruebas Kommo', icon: Microscope, permissionKey: 'staff' },
 ];
 
 export function AppSidebar({ currentUser }: AppSidebarProps) {

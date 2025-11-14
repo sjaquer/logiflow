@@ -194,45 +194,22 @@ npm install
 
 ### 3. Configurar Variables de Entorno
 
-Crea un archivo `.env.local` en la raíz del proyecto basándote en `.env.example`:
+Las credenciales y secretos NO deben colocarse en el README ni en el control de versiones.
 
-```env
-# Firebase Configuration (Cliente)
-NEXT_PUBLIC_FIREBASE_API_KEY="AIza..."
-NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN="tu-proyecto.firebaseapp.com"
-NEXT_PUBLIC_FIREBASE_PROJECT_ID="tu-proyecto"
-NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET="tu-proyecto.appspot.com"
-NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID="123456789"
-NEXT_PUBLIC_FIREBASE_APP_ID="1:123456789:web:abcdef"
+1. Copia el fichero de ejemplo y crea tu entorno local:
 
-# Firebase Admin SDK (Server-side)
-FIREBASE_PROJECT_ID="tu-proyecto"
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxxxx@tu-proyecto.iam.gserviceaccount.com"
-
-# Shopify Multi-Store (Ver SHOPIFY_SETUP.md para detalles)
-SHOPIFY_DEAREL_SHOP_DOMAIN="dearel.myshopify.com"
-SHOPIFY_DEAREL_ACCESS_TOKEN="shpat_xxxxx"
-SHOPIFY_DEAREL_WEBHOOK_SECRET="tu-webhook-secret"
-SHOPIFY_DEAREL_API_VERSION="2024-10"
-# ... (repetir para NOVI, BLUMI, NOVIPERU, CUMBRE, TRAZTO)
-
-# Kommo CRM Integration (Opcional)
-KOMMO_SUBDOMAIN="tu-subdominio"
-KOMMO_ACCESS_TOKEN="token-de-acceso"
-KOMMO_REFRESH_TOKEN="refresh-token"
-KOMMO_INTEGRATION_ID="integration-id"
-KOMMO_SECRET_KEY="secret-key"
+```powershell
+cp .env.example .env.local
+# o manualmente crea .env.local y pega los valores seguros
 ```
 
-#### Obtener Credenciales de Firebase
+2. Rellena ` .env.local` con las variables de entorno necesarias (no comitees este archivo).
 
-1. Ve a [Firebase Console](https://console.firebase.google.com/)
-2. Crea un nuevo proyecto o selecciona uno existente
-3. En **Project Settings** → **General**, copia las credenciales de tu Web App
-4. En **Project Settings** → **Service Accounts**, genera una nueva clave privada (JSON)
-5. Habilita **Firestore Database** en modo producción
-6. Habilita **Authentication** con provider Email/Password
+3. Archivo de ejemplo ` .env.example` (ya incluido en el repositorio) contiene la lista de variables esperadas sin valores. Usa ese archivo como referencia.
+
+4. Para credenciales sensibles (Firebase service account JSON, tokens de Kommo/Shopify) obténlas desde los paneles de administración y pégalas solo en tu `.env.local` o en el gestor de secretos de tu plataforma de despliegue (Vercel/GCP/Azure).
+
+Si necesitas ayuda para obtener credenciales de Firebase o Kommo, revisa la documentación específica de cada servicio (links más abajo).
 
 #### Configurar Kommo (Opcional)
 
