@@ -320,6 +320,16 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
         if (updateData[k] === undefined) delete updateData[k];
       });
 
+      // Si el agente actual existe y se escribió una nota o se editó el lead, asignarlo como asesor
+      if (currentUser) {
+        const shouldAssignAsesor = Boolean(editForm.notas_agente) || Object.keys(editForm).length > 0;
+        if (shouldAssignAsesor) {
+          updateData.assigned_agent_id = currentUser.id_usuario ?? authUserId ?? null;
+          updateData.assigned_agent_name = currentUser.nombre ?? null;
+          updateData.assigned_agent_avatar = currentUser.avatar ?? null;
+        }
+      }
+
       await updateDoc(leadRef, updateData);
 
       toast({
@@ -350,6 +360,16 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
       Object.keys(updateData).forEach((k) => {
         if (updateData[k] === undefined) delete updateData[k];
       });
+
+      // Si hay usuario actual y se editó o dejó una nota, asignar como asesor
+      if (currentUser) {
+        const shouldAssignAsesor = Boolean(editForm.notas_agente) || Object.keys(editForm).length > 0;
+        if (shouldAssignAsesor) {
+          updateData.assigned_agent_id = currentUser.id_usuario ?? authUserId ?? null;
+          updateData.assigned_agent_name = currentUser.nombre ?? null;
+          updateData.assigned_agent_avatar = currentUser.avatar ?? null;
+        }
+      }
 
       await updateDoc(leadRef, updateData);
 
