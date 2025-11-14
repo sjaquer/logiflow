@@ -385,7 +385,7 @@ Para soporte o preguntas, contactar a:
 
 <div align="center">
 
-**Hecho con ❤️ usando Next.js, TypeScript y Firebase**
+**Hecho con ❤️ usando FirebaseStudio, Next.js y TypeScript**
 
 [⬆ Volver arriba](#logiflow-sistema-integral-de-gestión-de-call-center-y-logística)
 

@@ -141,9 +141,13 @@ export default function LoginPage() {
           </CardContent>
         </Card>
         
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          © {new Date().getFullYear()} LogiFlow. Todos los derechos reservados.
-        </p>
+          <p className="text-center text-xs text-muted-foreground mt-6">
+            Hecho con ❤️ usando FirebaseStudio, Next.js y TypeScript.
+          </p>
+
+          <p className="text-center text-xs text-muted-foreground mt-4">
+            © {new Date().getFullYear()} LogiFlow. Todos los derechos reservados.
+          </p>
       </div>
     </div>
   );
