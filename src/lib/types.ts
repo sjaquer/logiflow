@@ -233,6 +233,8 @@ export interface Client {
     
     // Metadata
     processed_by?: string;
+  // Accumulative list of advisors who have interacted with the lead (history)
+  assigned_agents?: { id?: string; name: string; avatar?: string; assigned_at?: string }[];
 }
 
 

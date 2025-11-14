@@ -324,9 +324,21 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
       if (currentUser) {
         const shouldAssignAsesor = Boolean(editForm.notas_agente) || Object.keys(editForm).length > 0;
         if (shouldAssignAsesor) {
-          updateData.assigned_agent_id = currentUser.id_usuario ?? authUserId ?? null;
+          const agentId = currentUser.id_usuario ?? authUserId ?? null;
+          updateData.assigned_agent_id = agentId;
           updateData.assigned_agent_name = currentUser.nombre ?? null;
           updateData.assigned_agent_avatar = currentUser.avatar ?? null;
+
+          // Mantener un arreglo acumulativo de asesores (assigned_agents)
+          const existingAgents = Array.isArray((lead as any).assigned_agents) ? (lead as any).assigned_agents.slice() : [];
+          const alreadyPresent = agentId ? existingAgents.some(a => a.id === agentId) : false;
+          if (!alreadyPresent) {
+            existingAgents.push({ id: agentId || undefined, name: currentUser.nombre, avatar: currentUser.avatar, assigned_at: new Date().toISOString() });
+            updateData.assigned_agents = existingAgents;
+          } else {
+            // If already present, still update timestamp for that agent
+            updateData.assigned_agents = existingAgents.map(a => a.id === agentId ? { ...a, assigned_at: new Date().toISOString() } : a);
+          }
         }
       }
 
@@ -361,13 +373,23 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
         if (updateData[k] === undefined) delete updateData[k];
       });
 
-      // Si hay usuario actual y se editó o dejó una nota, asignar como asesor
+      // Si hay usuario actual y se editó o dejó una nota, asignar como asesor (acumulativo)
       if (currentUser) {
         const shouldAssignAsesor = Boolean(editForm.notas_agente) || Object.keys(editForm).length > 0;
         if (shouldAssignAsesor) {
-          updateData.assigned_agent_id = currentUser.id_usuario ?? authUserId ?? null;
+          const agentId = currentUser.id_usuario ?? authUserId ?? null;
+          updateData.assigned_agent_id = agentId;
           updateData.assigned_agent_name = currentUser.nombre ?? null;
           updateData.assigned_agent_avatar = currentUser.avatar ?? null;
+
+          const existingAgents = Array.isArray((dialogLead as any).assigned_agents) ? (dialogLead as any).assigned_agents.slice() : [];
+          const alreadyPresent = agentId ? existingAgents.some(a => a.id === agentId) : false;
+          if (!alreadyPresent) {
+            existingAgents.push({ id: agentId || undefined, name: currentUser.nombre, avatar: currentUser.avatar, assigned_at: new Date().toISOString() });
+            updateData.assigned_agents = existingAgents;
+          } else {
+            updateData.assigned_agents = existingAgents.map(a => a.id === agentId ? { ...a, assigned_at: new Date().toISOString() } : a);
+          }
         }
       }
 
