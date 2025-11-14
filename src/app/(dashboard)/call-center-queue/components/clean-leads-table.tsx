@@ -331,13 +331,22 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
 
           // Mantener un arreglo acumulativo de asesores (assigned_agents)
           const existingAgents = Array.isArray((lead as any).assigned_agents) ? (lead as any).assigned_agents.slice() : [];
-          const alreadyPresent = agentId ? existingAgents.some(a => a.id === agentId) : false;
+          const alreadyPresent = agentId ? existingAgents.some((a: any) => a.id === agentId) : false;
           if (!alreadyPresent) {
-            existingAgents.push({ id: agentId || undefined, name: currentUser.nombre, avatar: currentUser.avatar, assigned_at: new Date().toISOString() });
+            existingAgents.push({ id: agentId ?? null, name: currentUser.nombre ?? null, avatar: currentUser.avatar ?? null, assigned_at: new Date().toISOString() });
             updateData.assigned_agents = existingAgents;
           } else {
             // If already present, still update timestamp for that agent
-            updateData.assigned_agents = existingAgents.map(a => a.id === agentId ? { ...a, assigned_at: new Date().toISOString() } : a);
+            updateData.assigned_agents = existingAgents.map((a: any) => a.id === agentId ? { ...a, assigned_at: new Date().toISOString() } : a);
+          }
+          // Ensure no nested `undefined` values make it into Firestore; convert missing props to null
+          if (updateData.assigned_agents && Array.isArray(updateData.assigned_agents)) {
+            updateData.assigned_agents = updateData.assigned_agents.map((a: any) => ({
+              id: a.id ?? null,
+              name: a.name ?? null,
+              avatar: a.avatar ?? null,
+              assigned_at: a.assigned_at ?? null,
+            }));
           }
         }
       }
@@ -383,12 +392,21 @@ export function CleanLeadsTable({ leads, onProcessLead, currentUser, authUserId 
           updateData.assigned_agent_avatar = currentUser.avatar ?? null;
 
           const existingAgents = Array.isArray((dialogLead as any).assigned_agents) ? (dialogLead as any).assigned_agents.slice() : [];
-          const alreadyPresent = agentId ? existingAgents.some(a => a.id === agentId) : false;
+          const alreadyPresent = agentId ? existingAgents.some((a: any) => a.id === agentId) : false;
           if (!alreadyPresent) {
-            existingAgents.push({ id: agentId || undefined, name: currentUser.nombre, avatar: currentUser.avatar, assigned_at: new Date().toISOString() });
+            existingAgents.push({ id: agentId ?? null, name: currentUser.nombre ?? null, avatar: currentUser.avatar ?? null, assigned_at: new Date().toISOString() });
             updateData.assigned_agents = existingAgents;
           } else {
-            updateData.assigned_agents = existingAgents.map(a => a.id === agentId ? { ...a, assigned_at: new Date().toISOString() } : a);
+            updateData.assigned_agents = existingAgents.map((a: any) => a.id === agentId ? { ...a, assigned_at: new Date().toISOString() } : a);
+          }
+          // Ensure no nested `undefined` values make it into Firestore; convert missing props to null
+          if (updateData.assigned_agents && Array.isArray(updateData.assigned_agents)) {
+            updateData.assigned_agents = updateData.assigned_agents.map((a: any) => ({
+              id: a.id ?? null,
+              name: a.name ?? null,
+              avatar: a.avatar ?? null,
+              assigned_at: a.assigned_at ?? null,
+            }));
           }
         }
       }
